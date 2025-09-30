@@ -4389,21 +4389,40 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     
                     if (primaryDirection === 'top') {
                         childTriangle.style.borderBottomColor = arrowColor;
+                        // Ensure transparent borders remain transparent
+                        childTriangle.style.borderLeftColor = 'transparent';
+                        childTriangle.style.borderRightColor = 'transparent';
+                        childTriangle.style.borderTopColor = 'transparent';
                     } else if (primaryDirection === 'bottom') {
                         childTriangle.style.borderTopColor = arrowColor;
+                        // Ensure transparent borders remain transparent
+                        childTriangle.style.borderLeftColor = 'transparent';
+                        childTriangle.style.borderRightColor = 'transparent';
+                        childTriangle.style.borderBottomColor = 'transparent';
                     } else if (primaryDirection === 'left') {
                         childTriangle.style.borderRightColor = arrowColor;
+                        // Ensure transparent borders remain transparent
+                        childTriangle.style.borderTopColor = 'transparent';
+                        childTriangle.style.borderBottomColor = 'transparent';
+                        childTriangle.style.borderLeftColor = 'transparent';
                     } else if (primaryDirection === 'right') {
                         childTriangle.style.borderLeftColor = arrowColor;
+                        // Ensure transparent borders remain transparent
+                        childTriangle.style.borderTopColor = 'transparent';
+                        childTriangle.style.borderBottomColor = 'transparent';
+                        childTriangle.style.borderRightColor = 'transparent';
                     }
                     
-                    // DEBUG: Verify color was applied for unknown targets
+                    // DEBUG: Verify ALL border colors for unknown targets
                     if (diplomacy === 'unknown' && (!this.lastColorVerifyLog || Date.now() - this.lastColorVerifyLog > 2000)) {
-                        const appliedColor = primaryDirection === 'top' ? childTriangle.style.borderBottomColor :
-                                           primaryDirection === 'bottom' ? childTriangle.style.borderTopColor :
-                                           primaryDirection === 'left' ? childTriangle.style.borderRightColor :
-                                           childTriangle.style.borderLeftColor;
-                        console.log(`🎯 ARROW COLOR VERIFY: After setting ${primaryDirection} arrow, border is now: ${appliedColor}`);
+                        console.log(`🎯 ARROW BORDERS (${primaryDirection}):`, {
+                            top: childTriangle.style.borderTopColor || 'not set',
+                            bottom: childTriangle.style.borderBottomColor || 'not set',
+                            left: childTriangle.style.borderLeftColor || 'not set',
+                            right: childTriangle.style.borderRightColor || 'not set',
+                            width: childTriangle.style.width,
+                            height: childTriangle.style.height
+                        });
                         this.lastColorVerifyLog = Date.now();
                     }
                 }
