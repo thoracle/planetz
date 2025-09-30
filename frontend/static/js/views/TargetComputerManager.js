@@ -4242,6 +4242,17 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
      * Update direction arrow
      */
     updateDirectionArrow() {
+        // DEBUG: Entry point logging
+        if (!this.lastArrowDebugTime || (Date.now() - this.lastArrowDebugTime) > 2000) {
+            console.log('🎯 ARROW: updateDirectionArrow called', {
+                hasCurrentTarget: !!this.currentTarget,
+                targetName: this.currentTarget?.name,
+                targetComputerEnabled: this.targetComputerEnabled,
+                hasDirectionArrows: !!this.directionArrows
+            });
+            this.lastArrowDebugTime = Date.now();
+        }
+
         // Only proceed if we have a target and the target computer is enabled
         if (!this.currentTarget || !this.targetComputerEnabled || !this.directionArrows) {
             // Hide all arrows
@@ -4292,21 +4303,19 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         
         this.lastArrowState = shouldShowArrow;
 
-        // Debug logging (remove after testing)
-        if (this.currentTarget && this.currentTarget.name) {
-            const debugInfo = {
-                target: this.currentTarget.name,
+        // Debug logging for arrow visibility
+        const currentTargetData = this.getCurrentTargetData();
+        const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
+        if (!this.lastArrowScreenDebugTime || (Date.now() - this.lastArrowScreenDebugTime) > 2000) {
+            console.log('🎯 ARROW: Screen position check', {
+                target: this.currentTarget?.name,
                 screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) },
                 isOffScreen: isOffScreen,
                 shouldShowArrow: shouldShowArrow,
-                targetComputerEnabled: this.targetComputerEnabled,
-                hasDirectionArrows: !!this.directionArrows
-            };
-            // Debug logging disabled to reduce console spam
-            // if (!this.lastArrowDebugTime || (Date.now() - this.lastArrowDebugTime) > 2000) {
-            //     console.log('🎯 Direction Arrow Debug:', debugInfo);
-            //     this.lastArrowDebugTime = Date.now();
-            // }
+                isDiscovered: isDiscovered,
+                lastArrowState: this.lastArrowState
+            });
+            this.lastArrowScreenDebugTime = Date.now();
         }
 
         if (shouldShowArrow) {
@@ -4330,10 +4339,12 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             const isWaypointFromData = currentTargetData?.type === 'waypoint' || currentTargetData?.isWaypoint || currentTargetData?.isVirtual;
             const isWaypointFromTarget = this.currentTarget?.type === 'waypoint' || this.currentTarget?.isWaypoint || this.currentTarget?.isVirtual;
             
+            let diplomacy = 'unknown';
             if (isWaypointFromData || isWaypointFromTarget) {
                 arrowColor = '#ff00ff'; // Magenta for waypoints
+                diplomacy = 'waypoint';
             } else if (currentTargetData) {
-                const diplomacy = this.getTargetDiplomacy(currentTargetData);
+                diplomacy = this.getTargetDiplomacy(currentTargetData);
                 if (diplomacy === 'enemy') {
                     arrowColor = '#ff3333';
                 } else if (diplomacy === 'friendly') {
@@ -4344,6 +4355,18 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     arrowColor = '#44ffff'; // Teal for unknown/undiscovered
                 }
             }
+            
+            // DEBUG: Log arrow color decision
+            if (!this.lastArrowColorDebugTime || (Date.now() - this.lastArrowColorDebugTime) > 2000) {
+                console.log('🎯 ARROW: Color selection', {
+                    target: this.currentTarget?.name,
+                    diplomacy: diplomacy,
+                    arrowColor: arrowColor,
+                    isDiscovered: isDiscovered,
+                    hasCurrentTargetData: !!currentTargetData
+                });
+                this.lastArrowColorDebugTime = Date.now();
+            }
 
             // Determine which arrow to show based on the strongest component
             let primaryDirection = '';
@@ -4351,6 +4374,12 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 primaryDirection = rightComponent > 0 ? 'right' : 'left';
             } else {
                 primaryDirection = upComponent > 0 ? 'top' : 'bottom';
+            }
+
+            // DEBUG: Log arrow display
+            if (!this.lastArrowDisplayDebugTime || (Date.now() - this.lastArrowDisplayDebugTime) > 2000) {
+                console.log(`🎯 ARROW: Displaying ${primaryDirection} arrow for ${this.currentTarget?.name} with color ${arrowColor}`);
+                this.lastArrowDisplayDebugTime = Date.now();
             }
 
             // Position and show the appropriate arrow
