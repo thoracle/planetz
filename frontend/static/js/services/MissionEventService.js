@@ -68,7 +68,7 @@ debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} m
             return result;
             
         } catch (error) {
-            console.error('🎯 MissionEventService: Failed to send enemy destroyed event:', error);
+            debug('P1', '🎯 MissionEventService: Failed to send enemy destroyed event:', error);
             return { success: false, error: error.message };
         }
     }
@@ -116,7 +116,7 @@ debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} m
             return result;
             
         } catch (error) {
-            console.error('🎯 MissionEventService: Failed to send location reached event:', error);
+            debug('P1', '🎯 MissionEventService: Failed to send location reached event:', error);
             return { success: false, error: error.message };
         }
     }
@@ -194,7 +194,7 @@ debug('MISSIONS', `🎯 MissionEventService: ${result.updated_missions.length} m
             return result;
             
         } catch (error) {
-            console.error('🎯 MissionEventService: Failed to send cargo loaded event:', error);
+            debug('P1', '🎯 MissionEventService: Failed to send cargo loaded event:', error);
             return { success: false, error: error.message };
         }
     }
@@ -283,7 +283,7 @@ debug('MISSIONS', 'MissionEventService: Response was successful but no missions 
             return result;
             
         } catch (error) {
-            console.error('🎯 MissionEventService: Failed to send cargo delivered event:', error);
+            debug('P1', '🎯 MissionEventService: Failed to send cargo delivered event:', error);
             return { success: false, error: error.message };
         }
     }
@@ -320,7 +320,7 @@ debug('AI', `🎯 DEBUG: window.missionNotificationHandler available:`, !!window
 debug('MISSIONS', `🎯 DEBUG: Calling missionNotificationHandler.onMissionComplete`);
             window.missionNotificationHandler.onMissionComplete(mission);
         } else {
-            console.warn(`🎯 DEBUG: No missionNotificationHandler available!`);
+            debug('MISSIONS', '🎯 DEBUG: No missionNotificationHandler available!');
         }
         
         // Also trigger a custom event for other listeners
@@ -388,5 +388,27 @@ debug('MISSIONS', 'MissionEventService: Testing enemy destroyed event...');
         };
         
         return await this.enemyDestroyed(mockEnemy, mockContext);
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        debug('MISSIONS', '🧹 MissionEventService: Disposing...');
+
+        // Clear pending notifications
+        this.pendingNotifications = [];
+
+        // Disable the service
+        this.enabled = false;
+
+        debug('MISSIONS', '🧹 MissionEventService: Disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    destroy() {
+        this.dispose();
     }
 }

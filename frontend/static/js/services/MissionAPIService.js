@@ -70,7 +70,7 @@ debug('AI', `🎯 MissionAPIService: Loaded ${data.missions.length} available mi
             return data.missions;
             
         } catch (error) {
-            console.error('🎯 MissionAPIService: Failed to get available missions:', error);
+            debug('P1', '🎯 MissionAPIService: Failed to get available missions:', error);
             return [];
         }
     }
@@ -104,8 +104,8 @@ debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.missions.length} backen
                 debug('MISSIONS', 'MissionAPIService: Backend unavailable, using local cache only');
             }
         } catch (error) {
-            console.log('🎯 MissionAPIService: Backend unavailable, using local cache only');
-            console.log('🎯 Backend error:', error.message);
+            debug('MISSIONS', '🎯 MissionAPIService: Backend unavailable, using local cache only');
+            debug('MISSIONS', '🎯 Backend error:', error.message);
         }
         
         // Always return combined local cache (includes test missions + backend missions)
@@ -149,7 +149,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Cleared ${result.cleared_count} activ
             return result;
             
         } catch (error) {
-            console.error('🎯 MissionAPIService: Failed to clear active missions:', error);
+            debug('P1', '🎯 MissionAPIService: Failed to clear active missions:', error);
             return { success: false, error: error.message };
         }
     }
@@ -169,7 +169,7 @@ debug('AI', `🎯 MissionAPIService: Loaded mission details for ${missionId}`);
             return mission;
             
         } catch (error) {
-            console.error(`🎯 MissionAPIService: Failed to get mission ${missionId}:`, error);
+            debug('P1', `🎯 MissionAPIService: Failed to get mission ${missionId}:`, error);
             return null;
         }
     }
@@ -211,7 +211,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Mission ${missionId} accepted`);
             return result;
             
         } catch (error) {
-            console.error(`🎯 MissionAPIService: Failed to accept mission ${missionId}:`, error);
+            debug('P1', `🎯 MissionAPIService: Failed to accept mission ${missionId}:`, error);
             return { success: false, error: error.message };
         }
     }
@@ -262,7 +262,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Objective ${objectiveId} completed fo
             return result;
             
         } catch (error) {
-            console.error(`🎯 MissionAPIService: Failed to complete objective ${objectiveId}:`, error);
+            debug('P1', `🎯 MissionAPIService: Failed to complete objective ${objectiveId}:`, error);
             return { success: false, error: error.message };
         }
     }
@@ -295,7 +295,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Mission ${missionId} abandoned`);
             return result;
             
         } catch (error) {
-            console.error(`🎯 MissionAPIService: Failed to abandon mission ${missionId}:`, error);
+            debug('P1', `🎯 MissionAPIService: Failed to abandon mission ${missionId}:`, error);
             return { success: false, error: error.message };
         }
     }
@@ -332,7 +332,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Generated mission ${result.mission.id
             return result;
             
         } catch (error) {
-            console.error(`🎯 MissionAPIService: Failed to generate mission from template ${templateId}:`, error);
+            debug('P1', `🎯 MissionAPIService: Failed to generate mission from template ${templateId}:`, error);
             return { success: false, error: error.message };
         }
     }
@@ -352,7 +352,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.templates.length} missi
             return data.templates;
             
         } catch (error) {
-            console.error('🎯 MissionAPIService: Failed to get mission templates:', error);
+            debug('P1', '🎯 MissionAPIService: Failed to get mission templates:', error);
             return [];
         }
     }
@@ -387,7 +387,7 @@ debug('MISSIONS', `🎯 MissionAPIService: Loaded ${data.templates.length} missi
                 try {
                     callback(data);
                 } catch (error) {
-                    console.error(`🎯 MissionAPIService: Error in event listener for ${eventType}:`, error);
+                    debug('P1', `🎯 MissionAPIService: Error in event listener for ${eventType}:`, error);
                 }
             });
         }
@@ -422,7 +422,7 @@ debug('MISSIONS', 'MissionAPIService: Refreshing all mission data...');
 debug('MISSIONS', 'MissionAPIService: All mission data refreshed');
             return true;
         } catch (error) {
-            console.error('🎯 MissionAPIService: Failed to refresh mission data:', error);
+            debug('P1', '🎯 MissionAPIService: Failed to refresh mission data:', error);
             return false;
         }
     }
@@ -439,8 +439,37 @@ debug('MISSIONS', `🎯 MissionAPIService: Connection test ${isConnected ? 'PASS
             return isConnected;
             
         } catch (error) {
-            console.error('🎯 MissionAPIService: Connection test failed:', error);
+            debug('P1', '🎯 MissionAPIService: Connection test failed:', error);
             return false;
         }
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        debug('MISSIONS', '🧹 MissionAPIService: Disposing...');
+
+        // Clear all event listeners
+        for (const eventType in this.eventListeners) {
+            this.eventListeners[eventType] = [];
+        }
+
+        // Clear caches
+        this.activeMissions.clear();
+        this.availableMissions.clear();
+
+        // Null out references
+        this.playerLocation = null;
+        this.playerData = null;
+
+        debug('MISSIONS', '🧹 MissionAPIService: Disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    destroy() {
+        this.dispose();
     }
 }

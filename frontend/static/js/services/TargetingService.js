@@ -115,7 +115,7 @@ export class TargetingService {
         try {
             return CrosshairTargeting.getCrosshairTarget(camera, weaponRange, requestedBy);
         } catch (error) {
-            console.warn(`🎯 TARGETING: Crosshair targeting failed for ${requestedBy}:`, error);
+            debug('TARGETING', `🎯 TARGETING: Crosshair targeting failed for ${requestedBy}:`, error);
             return null;
         }
     }
@@ -349,6 +349,30 @@ debug('P1', `🎯 TARGETING FAILED [${requestedBy}]: ${result.reason} [${duratio
             lastTarget: this.cachedTargetResult?.targetName || 'none',
             config: { ...this.config }
         };
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        debug('TARGETING', '🧹 TargetingService: Disposing...');
+
+        // Clear cache
+        this.clearCache();
+
+        // Remove global reference
+        if (typeof window !== 'undefined' && window.targetingService === this) {
+            delete window.targetingService;
+        }
+
+        debug('TARGETING', '🧹 TargetingService: Disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    destroy() {
+        this.dispose();
     }
 }
 
