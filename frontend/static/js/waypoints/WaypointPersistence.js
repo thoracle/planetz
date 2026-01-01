@@ -105,7 +105,7 @@ export class WaypointPersistence {
 
         } catch (error) {
             this.saveMetrics.errors++;
-            console.error('Failed to save waypoints:', error);
+            debug('P1', `Failed to save waypoints: ${error.message}`);
             return false;
             
         } finally {
@@ -230,8 +230,8 @@ export class WaypointPersistence {
 
         } catch (error) {
             this.loadMetrics.errors++;
-            console.error('Failed to load waypoints:', error);
-            
+            debug('P1', `Failed to load waypoints: ${error.message}`);
+
             // Return empty data on error
             return { waypoints: new Map(), chains: new Map() };
             
@@ -257,9 +257,9 @@ export class WaypointPersistence {
 
             localStorage.setItem(STORAGE_KEYS.WAYPOINT_METRICS, JSON.stringify(metricsData));
             debug('WAYPOINTS', '📊 Saved waypoint metrics');
-            
+
         } catch (error) {
-            console.error('Failed to save waypoint metrics:', error);
+            debug('P1', `Failed to save waypoint metrics: ${error.message}`);
         }
     }
 
@@ -271,9 +271,9 @@ export class WaypointPersistence {
         try {
             const serializedData = localStorage.getItem(STORAGE_KEYS.WAYPOINT_METRICS);
             return serializedData ? JSON.parse(serializedData) : null;
-            
+
         } catch (error) {
-            console.error('Failed to load waypoint metrics:', error);
+            debug('P1', `Failed to load waypoint metrics: ${error.message}`);
             return null;
         }
     }
@@ -288,9 +288,9 @@ export class WaypointPersistence {
             });
             
             debug('WAYPOINTS', '🗑️ Cleared all waypoint storage');
-            
+
         } catch (error) {
-            console.error('Failed to clear waypoint storage:', error);
+            debug('P1', `Failed to clear waypoint storage: ${error.message}`);
         }
     }
 
@@ -523,7 +523,7 @@ export class WaypointPersistence {
             }
 
         } catch (error) {
-            console.error('Failed to get storage info:', error);
+            debug('P1', `Failed to get storage info: ${error.message}`);
             info.available = false;
         }
 
@@ -551,7 +551,7 @@ export class WaypointPersistence {
             return JSON.stringify(exportData, null, 2);
 
         } catch (error) {
-            console.error('Failed to export waypoint data:', error);
+            debug('P1', `Failed to export waypoint data: ${error.message}`);
             return null;
         }
     }
@@ -581,7 +581,7 @@ export class WaypointPersistence {
             return true;
 
         } catch (error) {
-            console.error('Failed to import waypoint data:', error);
+            debug('P1', `Failed to import waypoint data: ${error.message}`);
             return false;
         }
     }
@@ -616,9 +616,9 @@ export class WaypointPersistence {
             // This could implement cleanup of old backup files,
             // compression of old data, etc.
             debug('WAYPOINTS', '🧹 Storage cleanup completed');
-            
+
         } catch (error) {
-            console.error('Failed to cleanup waypoint storage:', error);
+            debug('P1', `Failed to cleanup waypoint storage: ${error.message}`);
         }
     }
 }

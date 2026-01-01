@@ -41,9 +41,9 @@ debug('UTILITY', 'WarpDriveAdapter initialized - will connect to Ship\'s WarpDri
                 this.onEnergyUpdate?.bind(this)
             );
             
-debug('UTILITY', 'WarpDriveAdapter connected to Ship\'s WarpDrive system');
+            debug('UTILITY', 'WarpDriveAdapter connected to Ship\'s WarpDrive system');
         } else {
-            console.warn('Ship does not have a warp drive system installed');
+            debug('P1', 'Ship does not have a warp drive system installed');
         }
     }
     
@@ -66,7 +66,7 @@ debug('UTILITY', 'WarpDriveAdapter connected to Ship\'s WarpDrive system');
      */
     activate() {
         if (!this.warpDriveSystem || !this.ship) {
-            console.error('WarpDriveAdapter: No warp drive system or ship available');
+            debug('P1', 'WarpDriveAdapter: No warp drive system or ship available');
             return false;
         }
         

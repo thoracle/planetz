@@ -105,7 +105,7 @@ export class WaypointKeyboardHandler {
             this.metrics.averageResponseTime = this.metrics.totalResponseTime / this.keyPressCount;
 
         } catch (error) {
-            console.error('Error handling waypoint keyboard shortcut:', error);
+            debug('P1', `Error handling waypoint keyboard shortcut: ${error.message}`);
         }
     }
 

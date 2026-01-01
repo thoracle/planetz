@@ -80,8 +80,8 @@ export class GiveRewardAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Failed to award reward:', error);
-            
+            debug('P1', `Failed to award reward: ${error.message}`);
+
             // Show error notification
             if (showNotification) {
                 await this.showErrorNotification(error.message);
@@ -152,8 +152,8 @@ export class GiveRewardAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Fallback reward API call failed:', error);
-            
+            debug('P1', `Fallback reward API call failed: ${error.message}`);
+
             // Final fallback: simulate reward for testing
             return this.simulateReward(rewardData);
         }

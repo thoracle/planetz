@@ -107,13 +107,13 @@ export class GiveItemAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Failed to give item:', error);
-            
+            debug('P1', `Failed to give item: ${error.message}`);
+
             // Show error notification
             if (showNotification) {
                 await this.showErrorNotification(error.message);
             }
-            
+
             throw error;
         }
     }
@@ -176,8 +176,8 @@ export class GiveItemAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Fallback inventory API call failed:', error);
-            
+            debug('P1', `Fallback inventory API call failed: ${error.message}`);
+
             // Final fallback: simulate item addition for testing
             return this.simulateItemAddition(itemData);
         }
@@ -201,7 +201,7 @@ export class GiveItemAction extends WaypointAction {
                 inventory = JSON.parse(stored);
             }
         } catch (error) {
-            console.warn('Failed to load simulated inventory:', error);
+            debug('P1', `Failed to load simulated inventory: ${error.message}`);
         }
 
         // Add item to simulated inventory
@@ -226,7 +226,7 @@ export class GiveItemAction extends WaypointAction {
         try {
             localStorage.setItem(inventoryKey, JSON.stringify(inventory));
         } catch (error) {
-            console.warn('Failed to save simulated inventory:', error);
+            debug('P1', `Failed to save simulated inventory: ${error.message}`);
         }
 
         return {

@@ -3,6 +3,7 @@ import WarpDrive from './WarpDrive.js';
 import WarpEffects from './WarpEffects.js';
 import SectorNavigation from './SectorNavigation.js';
 import WarpFeedback from './WarpFeedback.js';
+import { debug } from './debug.js';
 
 class WarpDriveManager {
     constructor(scene, camera, viewManager) {
@@ -299,7 +300,7 @@ class WarpDriveManager {
             this.currentSystem = await response.json();
 
         } catch (error) {
-            console.error('Error generating star system:', error);
+            debug('P1', `Error generating star system: ${error.message}`);
             // Handle error appropriately
         }
     }
@@ -352,10 +353,7 @@ class WarpDriveManager {
     navigateToSector(targetSector) {
         // Store target computer state before clearing
         const wasTargetComputerEnabled = this.viewManager.starfieldManager?.targetComputerEnabled;
-        console.log('Storing target computer state before warp:', {
-            wasEnabled: wasTargetComputerEnabled,
-            targetSector: targetSector
-        });
+        debug('NAVIGATION', `Storing target computer state before warp: wasEnabled=${wasTargetComputerEnabled}, targetSector=${targetSector}`);
 
         // Clear target computer first
         if (this.viewManager.starfieldManager) {
@@ -365,7 +363,7 @@ class WarpDriveManager {
         // Get destination system information
         const destinationSystem = this.viewManager.galacticChart.getStarSystemForSector(targetSector);
         if (!destinationSystem) {
-            console.error('Failed to get destination system information');
+            debug('P1', 'Failed to get destination system information');
             return false;
         }
 

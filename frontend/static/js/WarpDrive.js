@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import WarpFeedback from './WarpFeedback.js';
+import { debug } from './debug.js';
 
 class WarpDrive {
     constructor(viewManager) {
@@ -72,7 +73,7 @@ class WarpDrive {
 
         // Get the total energy cost for this warp
         if (!this.sectorNavigation) {
-            console.error('SectorNavigation not set');
+            debug('P1', 'SectorNavigation not set');
             return false;
         }
 
@@ -81,11 +82,7 @@ class WarpDrive {
             this.sectorNavigation.targetSector
         );
         this.energyConsumed = 0;
-        console.log('Warp initiated:', {
-            cost: this.totalEnergyCost,
-            from: this.sectorNavigation.currentSector,
-            to: this.sectorNavigation.targetSector
-        });
+        debug('NAVIGATION', `Warp initiated: cost=${this.totalEnergyCost}, from=${this.sectorNavigation.currentSector}, to=${this.sectorNavigation.targetSector}`);
 
         this.isActive = true;
         this.feedback.showAll();
@@ -125,7 +122,7 @@ class WarpDrive {
      */
     setWarpFactor(factor) {
         if (factor < 1.0 || factor > this.maxWarpFactor) {
-            console.warn(`Invalid warp factor: ${factor}. Must be between 1.0 and ${this.maxWarpFactor}`);
+            debug('P1', `Invalid warp factor: ${factor}. Must be between 1.0 and ${this.maxWarpFactor}`);
             return false;
         }
         this.warpFactor = factor;
@@ -194,12 +191,7 @@ class WarpDrive {
             // Log if cooldown time reduction is unusually large
             const timeReduced = previousCooldownTime - this.cooldownTime;
             if (timeReduced > timeSinceLastUpdate * 1.5) {
-                console.warn('Large cooldown time reduction:', {
-                    timeReduced,
-                    timeSinceLastUpdate,
-                    previousCooldownTime,
-                    newCooldownTime: this.cooldownTime
-                });
+                debug('P1', `Large cooldown time reduction: timeReduced=${timeReduced}, timeSinceLastUpdate=${timeSinceLastUpdate}`);
             }
             
             // Hide feedback when cooldown is complete

@@ -292,7 +292,7 @@ class ChunkManager {
                 this.handleSuccessfulGeneration();
             }
         } catch (error) {
-            console.error(`Error generating mesh for chunk:`, error);
+            debug('P1', `Error generating mesh for chunk: ${error.message}`);
             this.handleGenerationError(chunk);
         } finally {
             this.concurrentGenerations--;
@@ -327,7 +327,7 @@ class ChunkManager {
 
     tripCircuitBreaker() {
         if (!this.circuitBreakerTripped) {
-            console.warn('Circuit breaker tripped due to high error rate');
+            debug('P1', 'Circuit breaker tripped due to high error rate');
             this.circuitBreakerTripped = true;
             
             // Clear existing reset timeout if any

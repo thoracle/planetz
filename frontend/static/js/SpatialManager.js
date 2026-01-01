@@ -28,7 +28,7 @@ debug('UTILITY', '🌌 SpatialManager initialized - Three.js spatial tracking');
      */
     addObject(object, metadata = {}) {
         if (!object || !object.position) {
-            console.warn('SpatialManager: Invalid object for tracking');
+            debug('P1', 'SpatialManager: Invalid object for tracking');
             return false;
         }
 

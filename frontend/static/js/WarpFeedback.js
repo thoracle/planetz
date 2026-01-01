@@ -1,3 +1,5 @@
+import { debug } from './debug.js';
+
 class WarpFeedback {
     constructor(starfieldManager = null) {
         this.starfieldManager = starfieldManager;
@@ -97,12 +99,7 @@ class WarpFeedback {
         if (!this.useOpsHud || !this.starfieldManager?.damageControlHUD) {
             // Debug log when cooldown first appears
             if (phase.includes('Cooldown') && !this.isCooldownDisplayed) {
-                console.log('[Debug] Cooldown display activated:', { 
-                    phase, 
-                    progress,
-                    isVisible: this.progressBar.style.display,
-                    currentHTML: this.progressBar.innerHTML
-                });
+                debug('NAVIGATION', `Cooldown display activated: phase=${phase}, progress=${progress}`);
                 this.isCooldownDisplayed = true;
                 
                 // Ensure progress bar is visible for cooldown
@@ -131,10 +128,7 @@ class WarpFeedback {
     hideAll() {
         // Debug log when cooldown is hidden
         if (this.isCooldownDisplayed) {
-            console.log('[Debug] Cooldown display deactivated:', {
-                wasVisible: this.progressBar.style.display,
-                currentHTML: this.progressBar.innerHTML
-            });
+            debug('NAVIGATION', 'Cooldown display deactivated');
             this.isCooldownDisplayed = false;
         }
 
@@ -157,10 +151,7 @@ class WarpFeedback {
      * Show all feedback elements
      */
     showAll() {
-        console.log('[Debug] Showing all feedback elements:', {
-            wasVisible: this.progressBar.style.display,
-            isCooldownDisplayed: this.isCooldownDisplayed
-        });
+        debug('NAVIGATION', 'Showing all feedback elements');
 
         // PRIORITY: Show warp status in OPS HUD
         if (this.useOpsHud && this.starfieldManager?.damageControlHUD) {

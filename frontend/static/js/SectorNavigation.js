@@ -104,14 +104,10 @@ class SectorNavigation {
      * @returns {boolean} True if navigation started successfully
      */
     startNavigation(targetSector) {
-        console.log('Starting navigation sequence:', {
-            from: this.currentSector,
-            to: targetSector,
-            isNavigating: this.isNavigating
-        });
+        debug('NAVIGATION', `Starting navigation sequence: from=${this.currentSector}, to=${targetSector}`);
 
         if (this.isNavigating) {
-            console.warn('Navigation already in progress');
+            debug('P1', 'Navigation already in progress');
             this.feedback.showWarning(
                 'Navigation in Progress',
                 'Cannot start new navigation while already navigating.',
@@ -121,7 +117,7 @@ class SectorNavigation {
         }
 
         if (targetSector === this.currentSector) {
-            console.warn('Attempted to navigate to current sector:', targetSector);
+            debug('P1', `Attempted to navigate to current sector: ${targetSector}`);
             this.feedback.showWarning(
                 'Invalid Destination',
                 'Cannot navigate to current sector.',
@@ -131,16 +127,10 @@ class SectorNavigation {
         }
 
         const requiredEnergy = this.calculateRequiredEnergy(this.currentSector, targetSector);
-        console.log('Energy check:', {
-            required: requiredEnergy,
-            available: this.viewManager.getShipEnergy()
-        });
+        debug('NAVIGATION', `Energy check: required=${requiredEnergy}, available=${this.viewManager.getShipEnergy()}`);
 
         if (requiredEnergy > this.viewManager.getShipEnergy()) {
-            console.warn('Insufficient energy for navigation:', {
-                required: requiredEnergy,
-                available: this.viewManager.getShipEnergy()
-            });
+            debug('P1', `Insufficient energy for navigation: required=${requiredEnergy}, available=${this.viewManager.getShipEnergy()}`);
             this.feedback.showWarning(
                 'Insufficient Energy',
                 `Navigation to ${targetSector} requires ${requiredEnergy} energy units.`,
@@ -171,10 +161,7 @@ debug('TARGETING', 'Clearing target computer');
         
         // Clear the old system now that we know we have enough energy
         if (this.viewManager.solarSystemManager) {
-            console.log('Clearing old star system:', {
-                sector: this.currentSector,
-                timestamp: new Date().toISOString()
-            });
+            debug('NAVIGATION', `Clearing old star system: sector=${this.currentSector}`);
             this.viewManager.solarSystemManager.clearSystem();
         }
 
@@ -187,11 +174,7 @@ debug('TARGETING', 'Clearing target computer');
         this.startPosition.copy(this.camera.position);
         this.targetPosition = this.calculatePositionFromSector(targetSector);
         
-        console.log('Navigation parameters set:', {
-            startPosition: this.startPosition.toArray(),
-            targetPosition: this.targetPosition.toArray(),
-            startTime: this.startTime
-        });
+        debug('NAVIGATION', `Navigation parameters set: startPosition=${this.startPosition.toArray()}, targetPosition=${this.targetPosition.toArray()}`);
         
         // Activate warp drive
         if (!this.warpDrive.activate()) {

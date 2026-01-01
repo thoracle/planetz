@@ -92,7 +92,7 @@ export class SpawnShipsAction extends WaypointAction {
                     debug('WAYPOINTS', `🚢 Spawned ship ${i + 1}/${spawnCount}: ${shipType} at [${spawnPositions[i].join(', ')}]`);
                 }
             } catch (error) {
-                console.error(`Failed to spawn ship ${i + 1}:`, error);
+                debug('P1', `Failed to spawn ship ${i + 1}: ${error.message}`);
             }
         }
 
@@ -129,7 +129,7 @@ export class SpawnShipsAction extends WaypointAction {
         }
         
         if (minCount > maxCount) {
-            console.warn(`Invalid spawn count: min (${minCount}) > max (${maxCount}), using min`);
+            debug('P1', `Invalid spawn count: min (${minCount}) > max (${maxCount}), using min`);
             return minCount;
         }
         
@@ -250,7 +250,7 @@ export class SpawnShipsAction extends WaypointAction {
                 break;
 
             default:
-                console.warn(`Unknown formation pattern: ${formation}, using random`);
+                debug('P1', `Unknown formation pattern: ${formation}, using random`);
                 return this.generateFormationPositions(basePosition, count, FormationPattern.RANDOM, radius);
         }
 

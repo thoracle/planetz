@@ -142,8 +142,8 @@ export class PlayCommAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Failed to play communication:', error);
-            
+            debug('P1', `Failed to play communication: ${error.message}`);
+
             // Fallback: show subtitle only if audio fails
             if (this.parameters.subtitle) {
                 try {
@@ -155,7 +155,7 @@ export class PlayCommAction extends WaypointAction {
                         priority: CommPriority.HIGH
                     });
                 } catch (subtitleError) {
-                    console.error('Failed to show fallback subtitle:', subtitleError);
+                    debug('P1', `Failed to show fallback subtitle: ${subtitleError.message}`);
                 }
             }
 
@@ -285,7 +285,7 @@ export class PlayCommAction extends WaypointAction {
                 throw new Error('StarfieldManager not available');
             }
         } catch (error) {
-            console.error('Video communication failed:', error);
+            debug('P1', `Video communication failed: ${error.message}`);
             // Fallback: just return success to not break the action
             return { success: false, error: error.message };
         }
@@ -323,9 +323,9 @@ export class PlayCommAction extends WaypointAction {
                 throw new Error('StarfieldManager ephemeral UI not available');
             }
         } catch (error) {
-            console.error('Subtitle display failed:', error);
-            // Fallback: log to console
-            console.log(`🎯 WAYPOINT MESSAGE: ${speaker ? speaker + ': ' : ''}${text}`);
+            debug('P1', `Subtitle display failed: ${error.message}`);
+            // Fallback: log to debug
+            debug('WAYPOINTS', `🎯 WAYPOINT MESSAGE: ${speaker ? speaker + ': ' : ''}${text}`);
             return { success: false, error: error.message };
         }
     }

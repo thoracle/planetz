@@ -116,7 +116,7 @@ export class ShowMessageAction extends WaypointAction {
             return result;
 
         } catch (error) {
-            console.error('Failed to show message:', error);
+            debug('P1', `Failed to show message: ${error.message}`);
             throw error;
         }
     }
@@ -157,7 +157,7 @@ export class ShowMessageAction extends WaypointAction {
                 });
             }
         } catch (error) {
-            console.warn(`Failed to play message audio ${audioFileId}:`, error);
+            debug('P1', `Failed to play message audio ${audioFileId}: ${error.message}`);
             return { success: false, error: error.message };
         }
     }
@@ -202,9 +202,9 @@ export class ShowMessageAction extends WaypointAction {
                 throw new Error('StarfieldManager ephemeral UI not available');
             }
         } catch (error) {
-            console.error('Message display failed:', error);
-            // Fallback: log to console
-            console.log(`🎯 WAYPOINT MESSAGE: ${title || 'MESSAGE'} - ${message}`);
+            debug('P1', `Message display failed: ${error.message}`);
+            // Fallback: log to debug
+            debug('WAYPOINTS', `🎯 WAYPOINT MESSAGE: ${title || 'MESSAGE'} - ${message}`);
             return { success: false, error: error.message };
         }
     }

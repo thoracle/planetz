@@ -79,8 +79,8 @@ export class WaypointAction {
         } catch (error) {
             this.executionTime = performance.now() - startTime;
             this.executionResult = { error: error.message };
-            
-            console.error(`❌ Action failed: ${this.type}`, error);
+
+            debug('P1', `❌ Action failed: ${this.type}: ${error.message}`);
             return { success: false, error: error.message, executionTime: this.executionTime };
         }
     }
@@ -146,7 +146,7 @@ export class WaypointAction {
                 return this.evaluateCustomCondition(condition, context);
 
             default:
-                console.warn(`Unknown condition type: ${type}`);
+                debug('P1', `Unknown condition type: ${type}`);
                 return true; // Default to true for unknown conditions
         }
     }
@@ -179,7 +179,7 @@ export class WaypointAction {
             case '<=':
                 return actual <= expected;
             default:
-                console.warn(`Unknown operator: ${operator}`);
+                debug('P1', `Unknown operator: ${operator}`);
                 return true;
         }
     }

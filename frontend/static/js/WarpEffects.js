@@ -41,9 +41,9 @@ class WarpEffects {
     ensureAudioContextRunning() {
         if (this.listener && this.listener.context) {
             if (this.listener.context.state === 'suspended') {
-debug('UTILITY', 'Resuming suspended AudioContext');
+                debug('UTILITY', 'Resuming suspended AudioContext');
                 this.listener.context.resume().catch(error => {
-                    console.error('Failed to resume AudioContext:', error);
+                    debug('P1', `Failed to resume AudioContext: ${error.message}`);
                 });
             }
         }
@@ -57,10 +57,10 @@ debug('UTILITY', 'Resuming suspended AudioContext');
         
         // Add audio listener to camera
         if (this.camera) {
-debug('UTILITY', 'Adding audio listener to camera');
+            debug('UTILITY', 'Adding audio listener to camera');
             this.camera.add(this.listener);
         } else {
-            console.warn('No camera available for audio listener');
+            debug('P1', 'No camera available for audio listener');
         }
         
         // Single container for all effects
@@ -333,7 +333,7 @@ debug('UTILITY', 'Stopping red alert warp sound');
                 // Loading progress
             },
             (error) => {
-                console.error(`Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound:`, error);
+                debug('P1', `Error loading ${soundType === 'warp' ? 'warp' : 'red alert warp'} sound: ${error.message || error}`);
             }
         );
     }
