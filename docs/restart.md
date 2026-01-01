@@ -81,16 +81,30 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 
 <!-- DYNAMIC_GIT_START -->
 **Last 5 Commits:**
-- `385f203` 🔧 Fix achievement display bug showing checkmarks for incomplete achievements
-- `a1e63ab` 🎯 Complete Help Screen 2.0 + Star Charts Subsystem Bug Fix
-- `f855691` fix: Add missing refreshShipsLogDisplay method in HelpInterface
-- `1b4ea8c` feat: Implement single source of truth for card inventory system
-- `8bd0b7a` ✨ Implement Help Screen 2.0 with Tabbed Interface
+- `c921b61` fix: Replace console.log/warn/error with debug() in waypoint, warp, and utility files
+- `84dda1f` fix: Replace console.log/warn/error with debug() in 5 major files
+- `60d47d2` Add comprehensive NFT card system spec with gacha mechanics and loot crates
+- `0f3728d` fix: Only update visible border color, preserve original configuration
+- `ff548a8` docs: Update restart.md with directional arrow fixes and console cleanup
 <!-- DYNAMIC_GIT_END -->
 
 ## 🎉 Latest Issues Solved
 
-### **Directional Arrows for Unknown Targets** ✅ **JUST FIXED** *(Sept 30, 2025)*
+### **Console Violation Cleanup - Complete** ✅ **JUST COMPLETED** *(Jan 1, 2026)*
+- **Issue**: 200+ `console.log/warn/error` statements scattered across codebase instead of using `debug()` system
+- **Solution**: Systematic migration to `debug(channel, message)` pattern across all major files
+- **Files Fixed (21 total)**:
+  - **Major Files**: SolarSystemManager.js, WaypointManager.js, app.js, PhysicsManager.js, SimpleDockingManager.js
+  - **Warp System**: WarpDrive.js, WarpDriveManager.js, WarpDriveAdapter.js, WarpEffects.js, WarpFeedback.js
+  - **Waypoint System**: WaypointAction.js, WaypointPersistence.js, WaypointKeyboardHandler.js, GiveItemAction.js, GiveRewardAction.js, PlayCommAction.js, ShowMessageAction.js, SpawnShipsAction.js
+  - **Utilities**: SectorNavigation.js, SpatialManager.js, chunkManager.js
+- **Pattern Used**:
+  - `console.error(msg)` → `debug('P1', msg)` (critical errors)
+  - `console.warn(msg)` → `debug('P1', msg)` (warnings)
+  - `console.log(msg)` → `debug('CHANNEL', msg)` (appropriate channel: NAVIGATION, WAYPOINTS, UTILITY, etc.)
+- **Result**: Clean codebase with consistent debug channel usage; remaining console statements are intentional (debug infrastructure, user-facing commands)
+
+### **Directional Arrows for Unknown Targets** ✅ **FIXED** *(Sept 30, 2025)*
 - **Issue**: Directional arrows not showing for undiscovered/unknown targets when off-screen
 - **Root Causes**: 
   - Arrow z-index (9999) was below UI elements (10000-20000)
