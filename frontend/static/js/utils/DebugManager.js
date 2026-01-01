@@ -16,6 +16,7 @@ export class SmartDebugManager {
         this.config = {};
         this.stats = {};
         this.configFile = 'debug-config.json';
+        this._pendingTimeouts = new Set();
 
         // Channel to icon mapping for clean output
         this.channelIcons = {
@@ -262,19 +263,21 @@ export class SmartDebugManager {
      */
     runInitialChannelTests() {
         // Small delay to ensure the debug system is fully initialized
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(timeoutId);
             const enabledChannels = Object.entries(this.channels)
                 .filter(([channel, state]) => state.enabled || state.alwaysEnabled)
                 .map(([channel]) => channel);
-            
+
             if (enabledChannels.length > 0) {
                 console.log(`🔧 DebugManager: Running self-tests for ${enabledChannels.length} enabled channels...`);
-                
+
                 enabledChannels.forEach(channel => {
                     this.channelSelfTest(channel);
                 });
             }
         }, 100);
+        this._pendingTimeouts.add(timeoutId);
     }
 
     /**
@@ -318,11 +321,13 @@ export class SmartDebugManager {
         const icon = this.channelIcons[channel] || '🔧';
         const description = this.config.channels[channel]?.description || 'No description';
         const testMessage = `Channel '${channel}' is now ACTIVE ✅ - ${description}`;
-        
+
         // Use the channel's own debug method to announce itself
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(timeoutId);
             this.debug(channel, testMessage);
         }, 10); // Small delay to ensure the channel state is fully updated
+        this._pendingTimeouts.add(timeoutId);
     }
 
     /**
@@ -522,5 +527,49 @@ export class SmartDebugManager {
                typeof config.channels === 'object' &&
                config.global &&
                typeof config.global === 'object';
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        console.log('🔧 SmartDebugManager: Disposing...');
+
+        // Clear pending timeouts
+        for (const timeoutId of this._pendingTimeouts) {
+            clearTimeout(timeoutId);
+        }
+        this._pendingTimeouts.clear();
+
+        // Clear stats and channels
+        this.stats = {};
+        this.channels = {};
+
+        // Remove global references
+        if (window.smartDebugManager === this) {
+            delete window.smartDebugManager;
+        }
+        delete window.debug;
+        delete window.debugToggle;
+        delete window.debugEnable;
+        delete window.debugDisable;
+        delete window.debugStats;
+        delete window.debugStates;
+        delete window.debugReset;
+        delete window.debugList;
+        delete window.debugLoadFile;
+        delete window.debugSaveFile;
+        delete window.debugConfigFile;
+        delete window.debugSyncFile;
+        delete window.debugP1;
+
+        console.log('🔧 SmartDebugManager: Disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    destroy() {
+        this.dispose();
     }
 }
