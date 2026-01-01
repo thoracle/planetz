@@ -1135,13 +1135,13 @@ export class TargetComputerManager {
     toggleTargetComputer() {
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('No ship available for target computer control');
+            debug('P1', 'No ship available for target computer control');
             return;
         }
-        
+
         const targetComputer = ship.getSystem('target_computer');
         if (!targetComputer) {
-            console.warn('No target computer system found on ship');
+            debug('P1', 'No target computer system found on ship');
             return;
         }
         
@@ -1153,7 +1153,7 @@ export class TargetComputerManager {
             }
             targetComputer.deactivate();
             this.targetComputerEnabled = false;
-            console.log('Target computer deactivated');
+            debug('TARGETING', 'Target computer deactivated');
         } else {
             debug('TARGETING', 'Attempting to activate target computer...');
             debug('TARGETING', 'Target computer canActivate result:', targetComputer.canActivate ? targetComputer.canActivate() : 'canActivate method not available');
@@ -1164,12 +1164,8 @@ export class TargetComputerManager {
                 debug('TARGETING', 'Target computer activated successfully');
             } else {
                 this.targetComputerEnabled = false;
-                console.warn('Failed to activate target computer - check system status and energy');
-                console.log('Target computer activation failed. Current state:', {
-                    isActive: targetComputer.isActive,
-                    healthPercentage: targetComputer.healthPercentage,
-                    state: targetComputer.state
-                });
+                debug('P1', 'Failed to activate target computer - check system status and energy');
+                debug('TARGETING', `Target computer activation failed. isActive: ${targetComputer.isActive}, health: ${targetComputer.healthPercentage}, state: ${targetComputer.state}`);
                 return;
             }
         }
@@ -1646,7 +1642,7 @@ export class TargetComputerManager {
                 
                 // Add error handling
                 audio.addEventListener('error', (e) => {
-                    console.warn(`🔊 Audio error for ${fileName}:`, e);
+                    debug('P1', `🔊 Audio error for ${fileName}: ${e}`);
                 });
                 
                 this.audioElements.set(fileName, audio);
@@ -1661,11 +1657,11 @@ export class TargetComputerManager {
             // Handle potential play() promise rejection
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.warn('🔊 Failed to play audio:', fileName, error);
+                    debug('P1', `🔊 Failed to play audio: ${fileName} - ${error}`);
                 });
             }
         } catch (error) {
-            console.warn('🔊 Failed to play audio:', audioPath, error);
+            debug('P1', `🔊 Failed to play audio: ${audioPath} - ${error}`);
         }
     }
 
@@ -1799,7 +1795,7 @@ export class TargetComputerManager {
                 : target.position;
             return this.camera.position.distanceTo(targetPos) / 1000; // Convert to km
         } catch (error) {
-            console.warn(`🎯 Error calculating distance to ${target.name}:`, error);
+            debug('P1', `🎯 Error calculating distance to ${target.name}: ${error}`);
             return Infinity;
         }
     }
@@ -1837,7 +1833,7 @@ export class TargetComputerManager {
                         isNaN(body.position.x) ||
                         isNaN(body.position.y) ||
                         isNaN(body.position.z)) {
-                        console.log(`🎯 Invalid position for body ${key}:`, body.position);
+                        debug('TARGETING', `🎯 Invalid position for body ${key}`);
                         return null;
                     }
 
@@ -2320,7 +2316,7 @@ export class TargetComputerManager {
      */
     setTargetFromScanner(targetData) {
         if (!targetData) {
-            console.warn('🎯 Cannot set target from scanner - no target data provided');
+            debug('P1', '🎯 Cannot set target from scanner - no target data provided');
             return;
         }
 
@@ -2371,7 +2367,7 @@ export class TargetComputerManager {
 
         // Additional safeguard: verify the target was set correctly
         if (this.currentTarget?.name !== targetData.name) {
-            console.warn(`🎯 Scanner target synchronization issue - expected ${targetData.name}, got ${this.currentTarget?.name}`);
+            debug('P1', `🎯 Scanner target synchronization issue - expected ${targetData.name}, got ${this.currentTarget?.name}`);
             this.currentTarget = targetData;
             this.updateTargetDisplay();
         }
@@ -2631,7 +2627,7 @@ export class TargetComputerManager {
         }
         
         } catch (error) {
-            console.error('🎯 ERROR in TargetComputerManager.cycleTarget:', error);
+            debug('P1', `🎯 ERROR in TargetComputerManager.cycleTarget: ${error}`);
             debug('TARGETING', `🎯 ERROR in cycleTarget: ${error.message}`);
         }
     }
@@ -2930,7 +2926,7 @@ export class TargetComputerManager {
 
         } catch (error) {
             debug('TARGETING', `🖼️ Wireframe creation ERROR: ${error.message}`);
-            console.error('Error creating target wireframe:', error);
+            debug('P1', `Error creating target wireframe: ${error}`);
         }
     }
 
@@ -3012,7 +3008,7 @@ export class TargetComputerManager {
 
         // Don't update display during power-up animation
         if (this.isPoweringUp) {
-            console.log(`🎯 updateTargetDisplay: Skipping due to power-up animation`);
+            debug('TARGETING', `🎯 updateTargetDisplay: Skipping due to power-up animation`);
             return;
         }
 
@@ -3071,7 +3067,7 @@ export class TargetComputerManager {
         // then discover the target has no valid position and gets cleared
         const targetPos = this.getTargetPosition(this.currentTarget);
         if (!targetPos) {
-            console.warn('🎯 Cannot calculate distance for range check - invalid target position');
+            debug('P1', '🎯 Cannot calculate distance for range check - invalid target position');
             // Clear the target immediately to prevent inconsistent state
             this.clearCurrentTarget();
             return;
@@ -3220,16 +3216,8 @@ if (window?.DEBUG_TCM) debug('INSPECTION', `🎯 DEBUG: Final info object:`, inf
 
             // Only log for target dummies to debug the sub-targeting issue
             if (currentTargetData.name && currentTargetData.name.includes('Target Dummy')) {
-if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
-                if (window?.DEBUG_TCM) console.log(`🎯 Sub-targeting DEBUG: currentTargetData:`, {
-                    isShip: currentTargetData.isShip,
-                    type: currentTargetData.type,
-                    ship: !!currentTargetData.ship,
-                    ship_name: currentTargetData.ship?.shipName,
-                    object_userData: !!currentTargetData.object?.userData,
-                    object_userData_ship: !!currentTargetData.object?.userData?.ship,
-                    isTargetDummy: currentTargetData.ship?.isTargetDummy
-                });
+                if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting check: isEnemyShip=${isEnemyShip}, currentTargetData.ship=${!!currentTargetData.ship}, isSpaceStation=${isSpaceStation}`);
+                if (window?.DEBUG_TCM) debug('TARGETING', `🎯 Sub-targeting DEBUG: isShip=${currentTargetData.isShip}, type=${currentTargetData.type}, ship=${!!currentTargetData.ship}, isTargetDummy=${currentTargetData.ship?.isTargetDummy}`);
             }
             if ((isEnemyShip && currentTargetData.ship) || isSpaceStation) {
                 // Note: Target is already set via setTarget() in cycleTarget method
@@ -3820,7 +3808,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
                     } catch (e) {
                         // Ignore readonly property errors
                         if (e.message && !e.message.includes('readonly')) {
-                            console.warn('🎯 Error setting undiscovered beacon properties:', e);
+                            debug('P1', `🎯 Error setting undiscovered beacon properties: ${e}`);
                         }
                     }
                 }
@@ -3837,7 +3825,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
                 } catch (e) {
                     // Ignore readonly property errors
                     if (e.message && !e.message.includes('readonly')) {
-                        console.warn('🎯 Error setting discovered beacon properties:', e);
+                        debug('P1', `🎯 Error setting discovered beacon properties: ${e}`);
                     }
                 }
             }
@@ -3853,7 +3841,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             } catch (e) {
                 // Ignore readonly property errors
                 if (e.message && !e.message.includes('readonly')) {
-                    console.warn('🎯 Error setting target ID:', e);
+                    debug('P1', `🎯 Error setting target ID: ${e}`);
                 }
             }
         }
@@ -3876,7 +3864,7 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
             } catch (e) {
                 // Ignore readonly property errors
                 if (e.message && !e.message.includes('readonly')) {
-                    console.warn('🎯 Error setting star properties:', e);
+                    debug('P1', `🎯 Error setting star properties: ${e}`);
                 }
             }
         }
@@ -4052,7 +4040,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 // Render the wireframe scene
                 this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
             } catch (error) {
-                console.warn('Error rendering wireframe:', error);
+                debug('P1', `Error rendering wireframe: ${error}`);
             }
         }
 
@@ -4258,7 +4246,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         
         if (!targetPos) {
             // DEBUG: Log why position lookup failed for arrows
-            console.warn(`🎯 ARROW: No position for "${this.currentTarget?.name || 'unknown'}"`, {
+            debug('P1', `🎯 ARROW: No position for "${this.currentTarget?.name || 'unknown'}"`, {
                 isDiscovered,
                 targetType: this.currentTarget?.type,
                 hasPosition: !!this.currentTarget?.position,
@@ -4376,14 +4364,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 if (childTriangle) {
                     // DEBUG: Log color update for unknown targets
                     if (diplomacy === 'unknown' && (!this.lastColorUpdateLog || Date.now() - this.lastColorUpdateLog > 2000)) {
-                        console.log(`🎯 ARROW COLOR: Setting ${primaryDirection} arrow color to ${arrowColor} for diplomacy: ${diplomacy}`, {
-                            target: this.currentTarget?.name,
-                            childTriangle: !!childTriangle,
-                            currentBorderColor: primaryDirection === 'top' ? childTriangle.style.borderBottomColor :
-                                              primaryDirection === 'bottom' ? childTriangle.style.borderTopColor :
-                                              primaryDirection === 'left' ? childTriangle.style.borderRightColor :
-                                              childTriangle.style.borderLeftColor
-                        });
+                        debug('TARGETING', `🎯 ARROW COLOR: Setting ${primaryDirection} arrow to ${arrowColor} for ${this.currentTarget?.name} (diplomacy: ${diplomacy})`);
                         this.lastColorUpdateLog = Date.now();
                     }
                     
@@ -4400,18 +4381,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                     
                     // DEBUG: Verify ALL border colors AND WIDTHS for unknown targets
                     if (diplomacy === 'unknown' && (!this.lastColorVerifyLog || Date.now() - this.lastColorVerifyLog > 2000)) {
-                        console.log(`🎯 ARROW BORDERS (${primaryDirection}):`, {
-                            topColor: childTriangle.style.borderTopColor || 'not set',
-                            topWidth: childTriangle.style.borderTopWidth || 'not set',
-                            bottomColor: childTriangle.style.borderBottomColor || 'not set',
-                            bottomWidth: childTriangle.style.borderBottomWidth || 'not set',
-                            leftColor: childTriangle.style.borderLeftColor || 'not set',
-                            leftWidth: childTriangle.style.borderLeftWidth || 'not set',
-                            rightColor: childTriangle.style.borderRightColor || 'not set',
-                            rightWidth: childTriangle.style.borderRightWidth || 'not set',
-                            elementWidth: childTriangle.style.width,
-                            elementHeight: childTriangle.style.height
-                        });
+                        debug('TARGETING', `🎯 ARROW BORDERS (${primaryDirection}): verified for ${this.currentTarget?.name}`);
                         this.lastColorVerifyLog = Date.now();
                     }
                 }
@@ -4421,33 +4391,13 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
                 
                 // DEBUG: Log arrow container position and visibility for unknown targets
                 if (diplomacy === 'unknown' && (!this.lastArrowContainerLog || Date.now() - this.lastArrowContainerLog > 2000)) {
-                    console.log(`🎯 ARROW CONTAINER (${primaryDirection}):`, {
-                        display: arrow.style.display,
-                        zIndex: arrow.style.zIndex,
-                        position: arrow.style.position,
-                        left: arrow.style.left,
-                        top: arrow.style.top,
-                        right: arrow.style.right,
-                        bottom: arrow.style.bottom,
-                        width: arrow.style.width,
-                        height: arrow.style.height,
-                        opacity: arrow.style.opacity || '1',
-                        visibility: arrow.style.visibility || 'visible'
-                    });
+                    debug('TARGETING', `🎯 ARROW CONTAINER (${primaryDirection}): display=${arrow.style.display}, pos=(${arrow.style.left}, ${arrow.style.top})`);
                     this.lastArrowContainerLog = Date.now();
                 }
                 
                 // DEBUG: Log arrow display details for undiscovered targets
                 if (this.debugArrowNextUpdate) {
-                    console.log(`🎯 ARROW: Displaying ${primaryDirection} arrow`, {
-                        target: this.currentTarget?.name,
-                        isDiscovered,
-                        diplomacy,
-                        arrowColor,
-                        shouldShowArrow,
-                        isOffScreen,
-                        screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) }
-                    });
+                    debug('TARGETING', `🎯 ARROW: Displaying ${primaryDirection} arrow for ${this.currentTarget?.name} (discovered: ${isDiscovered}, diplomacy: ${diplomacy}, color: ${arrowColor})`);
                     this.debugArrowNextUpdate = false;
                 }
                 
@@ -4461,12 +4411,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
         } else {
             // Target is on screen, hide all arrows
             if (this.debugArrowNextUpdate) {
-                console.log(`🎯 ARROW: Target on screen, hiding arrows`, {
-                    target: this.currentTarget?.name,
-                    isDiscovered,
-                    shouldShowArrow,
-                    screenPos: { x: screenPosition.x.toFixed(2), y: screenPosition.y.toFixed(2), z: screenPosition.z.toFixed(2) }
-                });
+                debug('TARGETING', `🎯 ARROW: Target on screen, hiding arrows for ${this.currentTarget?.name} (discovered: ${isDiscovered})`);
                 this.debugArrowNextUpdate = false;
             }
             this.hideAllDirectionArrows();
@@ -4556,7 +4501,7 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
             this.scene.add(this.targetOutline);
             
         } catch (error) {
-            console.error('Error creating target outline:', error);
+            debug('P1', `Error creating target outline: ${error}`);
         }
     }
 
@@ -4793,7 +4738,7 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         debug('TARGETING', `🎯 setTargetById call stack:`, new Error().stack);
         
         if (!objectId) {
-            console.warn('🎯 setTargetById: No object ID provided');
+            debug('P1', '🎯 setTargetById: No object ID provided');
             return false;
         }
 
@@ -4950,7 +4895,7 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
             }
         }
 
-        console.warn(`🎯 Target not found by ID: ${normalizedId}`);
+        debug('P1', `🎯 Target not found by ID: ${normalizedId}`);
         debug('TARGETING', `🎯 Available targets:`, this.targetObjects.map(t => `${t.name} (${t.id || t?.object?.userData?.id || 'no-id'})`));
 
         // FALLBACK: Try to find by name if ID lookup fails
@@ -5180,7 +5125,7 @@ debug('TARGETING', `🎯 Star Charts: Target set to ${target.name} (ID: ${normal
      */
     setTargetByName(objectName) {
         if (!objectName) {
-            console.warn('🎯 setTargetByName: No object name provided');
+            debug('P1', '🎯 setTargetByName: No object name provided');
             return false;
         }
 
@@ -5208,7 +5153,7 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
             }
         }
 
-        console.warn(`🎯 Target not found by name: ${objectName}`);
+        debug('P1', `🎯 Target not found by name: ${objectName}`);
         return false;
     }
 
@@ -5494,13 +5439,13 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
      * Activate target computer and select first target if available
      */
     activateTargetComputer() {
-        console.log(`🎯 activateTargetComputer called: targetComputerEnabled=${this.targetComputerEnabled}, isPoweringUp=${this.isPoweringUp}, targets=${this.targetObjects?.length || 0}`);
+        debug('TARGETING', `🎯 activateTargetComputer called: targetComputerEnabled=${this.targetComputerEnabled}, isPoweringUp=${this.isPoweringUp}, targets=${this.targetObjects?.length || 0}`);
         this.targetComputerEnabled = true;
-        
+
         // If we have targets, select the first one
         if (this.targetObjects && this.targetObjects.length > 0) {
             this.targetIndex = 0;
-            console.log(`🎯 activateTargetComputer: About to call updateTargetDisplay after activation`);
+            debug('TARGETING', `🎯 activateTargetComputer: About to call updateTargetDisplay after activation`);
             this.updateTargetDisplay();
             // Force direction arrow update when target computer is activated
             this.updateDirectionArrow();
@@ -5843,7 +5788,7 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
                 } catch (e) {
                     // Ignore readonly property errors - this is just an optimization
                     if (e.message && !e.message.includes('readonly')) {
-                        console.warn('🎯 Error updating currentTarget:', e);
+                        debug('P1', `🎯 Error updating currentTarget: ${e}`);
                     }
                 }
                 // Also try to update corresponding entry in targetObjects
@@ -5855,7 +5800,7 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
                 } catch (e) {
                     // Ignore readonly property errors - this is just an optimization
                     if (e.message && !e.message.includes('readonly')) {
-                        console.warn('🎯 Error updating targetObjects:', e);
+                        debug('P1', `🎯 Error updating targetObjects: ${e}`);
                     }
                 }
                 return resolved.position;
@@ -5980,14 +5925,14 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
             // If it's a string, treat it as waypoint ID
             waypoint = window.waypointManager?.getWaypoint(waypointData);
             if (!waypoint) {
-                console.warn(`🎯 Waypoint not found: ${waypointData}`);
+                debug('P1', `🎯 Waypoint not found: ${waypointData}`);
                 return false;
             }
         } else if (waypointData && waypointData.position) {
             // If it's an object with position, use it directly
             waypoint = waypointData;
         } else {
-            console.warn('🎯 targetWaypointViaCycle: Invalid waypoint data');
+            debug('P1', '🎯 targetWaypointViaCycle: Invalid waypoint data');
             return false;
         }
 
@@ -6045,7 +5990,7 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
         if (targetData.isWaypoint || targetData.type === 'waypoint') {
             this.currentTarget = targetData;
         } else {
-            console.warn('🎯 Target at index is not a waypoint');
+            debug('P1', '🎯 Target at index is not a waypoint');
             return false;
         }
         
@@ -6087,14 +6032,14 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
             // If it's a string, treat it as waypoint ID
             waypoint = window.waypointManager?.getWaypoint(waypointData);
             if (!waypoint) {
-                console.warn(`🎯 Waypoint not found: ${waypointData}`);
+                debug('P1', `🎯 Waypoint not found: ${waypointData}`);
                 return false;
             }
         } else if (waypointData && waypointData.position) {
             // If it's an object with position, use it directly
             waypoint = waypointData;
         } else {
-            console.warn('🎯 setVirtualTarget: Invalid waypoint data');
+            debug('P1', '🎯 setVirtualTarget: Invalid waypoint data');
             return false;
         }
 
@@ -6153,11 +6098,10 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
             // Call immediately, just like in cycleTarget - no delay needed
             this.updateDirectionArrow();
         } catch (error) {
-            console.error('Error calling updateDirectionArrow():', error);
+            debug('P1', `Error calling updateDirectionArrow(): ${error}`);
         }
 
-        console.log('🎯 Virtual target created:', virtualTarget);
-        console.log('🎯 Virtual target position:', virtualTarget.position);
+        debug('TARGETING', `🎯 Virtual target created: ${virtualTarget.name} at position (${virtualTarget.position?.x?.toFixed(1)}, ${virtualTarget.position?.y?.toFixed(1)}, ${virtualTarget.position?.z?.toFixed(1)})`);
         debug('TARGETING', `🎯 Star Charts: Virtual target set to ${virtualTarget.name}`);
         return true;
     }
@@ -6276,7 +6220,7 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
                 return new this.THREE.SphereGeometry(radius * 0.8, 8, 6);
 
             default:
-                console.warn('Unknown geometry type:', geometryType);
+                debug('P1', `Unknown geometry type: ${geometryType}`);
                 return null;
         }
     }
@@ -6495,12 +6439,7 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             waypointTarget.diplomacy = 'waypoint';
             
             // DEBUG: Check if property assignment worked
-            console.log(`🔧 AFTER PROPERTY ASSIGNMENT - Waypoint ${waypoint.name}:`);
-            console.log(`   faction: ${waypointTarget.faction}`);
-            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
-            console.log(`   faction === 'waypoint': ${waypointTarget.faction === 'waypoint'}`);
-            console.log(`   Object.hasOwnProperty('faction'): ${waypointTarget.hasOwnProperty('faction')}`);
-            console.log(`   Object.getOwnPropertyDescriptor:`, Object.getOwnPropertyDescriptor(waypointTarget, 'faction'));
+            debug('WAYPOINTS', `🔧 AFTER PROPERTY ASSIGNMENT - Waypoint ${waypoint.name}: faction=${waypointTarget.faction}, diplomacy=${waypointTarget.diplomacy}`);
             
             // Create object property with waypoint properties
             waypointTarget.object = {
@@ -6536,18 +6475,11 @@ debug('TARGETING', `🎯 Star Charts: Removed virtual target ${waypointId}`);
             
             this.targetObjects.push(waypointTarget);
             addedCount++;
-            
+
             // DEBUG: Check faction after adding to targetObjects
-            console.log(`🔧 AFTER PUSH TO TARGETOBJECTS - Waypoint ${waypoint.name}:`);
-            console.log(`   faction: ${waypointTarget.faction}`);
-            console.log(`   diplomacy: ${waypointTarget.diplomacy}`);
-            
-            // Also check the object in targetObjects
             const addedObject = this.targetObjects[this.targetObjects.length - 1];
-            console.log(`🔧 OBJECT IN TARGETOBJECTS:`);
-            console.log(`   faction: ${addedObject.faction}`);
-            console.log(`   diplomacy: ${addedObject.diplomacy}`);
-            
+            debug('WAYPOINTS', `🔧 AFTER PUSH - Waypoint ${waypoint.name}: faction=${addedObject.faction}, diplomacy=${addedObject.diplomacy}`);
+
             debug('WAYPOINTS', `✅ Added waypoint: ${waypoint.name} (faction: ${waypointTarget.faction}, distance: ${waypointTarget.distance?.toFixed(2) || 'unknown'})`);
         }
         
