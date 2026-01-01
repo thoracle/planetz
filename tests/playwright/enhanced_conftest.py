@@ -33,7 +33,7 @@ def game_server_with_test_data():
     # Wait for server to start
     time.sleep(3)
 
-    yield "http://localhost:8000/frontend/"
+    yield "http://localhost:5001/"
 
     # Cleanup: terminate server
     server_process.terminate()

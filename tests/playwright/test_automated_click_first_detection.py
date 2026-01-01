@@ -13,7 +13,7 @@ def test_automated_click_first_bug_detection(page: Page):
     print("\n🤖 Starting fully automated click-first bug detection...")
     
     # Navigate to the game
-    page.goto("http://localhost:5000")
+    page.goto("http://localhost:5001/")
     
     # Wait for initial page load
     page.wait_for_load_state("networkidle")
@@ -29,7 +29,7 @@ def test_automated_click_first_bug_detection(page: Page):
     """)
     
     if not game_ready:
-        pytest.skip("Game not accessible at localhost:5000")
+        pytest.skip("Game not accessible at localhost:5001")
     
     # Open Star Charts (press 'C' key)
     print("🎮 Opening Star Charts...")
@@ -260,7 +260,7 @@ def test_analyze_tooltip_method_directly(page: Page):
     print("\n🔬 Analyzing tooltip method for root cause...")
     
     # Navigate to the game
-    page.goto("http://localhost:5000")
+    page.goto("http://localhost:5001/")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(2000)
     

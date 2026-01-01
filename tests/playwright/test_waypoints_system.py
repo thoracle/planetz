@@ -17,7 +17,7 @@ class TestWaypointsSystem:
     async def setup_waypoints_test(self, page: Page):
         """Set up waypoints test environment."""
         # Navigate to the game
-        await page.goto("http://localhost:5000")
+        await page.goto("http://localhost:5001/")
         
         # Wait for game to load
         await page.wait_for_selector("#game-container", timeout=10000)
