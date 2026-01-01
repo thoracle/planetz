@@ -477,7 +477,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         if (this.listener && this.listener.context) {
             if (this.listener.context.state === 'suspended') {
                 this.listener.context.resume().catch(error => {
-                    console.error('Failed to resume AudioContext:', error);
+                    debug('P1', `Failed to resume AudioContext: ${error}`);
                 });
             }
         }
@@ -646,7 +646,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     updateDamageControlDisplay(shipStatus) {
         // This method is now deprecated in favor of the new DamageControlHUD
         // Keeping it for backward compatibility but it's no longer used
-        console.warn('updateDamageControlDisplay is deprecated - using new DamageControlHUD');
+        debug('P1', 'updateDamageControlDisplay is deprecated - using new DamageControlHUD');
         return;
     }
 
@@ -687,7 +687,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Check if system exists and is damaged
         const system = this.ship.getSystem(systemName);
         if (!system) {
-            console.error('🚫 REPAIR: System not found:', systemName);
+            debug('P1', `🚫 REPAIR: System not found: ${systemName}`);
             return;
         }
 
@@ -1160,7 +1160,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             this.setupWeaponHUDConnectionRetry();
             
         }).catch(error => {
-            console.error('❌ StarfieldManager: Failed to initialize WeaponHUD:', error);
+            debug('P1', `❌ StarfieldManager: Failed to initialize WeaponHUD: ${error}`);
         });
     }
     
@@ -2496,7 +2496,7 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
 
         // If we were trying to enable but it's still disabled, the activation failed
         if (wasEnabled === false && this.targetComputerEnabled === false) {
-            console.warn('Target computer activation failed - staying disabled');
+            debug('P1', 'Target computer activation failed - staying disabled');
         }
     }
 
@@ -2541,12 +2541,10 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     debug('P1', '✅ Help screen opened');
                 }
             } catch (error) {
-                console.error('❌ Failed to toggle help screen:', error);
-                debug('P1', '❌ Help screen toggle error: ' + error.message);
+                debug('P1', `❌ Failed to toggle help screen: ${error}`);
             }
         } else {
-            console.error('❌ HelpInterface not available - cannot toggle help');
-            debug('P1', '❌ HelpInterface not available');
+            debug('P1', '❌ HelpInterface not available - cannot toggle help');
         }
     }
 
@@ -3521,33 +3519,33 @@ debug('TARGETING', 'Target computer completely cleared - all state reset');
             this.ensureAudioContextRunning();
             
             if (!this.listener || !this.listener.context) {
-                console.warn('No audio context available for command success beep');
+                debug('P1', 'No audio context available for command success beep');
                 return;
             }
-            
+
             const audioContext = this.listener.context;
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-            
+
             // Connect oscillator to gain to destination
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            
+
             // Configure the beep - higher frequency for success
             oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High frequency
             oscillator.type = 'sine'; // Smooth sine wave for pleasant sound
-            
+
             // Configure volume envelope - quick attack, moderate decay
             gainNode.gain.setValueAtTime(0, audioContext.currentTime);
             gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01); // Quick attack
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15); // Moderate decay
-            
+
             // Play the beep for 0.15 seconds
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.15);
 
         } catch (error) {
-            console.error('Failed to generate command success beep:', error);
+            debug('P1', `Failed to generate command success beep: ${error}`);
         }
     }
 
@@ -3562,33 +3560,33 @@ debug('TARGETING', 'Target computer completely cleared - all state reset');
             this.ensureAudioContextRunning();
             
             if (!this.listener || !this.listener.context) {
-                console.warn('No audio context available for command failed beep');
+                debug('P1', 'No audio context available for command failed beep');
                 return;
             }
-            
+
             const audioContext = this.listener.context;
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-            
+
             // Connect oscillator to gain to destination
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            
+
             // Configure the beep - lower frequency than success sound
             oscillator.frequency.setValueAtTime(200, audioContext.currentTime); // Low frequency
             oscillator.type = 'square'; // Harsh square wave for error sound
-            
+
             // Configure volume envelope - quick attack, quick decay
             gainNode.gain.setValueAtTime(0, audioContext.currentTime);
             gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01); // Quick attack
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2); // Quick decay
-            
+
             // Play the beep for 0.2 seconds
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.2);
 
         } catch (error) {
-            console.error('Failed to generate command failed beep:', error);
+            debug('P1', `Failed to generate command failed beep: ${error}`);
         }
     }
 
@@ -3934,7 +3932,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         
         // Log detailed validation results only when explicitly requested
         if (!validation.canDock) {
-            console.warn('Cannot dock:', validation.reasons.join(', '));
+            debug('P1', `Cannot dock: ${validation.reasons.join(', ')}`);
         }
         
         if (validation.warnings.length > 0) {
@@ -3958,12 +3956,7 @@ debug('UTILITY', 'Simple docking system initialized');
             // Start monitoring for docking opportunities
             this.simpleDockingManager.startDockingMonitoring();
         } else if (!this.simpleDockingManager) {
-            console.warn('🚀 Cannot initialize SimpleDockingManager:', {
-                spatialManagerReady: window.spatialManagerReady,
-                collisionManagerReady: window.collisionManagerReady,
-                spatialManager: !!window.spatialManager,
-                collisionManager: !!window.collisionManager
-            });
+            debug('P1', `🚀 Cannot initialize SimpleDockingManager: spatialManagerReady=${window.spatialManagerReady}, collisionManagerReady=${window.collisionManagerReady}`);
         }
     }
 
@@ -3978,7 +3971,7 @@ debug('UTILITY', 'Simple docking system initialized');
 debug('TARGETING', 'Showing docking interface for', target.name);
             this.dockingInterface.show(target);
         } else {
-            console.warn('🚀 DockingInterface not available');
+            debug('P1', '🚀 DockingInterface not available');
         }
     }
 
@@ -4004,27 +3997,27 @@ debug('TARGETING', 'Showing docking interface for', target.name);
                 // Position is a plain object with x, y, z properties
                 return new this.THREE.Vector3(target.object.position.x, target.object.position.y, target.object.position.z);
             } else {
-                console.warn('🎯 Could not convert nested object position to Vector3:', target.object.position);
+                debug('P1', `🎯 Could not convert nested object position to Vector3: ${target.object.position}`);
                 return null;
             }
         } else if (target.position && Array.isArray(target.position)) {
             // Position is stored as array [x, y, z]
             if (!this.THREE || !this.THREE.Vector3) {
-                console.error('🎯 THREE.js not available in StarfieldManager');
+                debug('P1', '🎯 THREE.js not available in StarfieldManager');
                 return null;
             }
             return new this.THREE.Vector3(...target.position);
-        } else if (target.position && typeof target.position === 'object' && 
+        } else if (target.position && typeof target.position === 'object' &&
                    typeof target.position.x === 'number') {
             // Position is a plain object with x, y, z properties
             if (!this.THREE || !this.THREE.Vector3) {
-                console.error('🎯 THREE.js not available in StarfieldManager');
+                debug('P1', '🎯 THREE.js not available in StarfieldManager');
                 return null;
             }
             return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
         }
-        
-        console.warn('🎯 Could not extract position from target:', target);
+
+        debug('P1', `🎯 Could not extract position from target: ${target?.name || 'unknown'}`);
         return null;
     }
 
@@ -4081,7 +4074,7 @@ debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManag
         // Calculate initial position relative to target
         const targetPosition = this.getTargetPosition(target);
         if (!targetPosition) {
-            console.error('🚀 Cannot dock - invalid target position');
+            debug('P1', '🚀 Cannot dock - invalid target position');
             return false;
         }
         
@@ -4316,17 +4309,17 @@ debug('AI', `🚛 Mission ${mission.id} requires ${requiredQuantity} units, deli
                 if (removeResult.success) {
 debug('UTILITY', `🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} from cargo hold (auto-delivery)`);
                 } else {
-                    console.error(`🚛 Failed to remove cargo ${cargo.commodityId}: ${removeResult.error}`);
+                    debug('P1', `🚛 Failed to remove cargo ${cargo.commodityId}: ${removeResult.error}`);
                 }
             }
-            
+
             // Refresh cargo display if cargo was removed
             if (cargoToRemove.length > 0 && this.commodityExchange) {
                 this.commodityExchange.refreshCargoDisplay();
             }
-            
+
         } catch (error) {
-            console.error('🚛 Error checking cargo deliveries:', error);
+            debug('P1', `🚛 Error checking cargo deliveries: ${error}`);
         }
     }
 
@@ -4430,7 +4423,7 @@ debug('UTILITY', `🚀 simpleDockingManager.isDocked: ${this.simpleDockingManage
             const launchValidation = this.dockingSystemManager.validateLaunch(ship);
             
             if (!launchValidation.canLaunch) {
-                console.warn('Launch failed:', launchValidation.reasons.join(', '));
+                debug('P1', `Launch failed: ${launchValidation.reasons.join(', ')}`);
                 // Show error in station menu instead of hiding it
                 return;
             }
@@ -4677,7 +4670,7 @@ debug('UTILITY', 'Using SimpleDockingManager for docking');
             const result = await this.simpleDockingManager.initiateUnifiedDocking(target);
             return result;
         } else {
-            console.error('🚀 SimpleDockingManager could not be initialized - spatial/collision managers not ready');
+            debug('P1', '🚀 SimpleDockingManager could not be initialized - spatial/collision managers not ready');
             return false;
         }
     }
@@ -4692,7 +4685,7 @@ debug('UTILITY', 'Using SimpleDockingManager for docking');
     // Add new method to handle dock button clicks (launch is handled by station menu)
     handleDockButtonClick(isDocked, targetName) {
         if (!this.currentTarget) {
-            console.warn('No current target available for docking');
+            debug('P1', 'No current target available for docking');
             return;
         }
 
@@ -4717,7 +4710,7 @@ debug('UTILITY', 'Using SimpleDockingManager for docking');
                     () => {}
                 );
             } else {
-                console.warn(`Target is out of docking range: ${distance.toFixed(2)}km (max: ${dockingRange}km)`);
+                debug('P1', `Target is out of docking range: ${distance.toFixed(2)}km (max: ${dockingRange}km)`);
             }
         }
         
@@ -4750,7 +4743,7 @@ debug('UTILITY', '🛑 Shutting down all ship systems for docking');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('No ship available for system shutdown');
+            debug('P1', 'No ship available for system shutdown');
             return;
         }
         
@@ -4783,7 +4776,7 @@ debug('UTILITY', `  🚀 Impulse engines stopped`);
 debug('UTILITY', `  ⚡ ${systemName} deactivated`);
                 }
             } catch (error) {
-                console.warn(`Failed to shutdown system ${systemName}:`, error);
+                debug('P1', `Failed to shutdown system ${systemName}: ${error}`);
             }
         }
         
@@ -4798,13 +4791,13 @@ debug('UTILITY', 'Restoring all ship systems after undocking');
         
         // Use this.ship instead of getting from viewManager since it's already set in constructor
         if (!this.ship) {
-            console.warn('No ship available for system restoration');
+            debug('P1', 'No ship available for system restoration');
             return;
         }
-        
+
         // Check if ship has equipment property
         if (!this.ship.equipment) {
-            console.warn('Ship does not have equipment property - skipping system restoration');
+            debug('P1', 'Ship does not have equipment property - skipping system restoration');
             return;
         }
         
@@ -5018,7 +5011,7 @@ debug('TARGETING', `🎯 Creating ${count} target dummy ships...`);
 debug('TARGETING', `🎯 Target dummy added to spatial tracking: Visual=${actualMeshSize}m, Collision=${collisionSize}m (realistic=${useRealistic})`);
 debug('TARGETING', `🚀 Spatial tracking created for Target Dummy ${i + 1}`);
                 } else {
-                    console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for ships');
+                    debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for ships');
                 }
                 
                 // Additional debug log with intended vs calculated distance
@@ -5033,7 +5026,7 @@ debug('TARGETING', `🚀 Spatial tracking created for Target Dummy ${i + 1}`);
                 // Spatial manager tracks objects directly by their Three.js positions
                 
             } catch (error) {
-                console.error(`Failed to create target dummy ${i + 1}:`, error);
+                debug('P1', `Failed to create target dummy ${i + 1}: ${error}`);
             }
         }
         
@@ -5112,7 +5105,7 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
         try {
             await this.createWaypointTestMission();
         } catch (error) {
-            console.error('❌ Error in handleWaypointCreationAsync:', error);
+            debug('P1', `❌ Error in handleWaypointCreationAsync: ${error}`);
         }
     }
 
@@ -5120,13 +5113,12 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
      * Create a waypoint test mission for development/testing
      */
     async createWaypointTestMission() {
-        console.log('🎯 W key pressed - Creating waypoint test mission...');
         debug('WAYPOINTS', '🎯 W key pressed - Creating waypoint test mission...');
-        
+
         // Check if waypoint manager is available
-        console.log('🎯 Checking waypoint manager availability:', !!window.waypointManager);
+        debug('WAYPOINTS', `🎯 Checking waypoint manager availability: ${!!window.waypointManager}`);
         if (!window.waypointManager) {
-            console.log('❌ Waypoint manager not available');
+            debug('P1', '❌ Waypoint manager not available');
             this.playCommandFailedSound();
             this.showHUDEphemeral(
                 'WAYPOINT SYSTEM UNAVAILABLE',
@@ -5134,26 +5126,26 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
             );
             return;
         }
-        console.log('✅ Waypoint manager is available');
-        
+        debug('WAYPOINTS', '✅ Waypoint manager is available');
+
         try {
             // Create the test mission
-            console.log('🎯 Calling waypointManager.createTestMission()...');
+            debug('WAYPOINTS', '🎯 Calling waypointManager.createTestMission()...');
             const result = await window.waypointManager.createTestMission();
-            console.log('🎯 createTestMission result:', result);
-            
+            debug('WAYPOINTS', `🎯 createTestMission result: ${result ? 'success' : 'null/false'}`);
+
             if (result) {
-                console.log('✅ Test mission created successfully');
+                debug('WAYPOINTS', '✅ Test mission created successfully');
                 this.playCommandSound();
                 this.showHUDEphemeral(
                     'TEST MISSION CREATED',
                     `${result.mission.title} - ${result.waypoints.length} waypoints added`
                 );
-                
+
                 debug('WAYPOINTS', `✅ Test mission created: ${result.mission.title}`);
-                
+
                 // Show mission notification if available
-                if (window.missionNotificationHandler && 
+                if (window.missionNotificationHandler &&
                     typeof window.missionNotificationHandler.showNotification === 'function') {
                     window.missionNotificationHandler.showNotification(
                         `Mission Available: ${result.mission.title}`,
@@ -5168,19 +5160,18 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
                         );
                     }, 2000);
                 }
-                
+
             } else {
-                console.log('❌ Test mission creation returned null/false');
+                debug('P1', '❌ Test mission creation returned null/false');
                 this.playCommandFailedSound();
                 this.showHUDEphemeral(
                     'MISSION CREATION FAILED',
                     'Unable to create waypoint test mission'
                 );
             }
-            
+
         } catch (error) {
-            console.error('❌ Failed to create waypoint test mission:', error);
-            console.error('❌ Error details:', error.stack);
+            debug('P1', `❌ Failed to create waypoint test mission: ${error}`);
             this.playCommandFailedSound();
             this.showHUDEphemeral(
                 'MISSION CREATION ERROR',
@@ -5647,17 +5638,13 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         // Get target position using helper function
         const targetPosition = this.getTargetPosition(this.currentTarget);
         if (!targetPosition) {
-            console.warn('🎯 Cannot update reticle - invalid target position');
+            debug('P1', '🎯 Cannot update reticle - invalid target position');
             return;
         }
 
         // Ensure targetPosition is a Three.js Vector3 object
         if (typeof targetPosition.clone !== 'function') {
-            console.error('🎯 targetPosition is not a Vector3 object:', targetPosition);
-            console.error('🎯 currentTarget:', this.currentTarget);
-            console.error('🎯 currentTarget.position:', this.currentTarget?.position);
-            console.error('🎯 targetPosition type:', typeof targetPosition);
-            console.error('🎯 targetPosition constructor:', targetPosition?.constructor?.name);
+            debug('P1', `🎯 targetPosition is not a Vector3 object: ${typeof targetPosition}, constructor: ${targetPosition?.constructor?.name}`);
             return;
         }
 
@@ -5738,13 +5725,6 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
             
             // Debug log for reticle color issue
 debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info.diplomacy}, faction: ${info.faction}, isEnemyShip: ${isEnemyShip}`);
-            console.log(`🎯 RETICLE DEBUG: currentTargetData:`, {
-                diplomacy: currentTargetData.diplomacy,
-                faction: currentTargetData.faction,
-                ship_diplomacy: currentTargetData.ship?.diplomacy,
-                ship_faction: currentTargetData.ship?.faction,
-                isShip: currentTargetData.isShip
-            });
         } else {
             // Get celestial body info - need to pass the actual Three.js object
             const targetObject = this.currentTarget?.object || this.currentTarget;
@@ -5939,12 +5919,7 @@ debug('INSPECTION', '🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
         // Use provided targetData or fetch it if not provided
         const currentTargetData = targetData || this.getCurrentTargetData();
         if (!currentTargetData || !currentTargetData.name || currentTargetData.name === 'unknown') {
-            console.log('🎯 Skipping outline creation - invalid target data:', {
-                hasTargetData: !!currentTargetData,
-                targetName: currentTargetData?.name,
-                targetType: currentTargetData?.type,
-                wasProvided: !!targetData
-            });
+            debug('TARGETING', `🎯 Skipping outline creation - invalid target data: hasTargetData=${!!currentTargetData}, name=${currentTargetData?.name}`);
             return;
         }
         
@@ -6004,7 +5979,7 @@ debug('TARGETING', `🎯 Created 3D outline for target: ${currentTargetData.name
             }
             
         } catch (error) {
-            console.warn('Failed to create target outline:', error);
+            debug('P1', `Failed to create target outline: ${error}`);
         }
     }
     
@@ -6122,16 +6097,16 @@ debug('TARGETING', 'Disposed targetOutline material');
 debug('TARGETING', '✅ Target outline completely cleared');
             
         } catch (error) {
-            console.warn('❌ Error clearing target outline:', error);
+            debug('P1', `❌ Error clearing target outline: ${error}`);
             // Force clear even if there was an error
             this.targetOutline = null;
             this.targetOutlineObject = null;
 debug('P1', 'Force-cleared outline properties after error');
         }
-        
+
         // Double-check that they're actually cleared
         if (this.targetOutline || this.targetOutlineObject) {
-            console.error('⚠️ WARNING: Outline properties still exist after clearing!');
+            debug('P1', '⚠️ WARNING: Outline properties still exist after clearing!');
 debug('TARGETING', `   • targetOutline: ${this.targetOutline}`);
 debug('TARGETING', `   • targetOutlineObject: ${this.targetOutlineObject}`);
         }
@@ -6529,7 +6504,7 @@ debug('UTILITY', '🛑 Shutting down all ship systems for docking');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('No ship available for system shutdown');
+            debug('P1', 'No ship available for system shutdown');
             return;
         }
         
@@ -6562,7 +6537,7 @@ debug('UTILITY', `  🚀 Impulse engines stopped`);
 debug('UTILITY', `  ⚡ ${systemName} deactivated`);
                 }
             } catch (error) {
-                console.warn(`Failed to shutdown system ${systemName}:`, error);
+                debug('P1', `Failed to shutdown system ${systemName}: ${error}`);
             }
         }
         
@@ -6579,7 +6554,7 @@ debug('UTILITY', 'Initializing ship systems for launch');
         
         const ship = this.viewManager?.getShip();
         if (!ship) {
-            console.warn('No ship available for system initialization');
+            debug('P1', 'No ship available for system initialization');
             return;
         }
 
@@ -6620,7 +6595,7 @@ debug('UI', '✅ Operations HUD force refresh completed');
 debug('UI', '❌ No damageControlHUD available for refresh');
                 }
             } catch (error) {
-                console.error('❌ Failed to refresh ship systems from cards:', error);
+                debug('P1', `❌ Failed to refresh ship systems from cards: ${error}`);
             }
         }
         
@@ -6756,7 +6731,7 @@ debug('COMBAT', '    ✅ Weapon system initialized using fallback method');
             
 debug('COMBAT', '  🔫 Weapon systems initialization complete');
         } catch (error) {
-            console.error('  ❌ Failed to initialize weapon systems:', error);
+            debug('P1', `  ❌ Failed to initialize weapon systems: ${error}`);
         }
     }
     
@@ -7186,7 +7161,7 @@ debug('COMBAT', `🎯 Weapon card:`, weaponCard);
             this.communicationHUD.showMessage(npcName, message, options);
             return true;
         }
-        console.warn('🗣️ Communication HUD not available');
+        debug('P1', '🗣️ Communication HUD not available');
         return false;
     }
 
@@ -7216,7 +7191,7 @@ debug('COMBAT', `🎯 Weapon card:`, weaponCard);
             await this.missionCompletionUI.showMissionComplete(missionId, completionData);
             return true;
         }
-        console.warn('🎯 Mission completion UI not available');
+        debug('P1', '🎯 Mission completion UI not available');
         return false;
     }
 
@@ -7272,7 +7247,7 @@ debug('MISSIONS', 'Game resumed from mission completion');
             this.missionNotificationHandler.sendMissionNotification(npcName, message, options);
             return true;
         }
-        console.warn('🎯 Mission notification handler not available');
+        debug('P1', '🎯 Mission notification handler not available');
         return false;
     }
 
@@ -7285,7 +7260,7 @@ debug('MISSIONS', 'Game resumed from mission completion');
             this.missionNotificationHandler.sendMissionBriefing(mission);
             return true;
         }
-        console.warn('🎯 Mission notification handler not available');
+        debug('P1', '🎯 Mission notification handler not available');
         return false;
     }
 
@@ -7388,10 +7363,10 @@ debug('AI', 'Mission API not available, missions will use fallback data');
             }
             
         } catch (error) {
-            console.error('🎯 Failed to initialize mission system:', error);
+            debug('P1', `🎯 Failed to initialize mission system: ${error}`);
         }
     }
-    
+
     /**
      * Pre-populate all stations with appropriate missions
      */
@@ -7406,7 +7381,7 @@ debug('MISSIONS', `🎯 Pre-populating ${stations.length} stations with missions
                 // Small delay to avoid overwhelming the API
                 await this.delay(500);
             } catch (error) {
-                console.error(`🎯 Failed to populate missions for ${station.key}:`, error);
+                debug('P1', `🎯 Failed to populate missions for ${station.key}: ${error}`);
             }
         }
         
@@ -7502,22 +7477,22 @@ debug('MISSIONS', `🎯 Generating ${missionsToGenerate} missions for ${station.
                         if (result.success) {
 debug('MISSIONS', `🎯 Generated ${template} mission for ${station.name}: ${result.mission.title}`);
                         } else {
-                            console.warn(`🎯 Failed to generate ${template} for ${station.name}: ${result.error}`);
+                            debug('P1', `🎯 Failed to generate ${template} for ${station.name}: ${result.error}`);
                         }
-                        
+
                         // Small delay between generations
                         await this.delay(200);
-                        
+
                     } catch (error) {
-                        console.error(`🎯 Error generating ${template} for ${station.name}:`, error);
+                        debug('P1', `🎯 Error generating ${template} for ${station.name}: ${error}`);
                     }
                 }
             } else {
 debug('MISSIONS', `🎯 ${station.name} has sufficient missions (${currentCount}/${station.minMissions})`);
             }
-            
+
         } catch (error) {
-            console.error(`🎯 Failed to check missions for ${station.name}:`, error);
+            debug('P1', `🎯 Failed to check missions for ${station.name}: ${error}`);
         }
     }
     
@@ -7677,10 +7652,10 @@ debug('MISSIONS', `🎯 Enemy destruction updated ${result.updated_missions.leng
             }
             
         } catch (error) {
-            console.error('🎯 Failed to send enemy destroyed event:', error);
+            debug('P1', `🎯 Failed to send enemy destroyed event: ${error}`);
         }
     }
-    
+
     /**
      * Send location reached event to mission system
      */
@@ -7711,7 +7686,7 @@ debug('MISSIONS', `🎯 Location reached updated ${result.updated_missions.lengt
             }
             
         } catch (error) {
-            console.error('🎯 Failed to send location reached event:', error);
+            debug('P1', `🎯 Failed to send location reached event: ${error}`);
         }
     }
     
@@ -7816,7 +7791,7 @@ debug('MISSIONS', 'Getting mission summary for all stations...');
             }
         }
         
-        console.table(summary);
+        debug('MISSIONS', 'Mission summary:', summary);
         return summary;
     }
     
@@ -7827,7 +7802,7 @@ debug('MISSIONS', 'Getting mission summary for all stations...');
 debug('MISSIONS', 'Testing mission event system...');
         
         if (!this.missionEventService) {
-            console.error('❌ MissionEventService not available');
+            debug('P1', '❌ MissionEventService not available');
             return;
         }
         
@@ -7870,17 +7845,17 @@ debug('UI', 'Mission Status HUD refreshed after clearing');
                     `${result.cleared_count} active missions cleared`
                 );
             } else {
-                console.error('❌ Failed to clear active missions:', result.error);
+                debug('P1', `❌ Failed to clear active missions: ${result.error}`);
                 this.showHUDEphemeral(
                     'CLEAR FAILED',
                     result.error || 'Unknown error'
                 );
             }
-            
+
             return result;
-            
+
         } catch (error) {
-            console.error('🎯 Failed to clear active missions:', error);
+            debug('P1', `🎯 Failed to clear active missions: ${error}`);
             this.showHUDEphemeral(
                 'CLEAR FAILED',
                 'Connection error'
