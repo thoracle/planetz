@@ -145,7 +145,7 @@ debug('UTILITY', 'Clearing existing system');
                     this.starSystem = await response.json();
                 }
             } else {
-                console.warn('No universe data available, using API');
+                debug('P1', 'No universe data available, using API');
                 // Use API if no universe data
                 const response = await fetch(`/api/generate_star_system?seed=${sector}`);
                 if (!response.ok) {
@@ -166,7 +166,7 @@ debug('UTILITY', 'Generating new system for sector:', sector);
             const success = await this.createStarSystem();
             
             if (!success) {
-                console.error('Failed to generate new star system');
+                debug('P1', 'Failed to generate new star system');
                 return false;
             }
             
@@ -180,7 +180,7 @@ debug('UTILITY', 'Successfully generated new star system for sector:', sector);
             }
             return true;
         } catch (error) {
-            console.error('Error generating star system:', error);
+            debug('P1', `Error generating star system: ${error}`);
             return false;
         }
     }
@@ -188,7 +188,7 @@ debug('UTILITY', 'Successfully generated new star system for sector:', sector);
     async createStarSystem() {
 debug('UTILITY', '=== Starting Star System Creation ===');
         if (!this.starSystem) {
-            console.error('No star system data available for creation');
+            debug('P1', 'No star system data available for creation');
             throw new Error('No star system data available');
         }
 
@@ -263,7 +263,7 @@ debug('UTILITY', 'Star created and added to scene');
                 
 debug('UTILITY', `🌟 Star added to spatial tracking: ${this.starSystem.star_name}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for star');
+                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for star');
             }
 
             // Add star light with increased intensity and range
@@ -285,7 +285,7 @@ debug('UTILITY', 'Hemisphere light added');
 
             // Create planets
             if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
-                console.warn('No planets data available or invalid planets array');
+                debug('P1', 'No planets data available or invalid planets array');
                 return true; // Still return true as we created the star
             }
 
@@ -299,7 +299,7 @@ debug('UTILITY', 'Hemisphere light added');
             for (let i = 0; i < maxPlanets; i++) {
                 const planetData = this.starSystem.planets[i];
                 if (!planetData) {
-                    console.warn(`Invalid planet data at index ${i}`);
+                    debug('P1', `Invalid planet data at index ${i}`);
                     continue;
                 }
                 debug('STAR_CHARTS', `Creating planet ${i}:`, {
@@ -327,15 +327,7 @@ debug('UTILITY', '🌟 Sol System infrastructure complete');
 debug('UTILITY', '=== Star System Creation Complete ===');
             return true; // Return true on successful completion
         } catch (error) {
-            console.error('=== Star System Creation Failed ===');
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                currentState: {
-                    hasStarSystem: !!this.starSystem,
-                    bodyCount: this.celestialBodies.size
-                }
-            });
+            debug('P1', `=== Star System Creation Failed === ${error.message}`);
             this.clearSystem(); // Clean up on error
             throw error; // Re-throw the error to be caught by generateStarSystem
         }
@@ -343,7 +335,7 @@ debug('UTILITY', '=== Star System Creation Complete ===');
 
     async createPlanet(planetData, index, maxPlanets) {
         if (!planetData || typeof planetData !== 'object') {
-            console.warn(`Invalid planet data for index ${index}`);
+            debug('P1', `Invalid planet data for index ${index}`);
             return;
         }
 
@@ -403,7 +395,7 @@ debug('UTILITY', '=== Star System Creation Complete ===');
             
             // Validate position before setting
             if (isNaN(x) || isNaN(y) || isNaN(z)) {
-                console.warn(`Invalid position calculated for planet ${index}:`, { x, y, z, orbitRadius });
+                debug('P1', `Invalid position calculated for planet ${index}: x=${x}, y=${y}, z=${z}, orbitRadius=${orbitRadius}`);
                 planet.position.set(0, 0, 0);
             } else {
                 planet.position.set(x, y, z);
@@ -441,9 +433,9 @@ debug('PHYSICS', `🌍 Planet collision: Visual=${planetSize}m, Physics=${collis
                 
 debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_name || index}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for planets');
+                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for planets');
             }
-            
+
             // Add orbital elements with mass and proper initialization
             this.setOrbitalElements(`planet_${index}`, {
                 semiMajorAxis: orbitRadius,
@@ -461,20 +453,20 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
                 for (let moonIndex = 0; moonIndex < maxMoons; moonIndex++) {
                     const moonData = planetData.moons[moonIndex];
                     if (!moonData) {
-                        console.warn(`Invalid moon data for planet ${index}, moon ${moonIndex}`);
+                        debug('P1', `Invalid moon data for planet ${index}, moon ${moonIndex}`);
                         continue;
                     }
                     await this.createMoon(moonData, index, moonIndex);
                 }
             }
         } catch (error) {
-            console.error(`Error creating planet ${index}:`, error);
+            debug('P1', `Error creating planet ${index}: ${error}`);
         }
     }
 
     async createMoon(moonData, planetIndex, moonIndex) {
         if (!moonData || typeof moonData !== 'object') {
-            console.warn(`Invalid moon data for planet ${planetIndex}, moon ${moonIndex}`);
+            debug('P1', `Invalid moon data for planet ${planetIndex}, moon ${moonIndex}`);
             return;
         }
 
@@ -491,7 +483,7 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
             // Get parent planet position
             const planet = this.celestialBodies.get(`planet_${planetIndex}`);
             if (!planet) {
-                console.warn(`Parent planet not found for moon ${moonIndex}`);
+                debug('P1', `Parent planet not found for moon ${moonIndex}`);
                 return;
             }
             
@@ -528,7 +520,7 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
                 // Create position vector and validate
                 const moonPosition = new THREE.Vector3(x, y, z);
                 if (moonPosition.x === 0 && moonPosition.y === 0 && moonPosition.z === 0) {
-                    console.warn(`Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
+                    debug('P1', `Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
                     return;
                 }
                 
@@ -541,8 +533,7 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
             
             // Validate final position
             if (isNaN(moon.position.x) || isNaN(moon.position.y) || isNaN(moon.position.z)) {
-                console.warn(`Invalid position calculated for moon ${moonIndex} of planet ${planetIndex}:`, 
-                    moon.position.toArray());
+                debug('P1', `Invalid position calculated for moon ${moonIndex} of planet ${planetIndex}: [${moon.position.toArray().join(', ')}]`);
                 return;
             }
             
@@ -576,7 +567,7 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
                 
 debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonData.moon_name || `${planetIndex}_${moonIndex}`}, radius=${collisionRadius}m`);
             } else {
-                console.warn('⚠️ SpatialManager not ready - skipping spatial tracking for moons');
+                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for moons');
             }
             
             // Add orbital elements with mass and proper initialization
@@ -590,7 +581,7 @@ debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonData.moon_name || `
                 mass: moonSize * 1e22 // Mass proportional to size, but less than planets
             });
         } catch (error) {
-            console.error(`Error creating moon ${moonIndex} for planet ${planetIndex}:`, error);
+            debug('P1', `Error creating moon ${moonIndex} for planet ${planetIndex}: ${error.message}`);
         }
     }
 
@@ -878,7 +869,7 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
         const planet = this.starSystem.planets[parseInt(planetIndex)];
         
         if (!planet) {
-            console.warn(`No planet data found for index ${planetIndex}`);
+            debug('P1', `No planet data found for index ${planetIndex}`);
             return null;
         }
         
@@ -898,7 +889,7 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
         } else if (type === 'moon') {
             const moon = planet.moons[parseInt(moonIndex)];
             if (!moon) {
-                console.warn(`No moon data found for planet ${planetIndex}, moon ${moonIndex}`);
+                debug('P1', `No moon data found for planet ${planetIndex}, moon ${moonIndex}`);
                 return null;
             }
             return {
@@ -955,20 +946,20 @@ debug('UTILITY', `📋 Loaded ${solStations.length} stations from JSON data`);
 debug('UTILITY', `✅ Created station: ${stationData.name} (${stationData.faction})`);
                     }
                 } catch (error) {
-                    console.error(`❌ Failed to create station ${stationData.name}:`, error);
+                    debug('P1', `❌ Failed to create station ${stationData.name}: ${error.message}`);
                 }
             }
 
 debug('UTILITY', `🛰️ Created ${solStations.length} space stations in Sol system`);
         } catch (error) {
-            console.error('❌ Failed to load Sol system infrastructure:', error);
+            debug('P1', `❌ Failed to load Sol system infrastructure: ${error.message}`);
         }
 
         // Create Navigation Beacon ring around Terra Prime on the galactic plane
         try {
             await this.createNavigationBeaconsAroundTerraPrime();
         } catch (e) {
-            console.warn('⚠️ Failed to create navigation beacons:', e?.message || e);
+            debug('P1', `⚠️ Failed to create navigation beacons: ${e?.message || e}`);
         }
     }
 
@@ -978,7 +969,7 @@ debug('UTILITY', `🛰️ Created ${solStations.length} space stations in Sol sy
      */
     async createNavigationBeaconsAroundTerraPrime() {
         if (!this.starSystem) {
-            console.warn('No star system available for beacon placement');
+            debug('P1', 'No star system available for beacon placement');
             return;
         }
 
@@ -1066,7 +1057,7 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)
                     if (normalizedId) this.celestialBodies.set(`beacon_${normalizedId}`, beacon);
                     if (nameSlug) this.celestialBodies.set(`beacon_${nameSlug}`, beacon);
                 } catch (e) {
-                    console.warn('⚠️ Failed to register beacon in celestialBodies:', e?.message || e);
+                    debug('P1', `⚠️ Failed to register beacon in celestialBodies: ${e?.message || e}`);
                 }
 
                 // Add to spatial tracking for collision detection
@@ -1099,7 +1090,7 @@ debug('INFRASTRUCTURE', `📡 Navigation beacon ${beaconInfo.name} added to spat
 
 debug('NAVIGATION', `📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
         } catch (error) {
-            console.error('❌ Failed to create navigation beacons from JSON:', error);
+            debug('P1', `❌ Failed to create navigation beacons from JSON: ${error.message}`);
         }
     }
 
@@ -1125,7 +1116,7 @@ debug('TARGETING', `🎯 Using equipped target CPU range: ${targetComputer.range
 debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for discovery radius`);
             return 50; // Level 1 target CPU range
         } catch (error) {
-            console.warn('⚠️ Failed to get target CPU range, using default 50km:', error);
+            debug('P1', `⚠️ Failed to get target CPU range, using default 50km: ${error.message}`);
             return 50;
         }
     }
@@ -1151,7 +1142,7 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
                 // Legacy format: [distance, angle] - convert to 3D position
                 position = this.getOrbitPosition(stationData.position[0], stationData.position[1]);
             } else {
-                console.warn(`Invalid position format for station ${stationData.name}:`, stationData.position);
+                debug('P1', `Invalid position format for station ${stationData.name}: [${stationData.position.join(', ')}]`);
                 position = new THREE.Vector3(0, 0, 0);
             }
         } else {
@@ -1271,7 +1262,7 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
     addDockingCollisionBox(station, stationData) {
         // Only add docking collision if spatial manager is available
         if (!window.spatialManager || !window.spatialManagerReady) {
-            console.warn('🚀 Spatial manager not ready - docking collision box will be added later');
+            debug('P1', '🚀 Spatial manager not ready - docking collision box will be added later');
             // Store the data for later addition
             station.userData.pendingDockingCollision = {
                 stationData: stationData,
@@ -1352,7 +1343,7 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
             
 debug('UTILITY', `🚀 Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
         } catch (error) {
-            console.error(`❌ Failed to create docking zone for ${stationData.name}:`, error);
+            debug('P1', `❌ Failed to create docking zone for ${stationData.name}: ${error.message}`);
         }
     }
 

@@ -152,7 +152,7 @@ export class PhysicsManager {
             
             return true;
         } catch (error) {
-            console.error('❌ Failed to initialize PhysicsManager:', error);
+            debug('P1', `❌ Failed to initialize PhysicsManager: ${error.message}`);
             return false;
         }
     }
@@ -268,7 +268,7 @@ debug('UTILITY', `Created ship rigid body for ${entityType} ${entityId}`);
             return rigidBody;
 
         } catch (error) {
-            console.error('Error creating ship rigid body:', error);
+            debug('P1', `Error creating ship rigid body: ${error.message}`);
             return null;
         }
     }
@@ -343,7 +343,7 @@ debug('UTILITY', `Created station rigid body for ${entityType} ${entityId}`);
             return rigidBody;
 
         } catch (error) {
-            console.error('Error creating station rigid body:', error);
+            debug('P1', `Error creating station rigid body: ${error.message}`);
             return null;
         }
     }
@@ -420,7 +420,7 @@ debug('UTILITY', `Created planet rigid body for ${entityType} ${entityId || 'unn
             return rigidBody;
 
         } catch (error) {
-            console.error('Error creating planet rigid body:', error);
+            debug('P1', `Error creating planet rigid body: ${error.message}`);
             return null;
         }
     }
@@ -589,7 +589,7 @@ debug('UTILITY', `Unknown shape type: ${shape}, defaulting to box`);
                     threeObject: threeObject
                 };
             } catch (error) {
-                console.error(`❌ PHYSICS: Failed to set properties on rigid body:`, error);
+                debug('P1', `❌ PHYSICS: Failed to set properties on rigid body: ${error.message}`);
                 return null;
             }
 
@@ -610,7 +610,7 @@ debug('UTILITY', `Unknown shape type: ${shape}, defaulting to box`);
                     this.physicsWorld.addRigidBody(rigidBody);
                 }
             } catch (error) {
-                console.error(`❌ PHYSICS: Failed to add rigid body to physics world:`, error);
+                debug('P1', `❌ PHYSICS: Failed to add rigid body to physics world: ${error.message}`);
                 return null;
             }
 
@@ -670,7 +670,7 @@ debug('UTILITY', `Unknown shape type: ${shape}, defaulting to box`);
             return rigidBody;
 
         } catch (error) {
-            console.error('Error creating rigid body:', error);
+            debug('P1', `Error creating rigid body: ${error.message}`);
             return null;
         }
     }
@@ -1174,7 +1174,6 @@ debug('P1', `❌ ENTITY IDENTIFICATION FAILED (regular path) - using 'unknown'`)
 
         } catch (error) {
             debug('P1', `Physics raycast failed, using Three.js fallback: ${error.message}`);
-            console.error('Full physics raycast error:', error);
             return this.raycastFallback(origin, direction, maxDistance);
         }
     }
@@ -1277,12 +1276,12 @@ debug('UTILITY', `🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at $
                 try {
                     callback(deltaTime);
                 } catch (error) {
-                    console.error('Error in physics update callback:', error);
+                    debug('P1', `Error in physics update callback: ${error.message}`);
                 }
             });
 
         } catch (error) {
-            console.error('Error updating physics:', error);
+            debug('P1', `Error updating physics: ${error.message}`);
         }
     }
     
@@ -1375,7 +1374,7 @@ debug('UTILITY', `🎯 THREE.js raycast HIT: ${metadata?.name || 'unknown'} at $
             
 debug('UTILITY', `✅ Enhanced CCD: collision=${collisionRadius.toFixed(2)}m, swept=${sweptRadius.toFixed(2)}m, threshold=${ccdThreshold.toFixed(3)}m, speed=${projectileSpeed}m/s`);
         } catch (error) {
-            console.warn('⚠️ CCD configuration failed:', error.message);
+            debug('P1', `⚠️ CCD configuration failed: ${error.message}`);
         }
     }
 
@@ -1830,7 +1829,7 @@ debug('P1', `Transform update failed for ${threeObject.name || 'object'}, trying
                     this.recreateRigidBodyAtPosition(threeObject);
                     recreateCount++;
                 } catch (recreateError) {
-                    console.error(`Failed to recreate rigid body for ${threeObject.name || 'object'}:`, recreateError);
+                    debug('P1', `Failed to recreate rigid body for ${threeObject.name || 'object'}: ${recreateError.message}`);
                 }
             }
         }
@@ -2046,7 +2045,7 @@ debug('UTILITY', '🚨 Collision detection system initialized');
                     }
                 } catch (error) {
                     if (this._debugLoggingEnabled) {
-                        console.error(`❌ Error getting manifold ${i}:`, error);
+                        debug('P1', `❌ Error getting manifold ${i}: ${error.message}`);
                     }
                     continue;
                 }
@@ -2062,7 +2061,7 @@ debug('UTILITY', `💥 Processing ${numContacts} contacts for manifold ${i}`);
                         bodyB = contactManifold.getBody1();
                     } catch (error) {
                         if (this._debugLoggingEnabled) {
-                            console.error(`❌ Error getting bodies:`, error);
+                            debug('P1', `❌ Error getting bodies: ${error.message}`);
                         }
                         continue;
                     }
@@ -2077,15 +2076,15 @@ debug('UTILITY', `💥 COLLISION: ${entityA.type} <-> ${entityB.type}`);
                         try {
                             this.handleCollision(entityA, entityB, contactManifold);
                         } catch (error) {
-                            console.error(`❌ Error in handleCollision:`, error);
+                            debug('P1', `❌ Error in handleCollision: ${error.message}`);
                         }
                     }
                 }
             }
-            
+
             // Silent collision processing - no logging
         } catch (error) {
-            console.error('Error processing collisions:', error);
+            debug('P1', `Error processing collisions: ${error.message}`);
         }
     }
 
@@ -2231,11 +2230,7 @@ debug('UTILITY', `🚀💥 Projectile collision: ${projectile.id} hit ${ship.id}
             projectileInstance = rigidBody.projectileOwner;
 debug('UTILITY', `🔍 Found projectile instance via rigidBody.projectileOwner for ${projectile.id}`);
         } else {
-            console.log(`No rigidBody.projectileOwner found for ${projectile.id}`, {
-                hasRigidBody: !!rigidBody,
-                hasProjectileOwner: !!rigidBody?.projectileOwner,
-                rigidBodyKeys: rigidBody ? Object.keys(rigidBody) : []
-            });
+            debug('PHYSICS', `No rigidBody.projectileOwner found for ${projectile.id}, hasRigidBody=${!!rigidBody}, hasProjectileOwner=${!!rigidBody?.projectileOwner}`);
         }
         
         if (projectileInstance && typeof projectileInstance.onCollision === 'function') {
@@ -2370,7 +2365,7 @@ debug('COMBAT', `🔧 Collision: No operational systems available for random dam
             }
             
         } catch (error) {
-            console.error('Error applying collision damage:', error);
+            debug('P1', `Error applying collision damage: ${error.message}`);
         }
     }
 
@@ -2412,7 +2407,7 @@ debug('COMBAT', `🔧 Collision: No operational systems available for random dam
                 }
             }
         } catch (error) {
-            console.error('Error applying bouncing effect:', error);
+            debug('P1', `Error applying bouncing effect: ${error.message}`);
         }
     }
 
@@ -2442,7 +2437,7 @@ debug('COMBAT', `🔧 Collision: No operational systems available for random dam
                 rigidBody.applyCentralImpulse(impulseVector);
             }
         } catch (error) {
-            console.error('Error applying strong bounce:', error);
+            debug('P1', `Error applying strong bounce: ${error.message}`);
         }
     }
 
@@ -2467,7 +2462,7 @@ debug('COMBAT', `🔧 Collision: No operational systems available for random dam
             try {
                 callback(entityA, entityB, impulse);
             } catch (error) {
-                console.error('Error in collision callback:', error);
+                debug('P1', `Error in collision callback: ${error.message}`);
             }
         });
     }
@@ -3016,7 +3011,7 @@ debug('PHYSICS', `🔄 Recreated physics body for ${threeObject.name || 'object'
             return newRigidBody;
 
         } catch (error) {
-            console.error('Error recreating rigid body:', error);
+            debug('P1', `Error recreating rigid body: ${error.message}`);
         }
     }
 

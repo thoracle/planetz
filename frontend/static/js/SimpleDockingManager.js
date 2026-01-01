@@ -250,7 +250,7 @@ debug('UTILITY', 'Docking monitoring stopped');
      * @param {THREE.Object3D} target - Target to dock with (station, planet, or moon)
      */
     async initiateDocking(target) {
-        console.warn('🚀 DEPRECATED: initiateDocking called - redirecting to initiateUnifiedDocking');
+        debug('P1', '🚀 DEPRECATED: initiateDocking called - redirecting to initiateUnifiedDocking');
         return await this.initiateUnifiedDocking(target);
     }
 
@@ -259,13 +259,13 @@ debug('UTILITY', 'Docking monitoring stopped');
      */
     async _legacyInitiateDocking(target) {
         if (this.isDocked || this.dockingInProgress) {
-            console.warn('🚀 Docking already in progress or docked');
+            debug('P1', '🚀 Docking already in progress or docked');
             return false;
         }
 
         const ship = this.starfieldManager.viewManager?.getShip();
         if (!ship) {
-            console.warn('🚀 No ship available for docking');
+            debug('P1', '🚀 No ship available for docking');
             return false;
         }
         
@@ -276,7 +276,7 @@ debug('UTILITY', `🚀 Stored approach position: (${this.approachPosition.x.toFi
 
         const dockingResult = this.checkDockingEligibility(ship, target);
         if (!dockingResult.canDock) {
-            console.warn('🚀 Docking not possible:', dockingResult.reason);
+            debug('P1', `🚀 Docking not possible: ${dockingResult.reason}`);
             this.starfieldManager.showHUDError?.('DOCKING FAILED', dockingResult.reason);
             return false;
         }
@@ -300,7 +300,7 @@ debug('TARGETING', 'Initiating docking sequence with', dockingResult.targetName)
             return true;
             
         } catch (error) {
-            console.error('🚀 Docking sequence failed:', error);
+            debug('P1', `🚀 Docking sequence failed: ${error.message}`);
             this.dockingInProgress = false;
             this.currentDockingTarget = null;
             return false;
@@ -489,7 +489,7 @@ debug('UTILITY', 'launchFromStation() called - Simple launch approach');
 debug('UTILITY', `🚀 isDocked: ${this.isDocked}, launchInProgress: ${this.launchInProgress}`);
         
         if (!this.isDocked || this.launchInProgress) {
-            console.warn('🚀 Not docked or launch already in progress');
+            debug('P1', '🚀 Not docked or launch already in progress');
             return false;
         }
 
@@ -530,7 +530,7 @@ debug('UTILITY', `🚀 Backed out to ${actualDistance.toFixed(3)}km from ${stati
                 this.starfieldManager.currentSpeed = 1;
                 
             } else {
-                console.warn('🚀 No stored approach position - using fallback launch');
+                debug('P1', '🚀 No stored approach position - using fallback launch');
                 // Fallback: just move away from station
                 const station = this.currentDockingTarget;
                 if (station) {
@@ -548,7 +548,7 @@ debug('UTILITY', `🚀 Backed out to ${actualDistance.toFixed(3)}km from ${stati
             return true;
             
         } catch (error) {
-            console.error('🚀 Launch sequence failed:', error);
+            debug('P1', `🚀 Launch sequence failed: ${error.message}`);
             this.launchInProgress = false;
             return false;
         }
@@ -644,21 +644,21 @@ debug('TARGETING', 'UNIFIED: Initiating docking sequence with', target.name || '
         
         // Check if already docked to THIS target
         if (this.isDocked && this.currentDockingTarget === target) {
-            console.warn('🚀 Already docked to this target, cannot dock again');
-debug('P1', 'State check: isDocked=true, currentTarget=', this.currentDockingTarget?.name || 'null');
+            debug('P1', '🚀 Already docked to this target, cannot dock again');
+            debug('P1', `State check: isDocked=true, currentTarget=${this.currentDockingTarget?.name || 'null'}`);
             return false;
         }
-        
+
         // Check if already docked to DIFFERENT target
         if (this.isDocked && this.currentDockingTarget !== target) {
-            console.warn('🚀 Already docked to different target, must undock first');
-debug('P1', 'Current target:', this.currentDockingTarget?.name || 'null', 'New target:', target?.name || 'null');
+            debug('P1', '🚀 Already docked to different target, must undock first');
+            debug('P1', `Current target: ${this.currentDockingTarget?.name || 'null'}, New target: ${target?.name || 'null'}`);
             return false;
         }
-        
+
         // Prevent multiple simultaneous docking attempts
         if (this.dockingInProgress) {
-            console.warn('🚀 Docking already in progress, ignoring new request');
+            debug('P1', '🚀 Docking already in progress, ignoring new request');
             return false;
         }
         
@@ -669,18 +669,18 @@ debug('P1', 'Current target:', this.currentDockingTarget?.name || 'null', 'New t
             // Unified eligibility check (works for all object types)
             const eligibility = this.checkDockingEligibility(null, target);
             if (!eligibility.canDock) {
-                console.warn('🚀 Docking eligibility failed:', eligibility.reason);
+                debug('P1', `🚀 Docking eligibility failed: ${eligibility.reason}`);
                 this.dockingInProgress = false;
                 this.currentDockingTarget = null;
                 return false;
             }
-            
+
             // Get ship for energy consumption
             const ship = this.starfieldManager.viewManager?.getShip();
             if (ship) {
                 const dockingEnergyCost = 25;
                 if (!ship.consumeEnergy(dockingEnergyCost)) {
-                    console.warn('🚀 Docking failed: Insufficient energy for docking procedures');
+                    debug('P1', '🚀 Docking failed: Insufficient energy for docking procedures');
                     this.dockingInProgress = false;
                     this.currentDockingTarget = null;
                     return false;
@@ -752,14 +752,14 @@ debug('INSPECTION', `🚛 DEBUG: Cargo delivery check skipped - not a station or
                 // this.currentDockingTarget = null;
                 return true;
             } else {
-                console.error('🚀 StarfieldManager.dock() failed');
+                debug('P1', '🚀 StarfieldManager.dock() failed');
                 this.dockingInProgress = false;
                 this.currentDockingTarget = null;
                 return false;
             }
-            
+
         } catch (error) {
-            console.error('🚀 Error during unified docking:', error);
+            debug('P1', `🚀 Error during unified docking: ${error.message}`);
             this.dockingInProgress = false;
             this.currentDockingTarget = null;
             return false;
@@ -791,7 +791,7 @@ debug('INSPECTION', `🚛 DEBUG: Cargo delivery check skipped - not a station or
                 // Default station range
                 return 1.8; // Stations default to 1.8km (slightly larger than moons)
             default:
-                console.warn(`Unknown dockable object type: ${targetType}, using default range`);
+                debug('P1', `Unknown dockable object type: ${targetType}, using default range`);
                 return this.dockingRange; // Fallback to default
         }
     }
@@ -828,28 +828,25 @@ debug('UTILITY', `🚀 Launch completed - storing position: (${launchPosition.x.
             this.starfieldManager.showHUDMessage?.('LAUNCHED', 'Launch sequence completed');
             
             // CRITICAL: Restore weapon HUD after launch (was missing!)
-            console.log('🔫 LAUNCH: Restoring weapon HUD after SimpleDockingManager launch...');
+            debug('COMBAT', '🔫 LAUNCH: Restoring weapon HUD after SimpleDockingManager launch...');
             if (this.starfieldManager.weaponHUD && this.starfieldManager.weaponHUD.weaponSlotsDisplay) {
                 this.starfieldManager.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
                 this.starfieldManager.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
                 this.starfieldManager.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
                 this.starfieldManager.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
-                console.log('🔫 LAUNCH: Weapon HUD restored successfully');
-                
+                debug('COMBAT', '🔫 LAUNCH: Weapon HUD restored successfully');
+
                 // Update weapon HUD with current weapon system state
                 const ship = this.starfieldManager.viewManager?.getShip();
                 if (ship && ship.weaponSystem) {
                     this.starfieldManager.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
                     // Ensure connection is established
                     this.starfieldManager.connectWeaponHUDToSystem();
-                    console.log('🔫 LAUNCH: Weapon HUD updated and connected');
+                    debug('COMBAT', '🔫 LAUNCH: Weapon HUD updated and connected');
                 }
-debug('COMBAT', '🔫 Weapon HUD restored after SimpleDockingManager launch');
+                debug('COMBAT', '🔫 Weapon HUD restored after SimpleDockingManager launch');
             } else {
-                console.log('🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
-                    weaponHUD: !!this.starfieldManager.weaponHUD,
-                    weaponSlotsDisplay: !!this.starfieldManager.weaponHUD?.weaponSlotsDisplay
-                });
+                debug('COMBAT', `🔫 LAUNCH: Cannot restore weapon HUD - weaponHUD=${!!this.starfieldManager.weaponHUD}, weaponSlotsDisplay=${!!this.starfieldManager.weaponHUD?.weaponSlotsDisplay}`);
             }
             
             // Set undock cooldown to prevent immediate re-docking

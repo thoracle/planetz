@@ -21,7 +21,7 @@ import { debug } from './debug.js';
 // VERSION TRACKING
 const APP_VERSION = '2.1.0-atomic-discovery';
 const APP_BUILD_DATE = '2025-09-30T20:30:00Z';
-console.log(`🎮 PLANETZ v${APP_VERSION} (${APP_BUILD_DATE})`);
+debug('P1', `🎮 PLANETZ v${APP_VERSION} (${APP_BUILD_DATE})`);
 
 // Global configuration for verbose logging
 window.gameConfig = window.gameConfig || {};
@@ -31,8 +31,8 @@ debug('P1', `📋 Verbose logging enabled: ${window.gameConfig.verbose}`);
 // Global function to toggle verbose mode
 window.toggleVerbose = function() {
     window.gameConfig.verbose = !window.gameConfig.verbose;
-    console.log(`🔧 Verbose mode ${window.gameConfig.verbose ? 'ENABLED' : 'DISABLED'}`);
-    
+    debug('P1', `🔧 Verbose mode ${window.gameConfig.verbose ? 'ENABLED' : 'DISABLED'}`);
+
     // Refresh ship's log display if it's currently visible
     if (window.shipLog) {
         window.shipLog.refreshLogDisplay();
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('scene-container');
     
     if (!container) {
-        console.error('Could not find scene-container element!');
+        debug('P1', 'Could not find scene-container element!');
         return;
     }
     
@@ -355,8 +355,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return 'Test notification sent!';
             } else {
                 debug('P1', '❌ StarfieldManager or showHUDEphemeral not available');
-                console.log('StarfieldManager available:', !!window.starfieldManager);
-                console.log('showHUDEphemeral available:', !!(window.starfieldManager && window.starfieldManager.showHUDEphemeral));
+                debug('P1', `StarfieldManager available: ${!!window.starfieldManager}`);
+                debug('P1', `showHUDEphemeral available: ${!!(window.starfieldManager && window.starfieldManager.showHUDEphemeral)}`);
                 return 'Notification system not available';
             }
         };
@@ -367,13 +367,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const starCharts = window.starfieldManager.navigationSystemManager.starChartsManager;
                 if (starCharts) {
                     const discoveryCount = starCharts.discoveredObjects ? starCharts.discoveredObjects.size : 0;
-                    console.log(`Current discoveries: ${discoveryCount}`);
-                    
+                    debug('STAR_CHARTS', `Current discoveries: ${discoveryCount}`);
+
                     // List some discovered objects
                     if (starCharts.discoveredObjects && starCharts.discoveredObjects.size > 0) {
-                        console.log('Discovered objects:');
+                        debug('STAR_CHARTS', 'Discovered objects:');
                         Array.from(starCharts.discoveredObjects).slice(0, 5).forEach((id, i) => {
-                            console.log(`  ${i + 1}: ${id}`);
+                            debug('STAR_CHARTS', `  ${i + 1}: ${id}`);
                         });
                     }
                     
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Add a simple HUD test function
         window.testHUD = () => {
             debug('P1', '🧪 Testing HUD ephemeral system');
-            console.log('Testing HUD notification...');
+            debug('P1', 'Testing HUD notification...');
             
             // Wait for StarfieldManager to be ready
             const checkStarfield = () => {
@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         
     } catch (error) {
-        console.error('❌ Failed to initialize achievement system:', error);
+        debug('P1', `❌ Failed to initialize achievement system: ${error.message}`);
     }
 
     // Renderer setup with safe dimensions
@@ -499,7 +499,7 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
             starfieldManager.initializeSimpleDocking();
         }
     } else {
-        console.error('❌ Failed to initialize Three.js systems');
+        debug('P1', '❌ Failed to initialize Three.js systems');
         window.spatialManagerReady = false;
         window.collisionManagerReady = false;
     }
@@ -520,12 +520,12 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
         
         debug('WAYPOINTS', '✅ Waypoints System initialized successfully');
     } catch (error) {
-        console.error('❌ Failed to initialize Waypoints System:', error);
+        debug('P1', `❌ Failed to initialize Waypoints System: ${error.message}`);
     }
 
     // Verify managers are properly connected
     if (!viewManager.areManagersReady()) {
-        console.error('Failed to initialize managers properly');
+        debug('P1', 'Failed to initialize managers properly');
         return;
     }
 
@@ -567,13 +567,13 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
                     }
                 }
             } else {
-                console.error('❌ Failed to generate star system');
+                debug('P1', '❌ Failed to generate star system');
             }
         } else {
-            console.error('❌ Failed to fetch universe data');
+            debug('P1', '❌ Failed to fetch universe data');
         }
     } catch (error) {
-        console.error('❌ Error during initialization:', error);
+        debug('P1', `❌ Error during initialization: ${error.message}`);
     }
 
     // Set up GUI controls with fixed positioning
@@ -1178,11 +1178,7 @@ debug('UTILITY', 'Terraforming blocked: Not in edit mode');
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-        console.log('Terraforming attempt:', {
-            mouseNormalized: { x: mouse.x, y: mouse.y },
-            shiftKey: event.shiftKey,
-            mode: event.shiftKey ? 'lower' : 'raise'
-        });
+        debug('UTILITY', `Terraforming attempt: mouseNormalized=(${mouse.x.toFixed(2)}, ${mouse.y.toFixed(2)}), shiftKey=${event.shiftKey}, mode=${event.shiftKey ? 'lower' : 'raise'}`);
 
         // Update the raycaster
         raycaster.setFromCamera(mouse, camera);
@@ -1191,11 +1187,7 @@ debug('UTILITY', 'Terraforming blocked: Not in edit mode');
         const intersects = raycaster.intersectObject(planet);
         
         if (intersects.length > 0) {
-            console.log('Hit detected:', {
-                distance: intersects[0].distance,
-                point: intersects[0].point.toArray(),
-                normal: intersects[0].face.normal.toArray()
-            });
+            debug('UTILITY', `Hit detected: distance=${intersects[0].distance.toFixed(2)}, point=[${intersects[0].point.toArray().map(v => v.toFixed(2)).join(', ')}]`);
             
             const hitPoint = intersects[0].point;
             const hitNormal = intersects[0].face.normal;
@@ -1775,7 +1767,7 @@ debug('UTILITY', 'Cloud color changed');
         
         // Validate dimensions before setting
         if (w <= 0 || h <= 0) {
-            console.warn('Invalid resize dimensions:', { w, h, containerWidth: container.clientWidth, containerHeight: container.clientHeight });
+            debug('P1', `Invalid resize dimensions: w=${w}, h=${h}, containerWidth=${container.clientWidth}, containerHeight=${container.clientHeight}`);
             return;
         }
         
@@ -1822,7 +1814,7 @@ debug('UTILITY', 'Cloud color changed');
                         projectile.update(deltaTime * 1000); // Convert to milliseconds
                         return projectile.isActive(); // Keep active projectiles
                     } catch (error) {
-                        console.error('Error updating projectile:', error);
+                        debug('P1', `Error updating projectile: ${error.message}`);
                         // Clean up failed projectile
                         if (typeof projectile.cleanup === 'function') {
                             projectile.cleanup();
@@ -1971,15 +1963,7 @@ debug('UTILITY', 'Starting animation loop...');
         const nextIndex = (currentIndex + 1) % bodies.length;
         const nextBody = bodies[nextIndex];
         
-        console.log('Cycling to body:', {
-            currentBody,
-            nextBody,
-            currentIndex,
-            nextIndex,
-            totalBodies: bodies.length,
-            starSystem: solarSystemManager.starSystem,
-            celestialBodies: Array.from(solarSystemManager.celestialBodies.entries())
-        });
+        debug('UTILITY', `Cycling to body: currentIndex=${currentIndex}, nextIndex=${nextIndex}, totalBodies=${bodies.length}`);
         
         // Update the current edit body
         solarSystemManager.setCurrentEditBody(nextBody);
@@ -1997,7 +1981,7 @@ debug('UTILITY', 'Found body key:', { key, body, starSystem: solarSystemManager.
                         if (solarSystemManager.starSystem && solarSystemManager.starSystem.star_name) {
                             bodyName = `${solarSystemManager.starSystem.star_name} (Star)`;
                         } else {
-                            console.warn('Star system or star name missing:', solarSystemManager.starSystem);
+                            debug('P1', 'Star system or star name missing');
                         }
                     } else if (key.startsWith('planet_')) {
                         const planetIndex = parseInt(key.split('_')[1]);
@@ -2005,7 +1989,7 @@ debug('UTILITY', 'Found body key:', { key, body, starSystem: solarSystemManager.
                         if (planet && planet.planet_name) {
                             bodyName = `${planet.planet_name} (Planet)`;
                         } else {
-                            console.warn('Planet data missing:', { planetIndex, planet });
+                            debug('P1', `Planet data missing: planetIndex=${planetIndex}`);
                         }
                     } else if (key.startsWith('moon_')) {
                         const [_, planetIndex, moonIndex] = key.split('_').map(Number);
@@ -2014,17 +1998,17 @@ debug('UTILITY', 'Found body key:', { key, body, starSystem: solarSystemManager.
                         if (moon && moon.moon_name) {
                             bodyName = `${moon.moon_name} (Moon)`;
                         } else {
-                            console.warn('Moon data missing:', { planetIndex, moonIndex, planet, moon });
+                            debug('P1', `Moon data missing: planetIndex=${planetIndex}, moonIndex=${moonIndex}`);
                         }
                     }
                     break;
                 }
             }
             if (!foundKey) {
-                console.warn('Body not found in celestialBodies map:', nextBody);
+                debug('P1', 'Body not found in celestialBodies map');
             }
         } else {
-            console.warn('nextBody is null or undefined');
+            debug('P1', 'nextBody is null or undefined');
         }
         guiTitle.textContent = bodyName;
         
@@ -2054,7 +2038,7 @@ debug('UTILITY', 'Found body key:', { key, body, starSystem: solarSystemManager.
         }
         
         if (!bodyKey) {
-            console.warn('No body key found for:', body);
+            debug('P1', 'No body key found for body');
             return;
         }
         

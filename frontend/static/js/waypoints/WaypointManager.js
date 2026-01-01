@@ -266,7 +266,7 @@ export class WaypointManager {
             await this.onWaypointCompleted(waypoint);
             
         } catch (error) {
-            console.error(`Failed to execute waypoint actions for ${waypoint.name}:`, error);
+            debug('P1', `Failed to execute waypoint actions for ${waypoint.name}: ${error.message}`);
             waypoint.status = WaypointStatus.ACTIVE; // Reset to active on error
         }
 
@@ -321,7 +321,7 @@ export class WaypointManager {
                 break;
                 
             default:
-                console.warn(`Unknown waypoint action type: ${action.type}`);
+                debug('P1', `Unknown waypoint action type: ${action.type}`);
         }
     }
 
@@ -433,24 +433,24 @@ export class WaypointManager {
      */
     validateWaypointConfig(waypoint) {
         if (!waypoint.name || typeof waypoint.name !== 'string') {
-            console.error('Waypoint name is required and must be a string');
+            debug('P1', 'Waypoint name is required and must be a string');
             return false;
         }
-        
+
         if (!Array.isArray(waypoint.position) || waypoint.position.length !== 3) {
-            console.error('Waypoint position must be an array of 3 numbers [x, y, z]');
+            debug('P1', 'Waypoint position must be an array of 3 numbers [x, y, z]');
             return false;
         }
-        
+
         if (typeof waypoint.triggerRadius !== 'number' || waypoint.triggerRadius <= 0) {
-            console.error('Waypoint triggerRadius must be a positive number');
+            debug('P1', 'Waypoint triggerRadius must be a positive number');
             return false;
         }
-        
+
         // Normalize waypoint type to lowercase for validation
         const normalizedType = waypoint.type?.toLowerCase();
         if (!Object.values(WaypointType).includes(normalizedType)) {
-            console.error(`Invalid waypoint type: ${waypoint.type}. Valid types: ${Object.values(WaypointType).join(', ')}`);
+            debug('P1', `Invalid waypoint type: ${waypoint.type}. Valid types: ${Object.values(WaypointType).join(', ')}`);
             return false;
         }
         
@@ -586,7 +586,7 @@ export class WaypointManager {
                 });
                 
             } catch (error) {
-                console.error('Failed to load WaypointIndicator:', error);
+                debug('P1', `Failed to load WaypointIndicator: ${error.message}`);
             }
         } else {
             debug('WAYPOINTS', '⚠️ Could not initialize WaypointIndicator - scene or THREE not available');
@@ -659,10 +659,10 @@ export class WaypointManager {
         
         // Notify mission system if applicable
         if (waypoint.missionId && window.missionEventHandler) {
-            console.log('🎯 MISSION COMPLETION: Calling missionEventHandler.handleWaypointCompleted for:', waypoint.name, 'mission:', waypoint.missionId);
+            debug('MISSIONS', `🎯 MISSION COMPLETION: Calling missionEventHandler.handleWaypointCompleted for: ${waypoint.name}, mission: ${waypoint.missionId}`);
             window.missionEventHandler.handleWaypointCompleted(waypoint);
         } else {
-            console.log('❌ MISSION COMPLETION: Cannot call handleWaypointCompleted - missionId:', waypoint.missionId, 'missionEventHandler available:', !!window.missionEventHandler);
+            debug('MISSIONS', `❌ MISSION COMPLETION: Cannot call handleWaypointCompleted - missionId: ${waypoint.missionId}, missionEventHandler available: ${!!window.missionEventHandler}`);
         }
     }
 
@@ -777,7 +777,7 @@ export class WaypointManager {
             return result;
             
         } catch (error) {
-            console.error('Failed to execute spawn ships action:', error);
+            debug('P1', `Failed to execute spawn ships action: ${error.message}`);
             throw error;
         }
     }
@@ -793,7 +793,7 @@ export class WaypointManager {
             return result;
             
         } catch (error) {
-            console.error('Failed to execute play comm action:', error);
+            debug('P1', `Failed to execute play comm action: ${error.message}`);
             throw error;
         }
     }
@@ -813,8 +813,8 @@ export class WaypointManager {
                 return { success: true, method: 'HUD' };
             }
             
-            // Fallback to console and simple alert
-            console.log(`🎯 WAYPOINT MESSAGE: ${title} - ${message}`);
+            // Fallback to debug and simple alert
+            debug('WAYPOINTS', `🎯 WAYPOINT MESSAGE: ${title} - ${message}`);
             
             // Try ActionRegistry as secondary option
             try {
@@ -828,7 +828,7 @@ export class WaypointManager {
             }
             
         } catch (error) {
-            console.error('Failed to execute show message action:', error);
+            debug('P1', `Failed to execute show message action: ${error.message}`);
             // Don't throw - return success to prevent waypoint system from breaking
             return { success: false, error: error.message };
         }
@@ -845,7 +845,7 @@ export class WaypointManager {
             return result;
             
         } catch (error) {
-            console.error('Failed to execute give item action:', error);
+            debug('P1', `Failed to execute give item action: ${error.message}`);
             throw error;
         }
     }
@@ -861,7 +861,7 @@ export class WaypointManager {
             return result;
             
         } catch (error) {
-            console.error('Failed to execute give reward action:', error);
+            debug('P1', `Failed to execute give reward action: ${error.message}`);
             throw error;
         }
     }
@@ -883,7 +883,7 @@ export class WaypointManager {
             return { success: true, missionId: parameters.missionId };
             
         } catch (error) {
-            console.error('Failed to execute mission update action:', error);
+            debug('P1', `Failed to execute mission update action: ${error.message}`);
             throw error;
         }
     }
@@ -909,7 +909,7 @@ export class WaypointManager {
             return { success: true, eventType: eventType };
             
         } catch (error) {
-            console.error('Failed to execute custom event action:', error);
+            debug('P1', `Failed to execute custom event action: ${error.message}`);
             throw error;
         }
     }
@@ -1213,7 +1213,7 @@ export class WaypointManager {
                         }
                     }
                 } else {
-                    console.log('❌ TargetComputerManager not available for auto-targeting');
+                    debug('WAYPOINTS', '❌ TargetComputerManager not available for auto-targeting');
                 }
             }
             
@@ -1225,10 +1225,10 @@ export class WaypointManager {
                 mission.state = 'active';
                 window.missionAPI.activeMissions.set(uniqueMissionId, mission);
                 window.missionAPI.availableMissions.delete(uniqueMissionId);
-                console.log('🎯 activeMissions cache size after adding:', window.missionAPI.activeMissions.size);
-                console.log('🎯 activeMissions cache contents:', Array.from(window.missionAPI.activeMissions.entries()));
+                debug('WAYPOINTS', `🎯 activeMissions cache size after adding: ${window.missionAPI.activeMissions.size}`);
+                debug('WAYPOINTS', `🎯 activeMissions cache contents: ${JSON.stringify(Array.from(window.missionAPI.activeMissions.entries()))}`);
             } else {
-                console.log('❌ window.missionAPI not available');
+                debug('WAYPOINTS', '❌ window.missionAPI not available');
             }
             
             // Note: No need to call addWaypointsToTargets() here since targetWaypointViaCycle() already calls it
@@ -1242,18 +1242,14 @@ export class WaypointManager {
             
             // Notify Mission HUD to refresh if available
             setTimeout(() => {
-                console.log('🎯 Checking Mission HUD availability:', {
-                    hasStarfieldManager: !!window.starfieldManager,
-                    hasMissionStatusHUD: !!window.starfieldManager?.missionStatusHUD
-                });
-                
+                debug('WAYPOINTS', `🎯 Checking Mission HUD availability: hasStarfieldManager=${!!window.starfieldManager}, hasMissionStatusHUD=${!!window.starfieldManager?.missionStatusHUD}`);
+
                 if (window.starfieldManager && window.starfieldManager.missionStatusHUD) {
-                    console.log('🎯 Calling Mission HUD refresh...');
+                    debug('WAYPOINTS', '🎯 Calling Mission HUD refresh...');
                     window.starfieldManager.missionStatusHUD.refreshMissions();
-                    console.log('✅ Mission HUD refresh called');
-                    debug('WAYPOINTS', '✅ Mission HUD notified of new test mission');
+                    debug('WAYPOINTS', '✅ Mission HUD refresh called');
                 } else {
-                    console.log('❌ Mission HUD not available for refresh');
+                    debug('WAYPOINTS', '❌ Mission HUD not available for refresh');
                 }
             }, 100);
             
@@ -1263,7 +1259,7 @@ export class WaypointManager {
             };
             
         } catch (error) {
-            console.error('❌ Failed to create waypoint test mission:', error);
+            debug('P1', `❌ Failed to create waypoint test mission: ${error.message}`);
             return null;
         }
     }
