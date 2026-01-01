@@ -42,19 +42,18 @@ debug('UTILITY', 'WarpDrive health:', `${(warpDrive.healthPercentage * 100).toFi
 debug('UTILITY', '\nTest 4: Testing WarpDrive level capabilities');
                 if (warpDrive) {
                     const levels = [1, 2, 3, 4, 5];
-                    console.table(
-                        levels.reduce((acc, level) => {
-                            warpDrive.level = level;
-                            warpDrive.levelStats = warpDrive.initializeLevelStats();
-                            
-                            acc[`Level ${level}`] = {
-                                'Max Warp Factor': warpDrive.getMaxWarpFactor(),
-                                'Cooldown Time': `${warpDrive.getEffectiveCooldownTime() / 1000}s`,
-                                'Energy Efficiency': `${((1 - (warpDrive.levelStats[level]?.energyEfficiency || 1)) * 100).toFixed(0)}% bonus`
-                            };
-                            return acc;
-                        }, {})
-                    );
+                    const levelData = levels.reduce((acc, level) => {
+                        warpDrive.level = level;
+                        warpDrive.levelStats = warpDrive.initializeLevelStats();
+
+                        acc[`Level ${level}`] = {
+                            'Max Warp Factor': warpDrive.getMaxWarpFactor(),
+                            'Cooldown Time': `${warpDrive.getEffectiveCooldownTime() / 1000}s`,
+                            'Energy Efficiency': `${((1 - (warpDrive.levelStats[level]?.energyEfficiency || 1)) * 100).toFixed(0)}% bonus`
+                        };
+                        return acc;
+                    }, {});
+                    debug('UTILITY', 'WarpDrive level capabilities:', JSON.stringify(levelData, null, 2));
                     
                     // Reset to level 1
                     warpDrive.level = 1;
@@ -104,25 +103,25 @@ debug('UTILITY', 'Ship status includes warp drive:', 'warp_drive' in shipStatus.
                 
                 if ('warp_drive' in shipStatus.systems) {
                     const warpStatus = shipStatus.systems.warp_drive;
-                    console.log('WarpDrive status:', {
+                    debug('UTILITY', 'WarpDrive status:', JSON.stringify({
                         health: `${(warpStatus.health * 100).toFixed(1)}%`,
                         level: warpStatus.level,
                         isActive: warpStatus.isActive,
                         canBeActivated: warpStatus.canBeActivated
-                    });
+                    }));
                 }
                 
                 // Test 8: Test WarpDrive system-specific status
 debug('UTILITY', '\nTest 8: Testing WarpDrive system-specific status');
                 if (warpDrive) {
                     const warpDriveStatus = warpDrive.getStatus();
-                    console.log('WarpDrive detailed status:', {
+                    debug('UTILITY', 'WarpDrive detailed status:', JSON.stringify({
                         isWarping: warpDriveStatus.isWarping,
                         warpFactor: warpDriveStatus.warpFactor,
                         maxWarpFactor: warpDriveStatus.maxWarpFactor,
                         canWarp: warpDriveStatus.canWarp,
                         cooldownTime: warpDriveStatus.cooldownTime
-                    });
+                    }));
                 }
                 
 debug('UTILITY', '\n=== WarpDrive Integration Test Complete ===');
@@ -132,7 +131,7 @@ debug('UTILITY', '✓ All tests passed - WarpDrive system successfully integrate
             }, 100); // Small delay for async initialization
             
         } catch (error) {
-            console.error('❌ WarpDrive Integration Test Failed:', error);
+            debug('P1', '❌ WarpDrive Integration Test Failed:', error);
             resolve(false);
         }
     });
@@ -176,7 +175,7 @@ debug('UTILITY', '✓ WarpDriveAdapter compatibility test passed');
         }, 100);
         
     } catch (error) {
-        console.error('❌ WarpDriveAdapter test failed:', error);
+        debug('P1', '❌ WarpDriveAdapter test failed:', error);
     }
 }
 
