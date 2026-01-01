@@ -562,4 +562,15 @@ debug('AI', 'AI Game Integration configured:', settings);
             physicsEnabled: this.physicsEnabled
         };
     }
+
+    /**
+     * Cleanup when destroyed
+     */
+    dispose() {
+        this.scene = null;
+        this.audioManager = null;
+        this.effectsManager = null;
+        this.physicsWorld = null;
+        this.physicsEnabled = false;
+    }
 }

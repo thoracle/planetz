@@ -1,9 +1,11 @@
 /**
  * AI Configuration System - Ship-specific AI behavior parameters
- * 
+ *
  * Based on docs/enemy_ai_spec.md ship type specifications
  * Each configuration defines how different ship types behave in combat
  */
+
+import { debug } from '../debug.js';
 
 /**
  * AI configuration templates for different ship types
@@ -294,7 +296,7 @@ export function getAIConfig(shipType) {
     const config = AI_CONFIGS[mappedType];
     
     if (!config) {
-        console.warn(`No AI config found for ship type: ${shipType}, using light_fighter default`);
+        debug('AI', `No AI config found for ship type: ${shipType}, using light_fighter default`);
         return { ...AI_CONFIGS.light_fighter }; // Return a copy
     }
     
@@ -393,7 +395,7 @@ export function validateAIConfig(config) {
     
     for (const field of required) {
         if (!(field in config)) {
-            console.error(`Missing required AI config field: ${field}`);
+            debug('P1', `Missing required AI config field: ${field}`);
             return false;
         }
     }
@@ -402,7 +404,7 @@ export function validateAIConfig(config) {
     const requiredWeights = ['separation', 'alignment', 'cohesion', 'pursuit', 'evasion', 'orbiting'];
     for (const weight of requiredWeights) {
         if (!(weight in config.behaviorWeights)) {
-            console.error(`Missing behavior weight: ${weight}`);
+            debug('P1', `Missing behavior weight: ${weight}`);
             return false;
         }
     }
@@ -411,7 +413,7 @@ export function validateAIConfig(config) {
     const requiredThresholds = ['fleeHealth', 'evadeHealth', 'engageRange'];
     for (const threshold of requiredThresholds) {
         if (!(threshold in config.combatThresholds)) {
-            console.error(`Missing combat threshold: ${threshold}`);
+            debug('P1', `Missing combat threshold: ${threshold}`);
             return false;
         }
     }

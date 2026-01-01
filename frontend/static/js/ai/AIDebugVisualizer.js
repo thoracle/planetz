@@ -442,7 +442,7 @@ debug('AI', `🎨 AI Debug Visualization ${enabled ? 'enabled' : 'disabled'}`);
                            this.sensorRanges.size + this.weaponRanges.size;
         
         if (totalObjects > this.maxDebugObjects) {
-            console.warn(`🎨 Debug object limit exceeded: ${totalObjects}/${this.maxDebugObjects}`);
+            debug('AI', `Debug object limit exceeded: ${totalObjects}/${this.maxDebugObjects}`);
             // Could implement object culling based on distance or importance
         }
         

@@ -119,9 +119,9 @@ debug('AI', `🤖 EnemyAI initialized for ${ship.shipType} with config:`, aiConf
             if (this.debugMode && Date.now() % 1000 < 50) { // Log once per second
                 this.logDebugInfo();
             }
-            
+
         } catch (error) {
-            console.error(`🤖 EnemyAI update error for ${this.ship.shipType}:`, error);
+            debug('P1', `🤖 EnemyAI update error for ${this.ship.shipType}: ${error.message}`);
         }
     }
     
@@ -444,17 +444,11 @@ debug('INSPECTION', `🐛 Debug mode enabled for ${this.ship.shipType}`);
     logDebugInfo() {
         const healthPct = (this.getHealthPercentage() * 100).toFixed(1);
         const state = this.stateMachine.currentState;
-        const targetInfo = this.currentTarget ? 
-            `${this.currentTarget.shipType || 'unknown'} at ${this.ship.position.distanceTo(this.currentTarget.position).toFixed(1)}m` : 
+        const targetInfo = this.currentTarget ?
+            `${this.currentTarget.shipType || 'unknown'} at ${this.ship.position.distanceTo(this.currentTarget.position).toFixed(1)}m` :
             'none';
-        
-        console.log(`🤖 ${this.ship.shipType} AI Debug:
-            State: ${state}
-            Health: ${healthPct}%
-            Target: ${targetInfo}
-            Threats: ${this.detectedThreats.length}
-            Nearby: ${this.nearbyShips.length}
-            Velocity: ${this.velocity.length().toFixed(2)}m/s`);
+
+        debug('AI', `🤖 ${this.ship.shipType} AI Debug: State: ${state}, Health: ${healthPct}%, Target: ${targetInfo}, Threats: ${this.detectedThreats.length}, Nearby: ${this.nearbyShips.length}, Velocity: ${this.velocity.length().toFixed(2)}m/s`);
     }
     
     /**
@@ -494,13 +488,13 @@ debug('INSPECTION', `🐛 Debug mode enabled for ${this.ship.shipType}`);
      * Force AI to a specific state (for debugging)
      */
     setState(state) {
-        if (this.stateMachine.transitions[this.stateMachine.currentState] && 
+        if (this.stateMachine.transitions[this.stateMachine.currentState] &&
             this.stateMachine.transitions[this.stateMachine.currentState][state]) {
             this.stateMachine.currentState = state;
             this.stateMachine.stateStartTime = Date.now();
 debug('UTILITY', `🤖 ${this.ship.shipType} forced to state: ${state}`);
         } else {
-            console.warn(`⚠️ Invalid state transition: ${this.stateMachine.currentState} → ${state}`);
+            debug('AI', `⚠️ Invalid state transition: ${this.stateMachine.currentState} → ${state}`);
         }
     }
     

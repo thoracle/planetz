@@ -86,7 +86,7 @@ debug('UTILITY', `🐦 Created flock ${flockId} with ${ships.length} ships`);
     assignFormation(flockId, formationType, formationConfig = {}) {
         const flock = this.flocks.get(flockId);
         if (!flock || !flock.leader || !flock.leader.ship) {
-            console.warn(`⚠️ Cannot assign formation: Invalid flock ${flockId}`);
+            debug('AI', `⚠️ Cannot assign formation: Invalid flock ${flockId}`);
             return;
         }
         
@@ -135,7 +135,7 @@ debug('UTILITY', `🐦 Created flock ${flockId} with ${ships.length} ships`);
                 break;
                 
             default:
-                console.warn(`⚠️ Unknown formation type: ${formationType}`);
+                debug('AI', `⚠️ Unknown formation type: ${formationType}`);
                 return;
         }
         
@@ -366,7 +366,7 @@ debug('UTILITY', `🗑️ Removed flock ${flockId}`);
     addShipsToFlock(flockId, ships) {
         const flock = this.flocks.get(flockId);
         if (!flock) {
-            console.warn(`⚠️ Cannot add ships: Flock ${flockId} not found`);
+            debug('AI', `⚠️ Cannot add ships: Flock ${flockId} not found`);
             return;
         }
         
@@ -442,5 +442,29 @@ debug('UTILITY', `➕ Added ${ships.length} ships to flock ${flockId}`);
     setDebugMode(enabled) {
         this.debugMode = enabled;
 debug('AI', `🐦 Flocking debug mode: ${enabled ? 'ON' : 'OFF'}`);
+    }
+
+    /**
+     * Cleanup when destroyed - clears all flocks and resources
+     */
+    destroy() {
+        // Remove all flocks
+        for (const flockId of this.flocks.keys()) {
+            this.removeFlock(flockId);
+        }
+
+        // Clear maps
+        this.flocks.clear();
+        this.formations.clear();
+
+        // Reset stats
+        this.debugStats = {
+            totalFlocks: 0,
+            totalShips: 0,
+            averageFlockSize: 0,
+            computeTime: 0
+        };
+
+        debug('AI', '🐦 FlockingManager destroyed');
     }
 }

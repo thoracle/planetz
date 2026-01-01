@@ -70,9 +70,9 @@ debug('AI', 'EnemyAIManager initialized');
             
             this.isInitialized = true;
 debug('AI', '✅ EnemyAIManager fully initialized');
-            
+
         } catch (error) {
-            console.error('❌ Failed to initialize EnemyAIManager:', error);
+            debug('P1', `❌ Failed to initialize EnemyAIManager: ${error.message}`);
         }
     }
     
@@ -140,7 +140,7 @@ debug('AI', `🤖 Enabled AI for ${aiCount} existing ships`);
      */
     addAIToShip(ship, options = {}) {
         if (ship.ai) {
-            console.warn(`Ship ${ship.shipType} already has AI`);
+            debug('AI', `Ship ${ship.shipType} already has AI`);
             return ship.ai;
         }
         
@@ -167,7 +167,7 @@ debug('AI', `🤖 Enabled AI for ${aiCount} existing ships`);
             // Ensure ship has position
             if (!ship.position) {
                 ship.position = new THREE.Vector3();
-                console.warn(`Ship ${ship.shipType} missing position, initialized to origin`);
+                debug('AI', `Ship ${ship.shipType} missing position, initialized to origin`);
             }
             
             // Add to tracking
@@ -182,9 +182,9 @@ debug('AI', `🤖 Enabled AI for ${aiCount} existing ships`);
             
 debug('AI', `🤖 AI added to ${ship.shipType} (difficulty: ${options.difficulty || this.globalDifficulty})`);
             return ai;
-            
+
         } catch (error) {
-            console.error(`Failed to add AI to ship ${ship.shipType}:`, error);
+            debug('P1', `Failed to add AI to ship ${ship.shipType}: ${error.message}`);
             return null;
         }
     }
@@ -254,14 +254,14 @@ debug('AI', `🤖 AI removed from ${ship.shipType}`);
             
             // Cleanup destroyed ships
             this.cleanupDestroyedShips();
-            
+
             // Adaptive performance adjustment
             if (Date.now() % 5000 < 50) { // Every 5 seconds
                 this.performanceManager.adaptivePerformanceAdjustment();
             }
-            
+
         } catch (error) {
-            console.error('🤖 EnemyAIManager update error:', error);
+            debug('P1', `🤖 EnemyAIManager update error: ${error.message}`);
         }
     }
     
@@ -351,7 +351,7 @@ debug('AI', `🤖 AI removed from ${ship.shipType}`);
                 try {
                     ai.update(deltaTime, this.gameWorld);
                 } catch (error) {
-                    console.error(`AI update error for ${ai.ship?.shipType}:`, error);
+                    debug('P1', `AI update error for ${ai.ship?.shipType}: ${error.message}`);
                 }
             }
         }
@@ -506,7 +506,7 @@ debug('AI', `🤖 Forced all AIs to state: ${state}`);
     createFlockFromShips(ships, config = {}) {
         const aiShips = ships.filter(ship => ship.ai).map(ship => ({ ai: ship.ai, ship: ship }));
         if (aiShips.length < 2) {
-            console.warn('⚠️ Need at least 2 AI ships to create a flock');
+            debug('AI', '⚠️ Need at least 2 AI ships to create a flock');
             return null;
         }
         
@@ -542,13 +542,38 @@ debug('AI', `🎯 Created ${formationType} formation with ${ships.length} ships`
         for (const ai of this.activeAIs) {
             ai.destroy();
         }
-        
+
+        // Cleanup sub-managers
+        if (this.flockingManager) {
+            this.flockingManager.destroy();
+            this.flockingManager = null;
+        }
+
+        if (this.performanceManager) {
+            if (typeof this.performanceManager.destroy === 'function') {
+                this.performanceManager.destroy();
+            }
+            this.performanceManager = null;
+        }
+
+        if (this.debugVisualizer) {
+            if (typeof this.debugVisualizer.destroy === 'function') {
+                this.debugVisualizer.destroy();
+            }
+            this.debugVisualizer = null;
+        }
+
         // Clear collections
         this.aiShips.clear();
         this.activeAIs.clear();
         this.updateQueue = [];
         this.gameWorld.ships = [];
-        
+
+        // Clear references
+        this.scene = null;
+        this.camera = null;
+        this.starfieldManager = null;
+
         this.isInitialized = false;
 debug('AI', 'EnemyAIManager destroyed');
     }

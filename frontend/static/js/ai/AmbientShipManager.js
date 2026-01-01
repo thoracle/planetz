@@ -313,7 +313,7 @@ debug('MISSIONS', `🌌 Spawned ${shipGroup.length} ${faction} ships on ${behavi
         });
         
         if (!ship.mesh) {
-            console.warn(`Failed to create ambient ship: ${shipType}`);
+            debug('AI', `Failed to create ambient ship: ${shipType}`);
             return null;
         }
         
@@ -547,10 +547,49 @@ debug('UTILITY', `🌌 Removed distant ambient ship: ${shipData.faction} ${shipD
     handlePlayerInteraction(shipId, interactionType) {
         const shipData = this.ambientShips.get(shipId);
         if (!shipData || !shipData.behavior) return;
-        
+
         if (shipData.behavior.handlePlayerInteraction) {
             shipData.behavior.handlePlayerInteraction(interactionType);
         }
+    }
+
+    /**
+     * Cleanup and destroy the ambient ship manager
+     */
+    destroy() {
+        // Remove all ambient ships from the scene
+        for (const [shipId, shipData] of this.ambientShips) {
+            if (shipData.ship && shipData.ship.mesh) {
+                this.scene.remove(shipData.ship.mesh);
+            }
+            // Cleanup AI if it has a destroy method
+            if (shipData.ai && shipData.ai.destroy) {
+                shipData.ai.destroy();
+            }
+            // Cleanup behavior if it has a destroy method
+            if (shipData.behavior && shipData.behavior.destroy) {
+                shipData.behavior.destroy();
+            }
+        }
+
+        // Clear all tracking collections
+        this.ambientShips.clear();
+        this.activeShips.clear();
+        this.shipBehaviors.clear();
+
+        // Clear communication queue
+        this.communicationQueue = [];
+
+        // Clear trade routes
+        this.tradeRoutes = [];
+
+        // Clear references
+        this.scene = null;
+        this.camera = null;
+        this.starfieldManager = null;
+        this.isInitialized = false;
+
+        debug('AI', 'AmbientShipManager destroyed');
     }
 }
 

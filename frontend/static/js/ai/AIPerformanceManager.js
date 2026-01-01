@@ -260,7 +260,7 @@ debug('AI', '⚡ AIPerformanceManager initialized');
                     break;
             }
         } catch (error) {
-            console.error(`⚡ AI LOD update error for ${ai.ship.shipType}:`, error);
+            debug('P1', `AI LOD update error for ${ai.ship.shipType}: ${error.message}`);
         }
     }
     
@@ -464,6 +464,33 @@ debug('UTILITY', `⚡ LOD system ${enabled ? 'enabled' : 'disabled'}`);
     resetStats() {
         this.performanceStats.frameOverruns = 0;
         this.updateTimes = [];
-debug('PERFORMANCE', '⚡ Performance statistics reset');
+        debug('PERFORMANCE', 'Performance statistics reset');
+    }
+
+    /**
+     * Cleanup and destroy the performance manager
+     */
+    destroy() {
+        // Clear update queue
+        this.aiUpdateQueue = [];
+        this.currentUpdateIndex = 0;
+
+        // Clear performance tracking data
+        this.updateTimes = [];
+
+        // Reset stats
+        this.performanceStats = {
+            totalAIs: 0,
+            activeAIs: 0,
+            highLOD: 0,
+            mediumLOD: 0,
+            lowLOD: 0,
+            culledAIs: 0,
+            averageUpdateTime: 0,
+            frameOverruns: 0,
+            lastFrameTime: 0
+        };
+
+        debug('AI', 'AIPerformanceManager destroyed');
     }
 }

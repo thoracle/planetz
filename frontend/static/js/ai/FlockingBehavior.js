@@ -277,4 +277,16 @@ export class FlockingBehavior {
             }
         };
     }
+
+    /**
+     * Cleanup when destroyed
+     */
+    dispose() {
+        this.formationPosition = null;
+        this.formationHeading = null;
+        this.tempVector1 = null;
+        this.tempVector2 = null;
+        this.tempVector3 = null;
+        this.hasFormationTarget = false;
+    }
 }
