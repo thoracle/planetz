@@ -20,7 +20,17 @@ export class DockingInterface {
         this.wireframeCamera = null;
         this.wireframeRenderer = null;
         this.stationWireframe = null;
-        
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            launchButtonClick: null,
+            launchButtonMouseEnter: null,
+            launchButtonMouseLeave: null
+        };
+
+        // Track style element for cleanup
+        this._styleElement = null;
+
         // Initialize station services
         this.stationRepairInterface = new StationRepairInterface(starfieldManager);
         
@@ -185,23 +195,29 @@ debug('UI', `🔧 DockingInterface: Loaded ${this.cardInventoryUI.shipSlots.size
             border-radius: 4px;
         `;
         
-        this.launchButton.addEventListener('mouseenter', () => {
+        // Create bound handlers for cleanup
+        this._boundHandlers.launchButtonMouseEnter = () => {
             this.launchButton.style.background = 'rgba(0, 255, 65, 0.2)';
             this.launchButton.style.transform = 'scale(1.05)';
-        });
-        
-        this.launchButton.addEventListener('mouseleave', () => {
+        };
+
+        this._boundHandlers.launchButtonMouseLeave = () => {
             this.launchButton.style.background = 'rgba(0, 255, 65, 0.1)';
             this.launchButton.style.transform = 'scale(1)';
-        });
-        
-        this.launchButton.addEventListener('click', () => { 
-debug('COMBAT', '🚀🚀🚀 LAUNCH BUTTON CLICKED - Event listener fired 🚀🚀🚀');
-debug('UI', 'About to call this.handleLaunch()');
-            this.playCommandSound(); 
-            this.handleLaunch(); 
-debug('UI', 'this.handleLaunch() completed');
-        });
+        };
+
+        this._boundHandlers.launchButtonClick = () => {
+            debug('COMBAT', '🚀🚀🚀 LAUNCH BUTTON CLICKED - Event listener fired 🚀🚀🚀');
+            debug('UI', 'About to call this.handleLaunch()');
+            this.playCommandSound();
+            this.handleLaunch();
+            debug('UI', 'this.handleLaunch() completed');
+        };
+
+        this.launchButton.addEventListener('mouseenter', this._boundHandlers.launchButtonMouseEnter);
+        this.launchButton.addEventListener('mouseleave', this._boundHandlers.launchButtonMouseLeave);
+        this.launchButton.addEventListener('click', this._boundHandlers.launchButtonClick);
+
         this.header.appendChild(this.launchButton);
     }
 
@@ -567,7 +583,7 @@ debug('UI', 'Station menu hidden');
         if (this.originalDockedLocation) {
             this.show(this.originalDockedLocation);
         } else {
-            console.warn('No original docked location stored - using current dockedLocation');
+            debug('UI', 'No original docked location stored - using current dockedLocation');
             if (this.dockedLocation) {
                 this.show(this.dockedLocation);
             }
@@ -632,9 +648,8 @@ debug('AI', 'Attempting to show repair interface...');
             this.stationRepairInterface.show(ship, dockedLocation);
 debug('AI', 'Repair interface show() called');
         } else {
-            console.error('Cannot access repair services: ship or location data unavailable');
-            console.error('Ship exists:', !!ship);
-            console.error('Docked location exists:', !!dockedLocation);
+            debug('UI', '❌ Cannot access repair services: ship or location data unavailable');
+            debug('UI', `Ship exists: ${!!ship}, Docked location exists: ${!!dockedLocation}`);
         }
     }
 
@@ -657,7 +672,7 @@ debug('UI', 'Card shop requested');
 debug('UI', 'Opening card shop...');
             this.cardInventoryUI.showAsShop(dockedLocation, this);
         } else {
-            console.error('Cannot access card shop: location data unavailable');
+            debug('UI', '❌ Cannot access card shop: location data unavailable');
         }
     }
 
@@ -705,7 +720,7 @@ debug('MISSIONS', 'Mission Board requested');
             // Show mission board
             this.missionBoard.show();
         } else {
-            console.error('❌ Cannot access mission board: mission board or location data unavailable');
+            debug('MISSIONS', '❌ Cannot access mission board: mission board or location data unavailable');
         }
     }
 
@@ -735,7 +750,7 @@ debug('UI', '🏪 Commodity Exchange requested');
             // Show commodity exchange
             this.commodityExchange.show(locKey);
         } else {
-            console.error('❌ Cannot access commodity exchange: exchange or location data unavailable');
+            debug('UI', '❌ Cannot access commodity exchange: exchange or location data unavailable');
         }
     }
 
@@ -850,6 +865,7 @@ debug('UI', '🏪 Commodity Exchange requested');
         if (!document.head.querySelector('style[data-station-menu]')) {
             style.setAttribute('data-station-menu', 'true');
             document.head.appendChild(style);
+            this._styleElement = style;
         }
     }
 
@@ -1016,27 +1032,95 @@ debug('UI', '🏪 Commodity Exchange requested');
     }
     
     dispose() {
+        this.destroy();
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('UI', 'DockingInterface destroy() called - cleaning up all resources');
+
+        // Remove launch button event listeners
+        if (this.launchButton) {
+            if (this._boundHandlers.launchButtonMouseEnter) {
+                this.launchButton.removeEventListener('mouseenter', this._boundHandlers.launchButtonMouseEnter);
+            }
+            if (this._boundHandlers.launchButtonMouseLeave) {
+                this.launchButton.removeEventListener('mouseleave', this._boundHandlers.launchButtonMouseLeave);
+            }
+            if (this._boundHandlers.launchButtonClick) {
+                this.launchButton.removeEventListener('click', this._boundHandlers.launchButtonClick);
+            }
+        }
+
+        // Clear bound handlers
+        this._boundHandlers.launchButtonMouseEnter = null;
+        this._boundHandlers.launchButtonMouseLeave = null;
+        this._boundHandlers.launchButtonClick = null;
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Clean up child services
+        if (this.stationRepairInterface && typeof this.stationRepairInterface.destroy === 'function') {
+            this.stationRepairInterface.destroy();
+        }
+        this.stationRepairInterface = null;
+
+        if (this.missionBoard && typeof this.missionBoard.destroy === 'function') {
+            this.missionBoard.destroy();
+        }
+        this.missionBoard = null;
+
+        if (this.commodityExchange && typeof this.commodityExchange.destroy === 'function') {
+            this.commodityExchange.destroy();
+        }
+        this.commodityExchange = null;
+
+        // Note: Don't destroy cardInventoryUI as it's a singleton shared with other components
+
         // Clean up 3D resources
         if (this.wireframeRenderer) {
             this.wireframeRenderer.dispose();
             this.wireframeRenderer = null;
         }
-        
+
         if (this.stationWireframe) {
-            this.wireframeScene.remove(this.stationWireframe);
+            if (this.wireframeScene) {
+                this.wireframeScene.remove(this.stationWireframe);
+            }
             this.stationWireframe = null;
         }
-        
+
         if (this.wireframeScene) {
             this.wireframeScene = null;
         }
-        
+
         if (this.wireframeCamera) {
             this.wireframeCamera = null;
         }
-        
+
+        // Remove container from DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
+        this.container = null;
+
+        // Clear element references
+        this.header = null;
+        this.launchButton = null;
+        this.servicesGrid = null;
+
+        // Clear other references
+        this.starfieldManager = null;
+        this.dockedLocation = null;
+        this.THREE = null;
+        this.isVisible = false;
+
+        debug('UI', 'DockingInterface cleanup complete');
     }
 } 

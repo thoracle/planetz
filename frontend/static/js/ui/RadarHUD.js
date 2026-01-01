@@ -238,10 +238,7 @@ debug('UI', `🎯 ProximityDetector: ${this.isVisible ? 'Enabled' : 'Disabled'}`
             
             // Only log significant spec changes
             if (this.lastSpecLevel !== radarSystem.level) {
-                console.log(`🎯 ProximityDetector: Updated to Level ${radarSystem.level} specifications:`, {
-                    range: `${(this.config.range / 1000).toFixed(0)}km`,
-                    updateFrequency: `${this.config.updateFrequency}Hz`
-                });
+                debug('UI', `🎯 ProximityDetector: Updated to Level ${radarSystem.level} specifications: range=${(this.config.range / 1000).toFixed(0)}km, updateFrequency=${this.config.updateFrequency}Hz`);
                 this.lastSpecLevel = radarSystem.level;
             }
         } else {
@@ -754,11 +751,30 @@ debug('UI', 'ProximityDetector: Using basic detector specifications');
      * Cleanup radar resources
      */
     destroy() {
+        // Remove DOM element
         if (this.radarContainer && this.radarContainer.parentNode) {
             this.radarContainer.parentNode.removeChild(this.radarContainer);
         }
-        
+
+        // Clear tracked objects
         this.trackedObjects.clear();
-debug('UI', 'RadarHUD: Destroyed');
+
+        // Null out references to prevent memory leaks
+        this.radarContainer = null;
+        this.radarCanvas = null;
+        this.radarContext = null;
+        this.radarInfo = null;
+        this.starfieldManager = null;
+        this.container = null;
+        this.THREE = null;
+
+        debug('UI', 'RadarHUD: Destroyed');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
     }
 }

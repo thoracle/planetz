@@ -19,7 +19,17 @@ export class MissionBoard {
         this.acceptedMissions = [];
         this.selectedMission = null;
         this.activeTab = 'available'; // new
-        
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            keydown: null,
+            availableTabClick: null,
+            activeTabClick: null
+        };
+
+        // Track style element for cleanup
+        this._styleElement = null;
+
         // Initialize Mission API Service
         this.missionAPI = new MissionAPIService();
         
@@ -155,13 +165,25 @@ export class MissionBoard {
         this.availableTabBtn.textContent = 'Available';
         this.availableTabBtn.className = 'mission-board-btn';
         this.availableTabBtn.style.cssText += 'padding: 8px 12px;';
-        this.availableTabBtn.addEventListener('click', () => { this.playCommandSound(); this.switchTab('available'); });
-        
+
+        // Create bound handler for cleanup
+        this._boundHandlers.availableTabClick = () => {
+            this.playCommandSound();
+            this.switchTab('available');
+        };
+        this.availableTabBtn.addEventListener('click', this._boundHandlers.availableTabClick);
+
         this.activeTabBtn = document.createElement('button');
         this.activeTabBtn.textContent = 'Active';
         this.activeTabBtn.className = 'mission-board-btn';
         this.activeTabBtn.style.cssText += 'padding: 8px 12px;';
-        this.activeTabBtn.addEventListener('click', () => { this.playCommandSound(); this.switchTab('active'); });
+
+        // Create bound handler for cleanup
+        this._boundHandlers.activeTabClick = () => {
+            this.playCommandSound();
+            this.switchTab('active');
+        };
+        this.activeTabBtn.addEventListener('click', this._boundHandlers.activeTabClick);
         
         tabs.appendChild(this.availableTabBtn);
         tabs.appendChild(this.activeTabBtn);
@@ -417,10 +439,10 @@ export class MissionBoard {
     }
     
     bindEvents() {
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (event) => {
+        // Create bound keydown handler for cleanup
+        this._boundHandlers.keydown = (event) => {
             if (!this.isVisible) return;
-            
+
             switch (event.key) {
                 case 'Escape':
                     event.preventDefault();
@@ -433,7 +455,10 @@ export class MissionBoard {
                     }
                     break;
             }
-        });
+        };
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', this._boundHandlers.keydown);
     }
     
     async loadAvailableMissions() {
@@ -461,7 +486,7 @@ debug('AI', 'No missions available, attempting to generate some...');
             }
             
         } catch (error) {
-            console.error('❌ Failed to load missions:', error);
+            debug('MISSIONS', '❌ Failed to load missions:', error);
             this.showError('Failed to load missions from server');
         }
     }
@@ -680,7 +705,7 @@ debug('MISSIONS', `✅ Mission accepted: ${this.selectedMission.title}`);
             }
             
         } catch (error) {
-            console.error('❌ Failed to accept mission:', error);
+            debug('MISSIONS', '❌ Failed to accept mission:', error);
             this.showError(`Failed to accept mission: ${error.message}`);
         } finally {
             this.acceptButton.disabled = false;
@@ -738,8 +763,8 @@ debug('MISSIONS', '🎲 Generating mission with clean player data:', cleanPlayer
             try {
                 jsonPayload = JSON.stringify(requestPayload);
             } catch (jsonError) {
-                console.error('❌ JSON serialization error:', jsonError);
-                console.error('Problematic payload:', requestPayload);
+                debug('MISSIONS', '❌ JSON serialization error:', jsonError);
+                debug('MISSIONS', 'Problematic payload:', requestPayload);
                 throw new Error(`JSON serialization failed: ${jsonError.message}`);
             }
 
@@ -756,7 +781,7 @@ debug('MISSIONS', `🎲 Generated mission: ${result.mission.title}`);
             }
             
         } catch (error) {
-            console.error('❌ Failed to generate mission:', error);
+            debug('MISSIONS', '❌ Failed to generate mission:', error);
             this.showError(`Failed to generate mission: ${error.message}`);
         } finally {
             this.generateButton.disabled = false;
@@ -925,9 +950,10 @@ debug('MISSIONS', 'Mission Board closed');
     
     addStyles() {
         if (document.getElementById('mission-board-styles')) return;
-        
+
         const style = document.createElement('style');
         style.id = 'mission-board-styles';
+        this._styleElement = style; // Track for cleanup
         style.textContent = `
             .mission-board-btn {
                 background: rgba(0, 0, 0, 0.5);
@@ -1041,7 +1067,7 @@ debug('MISSIONS', `🎯 Generating missions for station: ${this.currentLocationK
             await this.loadAvailableMissions();
             
         } catch (error) {
-            console.error('❌ Failed to generate station missions:', error);
+            debug('MISSIONS', '❌ Failed to generate station missions:', error);
         }
     }
     
@@ -1116,7 +1142,7 @@ debug('MISSIONS', `🎯 Generating missions for station: ${this.currentLocationK
             this.updateActiveMissionList();
             this.updateMissionCount();
         } catch (e) {
-            console.error('❌ Failed to load active missions:', e);
+            debug('MISSIONS', '❌ Failed to load active missions:', e);
         }
     }
     
@@ -1147,5 +1173,74 @@ debug('MISSIONS', `🎯 Generating missions for station: ${this.currentLocationK
             audio.volume = 0.5;
             audio.play().catch(() => {});
         } catch (_) {}
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('MISSIONS', 'MissionBoard destroy() called - cleaning up all resources');
+
+        // Remove document-level keydown listener
+        if (this._boundHandlers.keydown) {
+            document.removeEventListener('keydown', this._boundHandlers.keydown);
+            this._boundHandlers.keydown = null;
+        }
+
+        // Remove tab button event listeners
+        if (this.availableTabBtn && this._boundHandlers.availableTabClick) {
+            this.availableTabBtn.removeEventListener('click', this._boundHandlers.availableTabClick);
+            this._boundHandlers.availableTabClick = null;
+        }
+
+        if (this.activeTabBtn && this._boundHandlers.activeTabClick) {
+            this.activeTabBtn.removeEventListener('click', this._boundHandlers.activeTabClick);
+            this._boundHandlers.activeTabClick = null;
+        }
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Remove container from DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        this.container = null;
+
+        // Clear element references
+        this.availableTabBtn = null;
+        this.activeTabBtn = null;
+        this.listPanel = null;
+        this.activePanel = null;
+        this.missionList = null;
+        this.activeMissionList = null;
+        this.detailsPanel = null;
+        this.detailsContent = null;
+        this.contentArea = null;
+        this.footer = null;
+        this.acceptButton = null;
+        this.returnButton = null;
+
+        // Clear data
+        this.availableMissions = [];
+        this.acceptedMissions = [];
+        this.selectedMission = null;
+
+        // Clear references
+        this.starfieldManager = null;
+        this.missionAPI = null;
+        this.isVisible = false;
+
+        debug('MISSIONS', 'MissionBoard cleanup complete');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
     }
 }

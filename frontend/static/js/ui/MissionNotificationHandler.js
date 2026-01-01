@@ -13,7 +13,12 @@ export class MissionNotificationHandler {
         this.starfieldManager = starfieldManager;
         this.missionManager = null; // To be set when mission manager is available
         this.missionAPI = new MissionAPIService();
-        
+
+        // Memory leak prevention: track handlers and timeouts
+        this._apiHandlers = {};
+        this._managerHandlers = {};
+        this._pendingTimeouts = new Set();
+
         // Notification settings
         this.notificationSettings = {
             objectiveComplete: {
@@ -67,24 +72,29 @@ debug('MISSIONS', '📢 MissionNotificationHandler: Mission manager attached');
      * Setup event listeners for mission events
      */
     setupEventListeners() {
+        // Create and store handlers for cleanup
+        this._apiHandlers = {
+            missionAccepted: (data) => {
+                this.onMissionAccepted(data.mission);
+            },
+            missionCompleted: (data) => {
+                this.onMissionComplete(data.mission);
+            },
+            missionFailed: (data) => {
+                this.onMissionFailed(data.mission, data.reason);
+            },
+            objectiveCompleted: (data) => {
+                this.onObjectiveComplete(data.objective, data.mission);
+            }
+        };
+
         // Connect to mission API events
-        this.missionAPI.addEventListener('missionAccepted', (data) => {
-            this.onMissionAccepted(data.mission);
-        });
-        
-        this.missionAPI.addEventListener('missionCompleted', (data) => {
-            this.onMissionComplete(data.mission);
-        });
-        
-        this.missionAPI.addEventListener('missionFailed', (data) => {
-            this.onMissionFailed(data.mission, data.reason);
-        });
-        
-        this.missionAPI.addEventListener('objectiveCompleted', (data) => {
-            this.onObjectiveComplete(data.objective, data.mission);
-        });
-        
-debug('MISSIONS', '📢 MissionNotificationHandler: Event listeners ready and connected to mission API');
+        this.missionAPI.addEventListener('missionAccepted', this._apiHandlers.missionAccepted);
+        this.missionAPI.addEventListener('missionCompleted', this._apiHandlers.missionCompleted);
+        this.missionAPI.addEventListener('missionFailed', this._apiHandlers.missionFailed);
+        this.missionAPI.addEventListener('objectiveCompleted', this._apiHandlers.objectiveCompleted);
+
+        debug('MISSIONS', '📢 MissionNotificationHandler: Event listeners ready and connected to mission API');
     }
     
     /**
@@ -92,14 +102,23 @@ debug('MISSIONS', '📢 MissionNotificationHandler: Event listeners ready and co
      */
     attachMissionManagerEvents() {
         if (!this.missionManager) return;
-        
-        // Example event bindings (adjust based on actual mission manager API)
+
+        // Create and store bound handlers for cleanup
+        this._managerHandlers = {
+            objectiveCompleted: this.onObjectiveComplete.bind(this),
+            missionCompleted: this.onMissionComplete.bind(this),
+            missionFailed: this.onMissionFailed.bind(this),
+            missionAccepted: this.onMissionAccepted.bind(this),
+            objectiveFailed: this.onObjectiveFailed.bind(this)
+        };
+
+        // Attach event bindings (adjust based on actual mission manager API)
         if (typeof this.missionManager.on === 'function') {
-            this.missionManager.on('objectiveCompleted', this.onObjectiveComplete.bind(this));
-            this.missionManager.on('missionCompleted', this.onMissionComplete.bind(this));
-            this.missionManager.on('missionFailed', this.onMissionFailed.bind(this));
-            this.missionManager.on('missionAccepted', this.onMissionAccepted.bind(this));
-            this.missionManager.on('objectiveFailed', this.onObjectiveFailed.bind(this));
+            this.missionManager.on('objectiveCompleted', this._managerHandlers.objectiveCompleted);
+            this.missionManager.on('missionCompleted', this._managerHandlers.missionCompleted);
+            this.missionManager.on('missionFailed', this._managerHandlers.missionFailed);
+            this.missionManager.on('missionAccepted', this._managerHandlers.missionAccepted);
+            this.missionManager.on('objectiveFailed', this._managerHandlers.objectiveFailed);
         }
     }
     
@@ -534,78 +553,76 @@ debug('UI', `📢 Urgent alert: ${alertText}`);
      * Test notification system with mock data
      */
     testNotifications() {
-debug('MISSIONS', '📢 Testing mission notifications...');
-        
+        debug('MISSIONS', '📢 Testing mission notifications...');
+
         const mockMission = {
             id: 'test_mission',
             title: 'Test Mission',
             giver: 'Admiral Chen',
             description: 'This is a test mission for notification system'
         };
-        
+
         const mockObjective = {
             id: 'test_objective',
             description: 'Destroy enemy fighters'
         };
-        
-        // Test sequence with delays
-        setTimeout(() => {
-            this.onMissionAccepted(mockMission);
-        }, 1000);
-        
-        setTimeout(() => {
-            this.sendMissionBriefing(mockMission);
-        }, 3000);
-        
-        setTimeout(() => {
-            this.sendProgressNotification(mockMission, 'Enemy squadron located in sector 7');
-        }, 6000);
-        
-        setTimeout(() => {
-            this.onObjectiveComplete(mockObjective, mockMission);
-        }, 9000);
-        
-        setTimeout(() => {
-            this.sendMissionUpdate(mockMission, 'Proceed to extraction point');
-        }, 12000);
-        
-        setTimeout(() => {
-            this.onMissionComplete(mockMission);
-        }, 15000);
-        
-debug('UI', '📢 Test notifications scheduled');
+
+        // Test sequence with delays - track timeouts for cleanup
+        const delays = [1000, 3000, 6000, 9000, 12000, 15000];
+        const actions = [
+            () => this.onMissionAccepted(mockMission),
+            () => this.sendMissionBriefing(mockMission),
+            () => this.sendProgressNotification(mockMission, 'Enemy squadron located in sector 7'),
+            () => this.onObjectiveComplete(mockObjective, mockMission),
+            () => this.sendMissionUpdate(mockMission, 'Proceed to extraction point'),
+            () => this.onMissionComplete(mockMission)
+        ];
+
+        delays.forEach((delay, index) => {
+            const timeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(timeoutId);
+                actions[index]();
+            }, delay);
+            this._pendingTimeouts.add(timeoutId);
+        });
+
+        debug('UI', '📢 Test notifications scheduled');
     }
     
     /**
      * Test failure notifications
      */
     testFailureNotifications() {
-debug('AI', '📢 Testing failure notifications...');
-        
+        debug('AI', '📢 Testing failure notifications...');
+
         const mockMission = {
             id: 'test_mission_fail',
             title: 'Failed Test Mission',
             giver: 'Commander Torres'
         };
-        
+
         const mockObjective = {
             id: 'test_objective_fail',
             description: 'Protect convoy'
         };
-        
-        setTimeout(() => {
-            this.sendUrgentAlert(mockMission, 'Multiple enemy contacts detected!');
-        }, 1000);
-        
-        setTimeout(() => {
-            this.onObjectiveFailed(mockObjective, mockMission);
-        }, 4000);
-        
-        setTimeout(() => {
-            this.onMissionFailed(mockMission, 'Time limit exceeded');
-        }, 7000);
-        
-debug('AI', '📢 Failure test notifications scheduled');
+
+        // Track timeouts for cleanup
+        const delays = [1000, 4000, 7000];
+        const actions = [
+            () => this.sendUrgentAlert(mockMission, 'Multiple enemy contacts detected!'),
+            () => this.onObjectiveFailed(mockObjective, mockMission),
+            () => this.onMissionFailed(mockMission, 'Time limit exceeded')
+        ];
+
+        delays.forEach((delay, index) => {
+            const timeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(timeoutId);
+                actions[index]();
+            }, delay);
+            this._pendingTimeouts.add(timeoutId);
+        });
+
+        debug('AI', '📢 Failure test notifications scheduled');
     }
     
     /**
@@ -620,5 +637,61 @@ debug('AI', '📢 Failure test notifications scheduled');
      */
     updateNotificationSettings(settings) {
         this.notificationSettings = { ...this.notificationSettings, ...settings };
+    }
+
+    /**
+     * Clean up all resources
+     */
+    dispose() {
+        // Clear pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            this._pendingTimeouts.clear();
+        }
+
+        // Remove missionAPI event listeners
+        if (this.missionAPI && this._apiHandlers) {
+            if (typeof this.missionAPI.removeEventListener === 'function') {
+                this.missionAPI.removeEventListener('missionAccepted', this._apiHandlers.missionAccepted);
+                this.missionAPI.removeEventListener('missionCompleted', this._apiHandlers.missionCompleted);
+                this.missionAPI.removeEventListener('missionFailed', this._apiHandlers.missionFailed);
+                this.missionAPI.removeEventListener('objectiveCompleted', this._apiHandlers.objectiveCompleted);
+            }
+        }
+
+        // Remove missionManager event listeners
+        if (this.missionManager && this._managerHandlers) {
+            if (typeof this.missionManager.off === 'function') {
+                this.missionManager.off('objectiveCompleted', this._managerHandlers.objectiveCompleted);
+                this.missionManager.off('missionCompleted', this._managerHandlers.missionCompleted);
+                this.missionManager.off('missionFailed', this._managerHandlers.missionFailed);
+                this.missionManager.off('missionAccepted', this._managerHandlers.missionAccepted);
+                this.missionManager.off('objectiveFailed', this._managerHandlers.objectiveFailed);
+            }
+        }
+
+        // Remove global reference
+        if (window.missionNotificationHandler === this) {
+            delete window.missionNotificationHandler;
+        }
+
+        // Null out references
+        this.commHUD = null;
+        this.starfieldManager = null;
+        this.missionManager = null;
+        this.missionAPI = null;
+        this._apiHandlers = null;
+        this._managerHandlers = null;
+        this._pendingTimeouts = null;
+        this.notificationSettings = null;
+
+        debug('MISSIONS', '📢 MissionNotificationHandler: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }

@@ -103,7 +103,14 @@ export default class SubspaceRadio {
         this.messageInterval = null;
         this.lastMessageTime = 0;
         this.messageDelay = 15000; // 15 seconds between messages
-        
+
+        // Memory leak prevention: track bound handlers and timeouts
+        this._boundHandlers = {
+            resize: null,
+            keydown: null
+        };
+        this._pendingTimeouts = new Set();
+
         this.createUI();
         this.bindEvents();
         
@@ -164,25 +171,27 @@ debug('UTILITY', 'SubspaceRadio initialized');
         
         // Get container width for scrolling calculations
         this.containerWidth = window.innerWidth;
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
+
+        // Handle window resize - store handler for cleanup
+        this._boundHandlers.resize = () => {
             this.containerWidth = window.innerWidth;
-        });
+        };
+        window.addEventListener('resize', this._boundHandlers.resize);
     }
     
     bindEvents() {
-        // Bind R key for toggle
-        document.addEventListener('keydown', (event) => {
+        // Bind R key for toggle - store handler for cleanup
+        this._boundHandlers.keydown = (event) => {
             if (event.key.toLowerCase() === 'r') {
                 this.toggle();
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundHandlers.keydown);
     }
     
     toggle() {
         if (!this.ship) {
-            console.warn('No ship available for subspace radio');
+            debug('UTILITY', 'SubspaceRadio: No ship available');
             return;
         }
         
@@ -191,7 +200,6 @@ debug('UTILITY', 'SubspaceRadio initialized');
             debug('P1', `📻 SUBSPACE RADIO TOGGLE FAILED: No system found on ship`);
             debug('P1', `📻 Available systems: ${Array.from(this.ship.systems.keys()).join(', ')}`);
             debug('P1', `📻 Total systems count: ${this.ship.systems.size}`);
-            console.warn('No subspace radio system found on ship');
             // Add HUD error message for missing system
 debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfieldManager);
             if (this.starfieldManager && this.starfieldManager.showHUDEphemeral) {
@@ -200,7 +208,7 @@ debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfiel
                     'System not installed on this ship'
                 );
             } else {
-                console.warn('StarfieldManager not available for HUD ephemeral display');
+                debug('UTILITY', 'SubspaceRadio: StarfieldManager not available for HUD ephemeral display');
             }
             if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
                 this.starfieldManager.playCommandFailedSound();
@@ -230,7 +238,7 @@ debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfiel
                 
                 // Show specific error message in HUD
                 if (!subspaceRadio.isOperational()) {
-                    console.warn('Cannot activate Subspace Radio: System damaged or offline');
+                    debug('UTILITY', 'SubspaceRadio: Cannot activate - system damaged or offline');
                     if (this.starfieldManager && this.starfieldManager.showHUDEphemeral) {
                         this.starfieldManager.showHUDEphemeral(
                             'SUBSPACE RADIO OFFLINE',
@@ -238,7 +246,7 @@ debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfiel
                         );
                     }
                 } else if (!this.ship.hasSystemCardsSync('subspace_radio')) {
-                    console.warn('Cannot activate Subspace Radio: No subspace radio card installed');
+                    debug('UTILITY', 'SubspaceRadio: Cannot activate - no card installed');
                     if (this.starfieldManager && this.starfieldManager.showHUDEphemeral) {
                         this.starfieldManager.showHUDEphemeral(
                             'SUBSPACE RADIO UNAVAILABLE',
@@ -246,7 +254,7 @@ debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfiel
                         );
                     }
                 } else {
-                    console.warn('Cannot activate Subspace Radio: Insufficient energy');
+                    debug('UTILITY', 'SubspaceRadio: Cannot activate - insufficient energy');
                     if (this.starfieldManager && this.starfieldManager.showHUDEphemeral) {
                         this.starfieldManager.showHUDEphemeral(
                             'SUBSPACE RADIO ACTIVATION FAILED',
@@ -267,7 +275,7 @@ debug('AI', 'SubspaceRadio toggle: starfieldManager available?', !!this.starfiel
             if (subspaceRadio.activateRadio(this.ship)) {
                 this.show();
             } else {
-                console.warn('Failed to activate Subspace Radio');
+                debug('UTILITY', 'SubspaceRadio: Failed to activate');
             }
         }
     }
@@ -638,8 +646,12 @@ debug('UI', 'Subspace Radio deactivated');
                 // Check if there are queued messages to display
                 if (this.messageQueue.length > 0) {
                     const nextMessage = this.messageQueue.shift();
-                    // Use setTimeout to avoid immediate recursion
-                    setTimeout(() => this.displayMessage(nextMessage), 100);
+                    // Use setTimeout to avoid immediate recursion - track for cleanup
+                    const timeoutId = setTimeout(() => {
+                        this._pendingTimeouts.delete(timeoutId);
+                        this.displayMessage(nextMessage);
+                    }, 100);
+                    this._pendingTimeouts.add(timeoutId);
                 }
                 return;
             }
@@ -724,13 +736,49 @@ debug('UI', 'Subspace Radio deactivated');
     }
     
     dispose() {
+        // Stop message cycling
         this.stopMessageCycle();
-        
+
+        // Clear all pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            this._pendingTimeouts.clear();
+        }
+
+        // Remove event listeners
+        if (this._boundHandlers) {
+            if (this._boundHandlers.resize) {
+                window.removeEventListener('resize', this._boundHandlers.resize);
+            }
+            if (this._boundHandlers.keydown) {
+                document.removeEventListener('keydown', this._boundHandlers.keydown);
+            }
+        }
+
+        // Remove DOM element
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
-        
-debug('UI', 'SubspaceRadio disposed');
+
+        // Null out references
+        this.container = null;
+        this.textContainer = null;
+        this.statusIndicator = null;
+        this.ship = null;
+        this.starfieldManager = null;
+        this._boundHandlers = null;
+        this._pendingTimeouts = null;
+        this.messageQueue = [];
+        this.trackedObjects = null;
+
+        debug('UI', 'SubspaceRadio disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
     
     /**
@@ -773,7 +821,7 @@ debug('UI', 'SubspaceRadio disposed');
                     break;
             }
         }).catch(error => {
-            console.warn('Could not import SYSTEM_STATES:', error);
+            debug('UTILITY', `SubspaceRadio: Could not import SYSTEM_STATES: ${error.message}`);
             // Fallback to health percentage check
             const healthPercentage = subspaceRadio.healthPercentage;
             

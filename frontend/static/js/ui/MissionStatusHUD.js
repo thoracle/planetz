@@ -29,10 +29,30 @@ export class MissionStatusHUD {
         
         // Track missions showing completion to prevent refresh interference
         this.missionsShowingCompletion = new Set(); // mission_id set
-        
+
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
-        
+
+        // Track timeouts for cleanup
+        this.activeTimeouts = new Set();
+
+        // Bound event handlers for cleanup
+        this._boundHandlers = {
+            closeButtonClick: null,
+            closeButtonMouseEnter: null,
+            closeButtonMouseLeave: null
+        };
+
+        // Store missionAPI event handler references for cleanup
+        this._missionAPIHandlers = {
+            missionAccepted: null,
+            missionCompleted: null,
+            objectiveCompleted: null
+        };
+
+        // Store reference to close button for cleanup
+        this.closeButton = null;
+
         this.initialize();
     }
     
@@ -107,9 +127,9 @@ debug('AI', 'MissionStatusHUD: Container created');
         `;
         title.innerHTML = '◉ MISSION STATUS';
         
-        // Close button
-        const closeButton = document.createElement('div');
-        closeButton.style.cssText = `
+        // Close button (store reference for cleanup)
+        this.closeButton = document.createElement('div');
+        this.closeButton.style.cssText = `
             color: #ffffff;
             cursor: pointer;
             font-size: 16px;
@@ -119,17 +139,27 @@ debug('AI', 'MissionStatusHUD: Container created');
             background: rgba(0, 255, 65, 0.1);
             transition: all 0.2s ease;
         `;
-        closeButton.textContent = '[M] CLOSE';
-        closeButton.addEventListener('click', () => this.toggle());
-        closeButton.addEventListener('mouseenter', () => {
-            closeButton.style.background = 'rgba(0, 255, 65, 0.3)';
-        });
-        closeButton.addEventListener('mouseleave', () => {
-            closeButton.style.background = 'rgba(0, 255, 65, 0.1)';
-        });
-        
+        this.closeButton.textContent = '[M] CLOSE';
+
+        // Create bound handlers for cleanup
+        this._boundHandlers.closeButtonClick = () => this.toggle();
+        this._boundHandlers.closeButtonMouseEnter = () => {
+            if (this.closeButton) {
+                this.closeButton.style.background = 'rgba(0, 255, 65, 0.3)';
+            }
+        };
+        this._boundHandlers.closeButtonMouseLeave = () => {
+            if (this.closeButton) {
+                this.closeButton.style.background = 'rgba(0, 255, 65, 0.1)';
+            }
+        };
+
+        this.closeButton.addEventListener('click', this._boundHandlers.closeButtonClick);
+        this.closeButton.addEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+        this.closeButton.addEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+
         this.headerArea.appendChild(title);
-        this.headerArea.appendChild(closeButton);
+        this.headerArea.appendChild(this.closeButton);
         this.hudContainer.appendChild(this.headerArea);
     }
     
@@ -247,8 +277,33 @@ debug('UI', 'MissionStatusHUD: Started periodic updates');
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
-        
-debug('UI', 'MissionStatusHUD: Stopped periodic updates');
+
+        debug('UI', 'MissionStatusHUD: Stopped periodic updates');
+    }
+
+    /**
+     * Create a tracked timeout that can be cleaned up on destroy
+     * @param {Function} callback - Callback to execute
+     * @param {number} delay - Delay in milliseconds
+     * @returns {number} - Timeout ID
+     */
+    _createTrackedTimeout(callback, delay) {
+        const timeoutId = setTimeout(() => {
+            this.activeTimeouts.delete(timeoutId);
+            callback();
+        }, delay);
+        this.activeTimeouts.add(timeoutId);
+        return timeoutId;
+    }
+
+    /**
+     * Clear all tracked timeouts
+     */
+    _clearAllTimeouts() {
+        this.activeTimeouts.forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+        this.activeTimeouts.clear();
     }
     
     /**
@@ -257,12 +312,11 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
     async refreshMissions() {
         // Skip refresh if any missions are showing completion rewards
         if (this.missionsShowingCompletion && this.missionsShowingCompletion.size > 0) {
-            console.log('⏸️ MISSION COMPLETION: Refresh BLOCKED - missions showing completion rewards, size:', this.missionsShowingCompletion.size);
-            debug('UI', '⏸️ MissionStatusHUD: Refresh blocked - missions showing completion rewards');
+            debug('MISSIONS', `⏸️ MissionStatusHUD: Refresh blocked - ${this.missionsShowingCompletion.size} missions showing completion rewards`);
             return;
         }
-        
-        console.log('🔄 MISSION COMPLETION: Refresh PROCEEDING - no missions showing completion rewards');
+
+        debug('MISSIONS', '🔄 MissionStatusHUD: Refresh proceeding - no missions showing completion rewards');
         
         try {
             // Get active missions from API
@@ -288,9 +342,9 @@ debug('UI', 'MissionStatusHUD: Stopped periodic updates');
             this.activeMissions = [...processedApiMissions, ...completedMissionsShowingRewards];
             
             this.renderMissions();
-            debug('UI', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
+            debug('MISSIONS', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
         } catch (error) {
-            console.error('🎯 MissionStatusHUD: Error refreshing missions:', error);
+            debug('MISSIONS', `❌ MissionStatusHUD: Error refreshing missions: ${error.message}`);
             this.showErrorMessage('Failed to load missions');
             
             // Fallback to mock data for testing
@@ -312,9 +366,9 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
             this.activeMissions = updatedMissions.map(mission => this.processMissionForUI(mission));
             
             this.renderMissions();
-debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
+            debug('MISSIONS', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
         } catch (error) {
-            console.error('🎯 MissionStatusHUD: Error updating missions data:', error);
+            debug('MISSIONS', `❌ MissionStatusHUD: Error updating missions data: ${error.message}`);
             // Fallback to refresh if direct update fails
             this.refreshMissions();
         }
@@ -606,24 +660,24 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
     }
     
     /**
-     * Target a waypoint from Mission HUD objective click
+     * Target a waypoint from Mission HUD objective click (legacy version)
      */
-    targetWaypoint(waypointId) {
-        console.log('🎯 MISSION HUD: Targeting waypoint:', waypointId);
-        
+    targetWaypointLegacy(waypointId) {
+        debug('MISSIONS', `🎯 MISSION HUD: Targeting waypoint: ${waypointId}`);
+
         // Get the waypoint from WaypointManager
         if (window.waypointManager && window.waypointManager.activeWaypoints.has(waypointId)) {
             const waypoint = window.waypointManager.activeWaypoints.get(waypointId);
-            
+
             // Set CPU target to this waypoint
             if (window.starfieldManager?.targetComputerManager) {
                 window.starfieldManager.targetComputerManager.setWaypointTarget(waypoint);
-                console.log('✅ MISSION HUD: Waypoint targeted successfully');
+                debug('MISSIONS', '✅ MISSION HUD: Waypoint targeted successfully');
             } else {
-                console.error('❌ MISSION HUD: Target Computer Manager not available');
+                debug('MISSIONS', '❌ MISSION HUD: Target Computer Manager not available');
             }
         } else {
-            console.error('❌ MISSION HUD: Waypoint not found:', waypointId);
+            debug('MISSIONS', `❌ MISSION HUD: Waypoint not found: ${waypointId}`);
         }
     }
 
@@ -666,28 +720,28 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Target a waypoint by ID
      */
     targetWaypoint(waypointId) {
-        console.log('🎯 MISSION HUD: Targeting waypoint:', waypointId);
-        
+        debug('MISSIONS', `🎯 MISSION HUD: Targeting waypoint: ${waypointId}`);
+
         // Use targetWaypointViaCycle with waypoint ID directly (like other parts of the codebase)
         if (!window.targetComputerManager) {
-            console.error('❌ MISSION HUD: targetComputerManager not available');
+            debug('MISSIONS', '❌ MISSION HUD: targetComputerManager not available');
             return false;
         }
-        
+
         if (!window.targetComputerManager.targetWaypointViaCycle) {
-            console.error('❌ MISSION HUD: targetWaypointViaCycle method not available');
+            debug('MISSIONS', '❌ MISSION HUD: targetWaypointViaCycle method not available');
             return false;
         }
-        
+
         // Target the waypoint by ID - targetWaypointViaCycle handles finding the waypoint
         const success = window.targetComputerManager.targetWaypointViaCycle(waypointId);
-        
+
         if (success) {
-            console.log('✅ MISSION HUD: Waypoint targeted successfully:', waypointId);
+            debug('MISSIONS', `✅ MISSION HUD: Waypoint targeted successfully: ${waypointId}`);
         } else {
-            console.error('❌ MISSION HUD: Failed to target waypoint:', waypointId);
+            debug('MISSIONS', `❌ MISSION HUD: Failed to target waypoint: ${waypointId}`);
         }
-        
+
         return success;
     }
 
@@ -751,58 +805,34 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      */
     async showMissionCompletion(missionId, missionData, rewards) {
         try {
-            console.log('🎉 MISSION COMPLETION: showMissionCompletion called for:', missionId);
-            
+            debug('MISSIONS', `🎉 MISSION COMPLETION: showMissionCompletion called for: ${missionId}`);
+
             // CRITICAL FIX: Force Mission HUD to be visible for rewards
-            console.log('📺 MISSION COMPLETION: Current HUD visibility state:', {
-                isVisible: this.isVisible,
-                hudContainerDisplay: this.hudContainer?.style.display,
-                hudContainerInDOM: this.hudContainer ? document.body.contains(this.hudContainer) : false
-            });
-            
+            debug('MISSIONS', `📺 MISSION COMPLETION: HUD visible=${this.isVisible}`);
+
             if (!this.isVisible) {
-                console.log('📺 MISSION COMPLETION: Mission HUD not visible - auto-opening for rewards display');
+                debug('MISSIONS', '📺 MISSION COMPLETION: Auto-opening HUD for rewards display');
                 this.show();
-                debug('UI', '📺 Auto-opened Mission HUD for completion rewards display');
             } else {
-                console.log('📺 MISSION COMPLETION: Mission HUD already visible - ensuring it\'s properly displayed');
                 // Force display even if already "visible" - call show() anyway
                 this.show();
-                console.log('📺 MISSION COMPLETION: Force-called show() method to ensure visibility');
             }
-            
+
             // Small delay to ensure HUD is fully rendered
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             const panel = this.missionPanels.get(missionId);
             if (!panel) {
-                console.log('❌ MISSION COMPLETION: Panel not found for mission:', missionId);
-                console.log('❌ MISSION COMPLETION: Available panels:', Array.from(this.missionPanels.keys()));
-                debug('UI', `⚠️ Mission panel not found for completion: ${missionId}`);
+                debug('MISSIONS', `❌ MISSION COMPLETION: Panel not found for mission: ${missionId}`);
                 return;
             }
 
-            console.log('✅ MISSION COMPLETION: Panel found, proceeding with rewards display');
-            console.log('🔍 MISSION COMPLETION: Panel visibility check:');
-            console.log('  - panelExists:', !!panel);
-            console.log('  - panelInDOM:', document.body.contains(panel));
-            console.log('  - panelDisplay:', panel.style.display);
-            console.log('  - panelVisible:', panel.offsetParent !== null);
-            console.log('  - hudContainerVisible:', this.hudContainer.style.display);
-            console.log('  - hudInDOM:', document.body.contains(this.hudContainer));
-            console.log('🔍 MISSION COMPLETION: Mission data check:', {
-                missionInActiveMissions: this.activeMissions.some(m => m.id === missionId),
-                activeMissionsCount: this.activeMissions.length,
-                activeMissionIds: this.activeMissions.map(m => m.id),
-                completionTrackingSize: this.missionsShowingCompletion.size,
-                completionTrackingIds: Array.from(this.missionsShowingCompletion)
-            });
-            debug('UI', `🎉 Showing mission completion in HUD: ${missionId}`);
+            debug('MISSIONS', `✅ MISSION COMPLETION: Panel found for: ${missionId}`);
 
             // Block refreshes and mark the mission as completed
             this.missionsShowingCompletion.add(missionId);
-            console.log('🔒 MISSION COMPLETION: Added to completion tracking, size:', this.missionsShowingCompletion.size);
-            
+            debug('MISSIONS', `🔒 MISSION COMPLETION: Added to completion tracking, size: ${this.missionsShowingCompletion.size}`);
+
             const mission = this.activeMissions.find(m => m.id === missionId);
             if (mission) {
                 mission.status = 'completed';
@@ -810,77 +840,53 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
                 mission.rewards = rewards;
                 mission.completionData = missionData;
                 mission.hasRewardsSection = true; // Flag for preservation
-                console.log('🔧 MISSION COMPLETION: Marked mission as completed in activeMissions');
-                debug('UI', `✅ Marked mission as completed in HUD: ${missionId}`);
+                debug('MISSIONS', `✅ Marked mission as completed in HUD: ${missionId}`);
             } else {
-                console.log('❌ MISSION COMPLETION: Mission not found in activeMissions array');
+                debug('MISSIONS', '❌ MISSION COMPLETION: Mission not found in activeMissions array');
             }
 
             // Find the mission details section (where objectives are)
             const detailsSection = panel.querySelector('.mission-details');
             if (!detailsSection) {
-                console.log('❌ MISSION COMPLETION: .mission-details section not found');
-                debug('UI', `⚠️ Mission details section not found in panel: ${missionId}`);
+                debug('MISSIONS', `⚠️ Mission details section not found in panel: ${missionId}`);
                 return;
             }
 
             // Check if rewards section already exists (avoid duplicates)
             const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
             if (existingRewardsSection) {
-                console.log('⚠️ MISSION COMPLETION: Rewards section already exists');
-                debug('UI', `⚠️ Rewards section already exists for mission: ${missionId}`);
+                debug('MISSIONS', `⚠️ Rewards section already exists for mission: ${missionId}`);
                 return;
             }
 
             // Create and add rewards section
-            console.log('🔧 MISSION COMPLETION: Creating rewards section');
+            debug('MISSIONS', '🔧 MISSION COMPLETION: Creating rewards section');
             const rewardsSection = this.createRewardsSection(rewards, missionId);
             detailsSection.appendChild(rewardsSection);
-            console.log('✅ MISSION COMPLETION: Rewards section appended');
-            
-            // DEBUG: Check if rewards section is actually visible
-            console.log('🔍 MISSION COMPLETION: Rewards section visibility check:');
-            console.log('  - rewardsExists:', !!rewardsSection);
-            console.log('  - rewardsInDOM:', document.body.contains(rewardsSection));
-            console.log('  - rewardsDisplay:', rewardsSection.style.display);
-            console.log('  - rewardsVisible:', rewardsSection.offsetParent !== null);
-            console.log('  - rewardsHeight:', rewardsSection.offsetHeight);
-            console.log('  - rewardsWidth:', rewardsSection.offsetWidth);
-            console.log('  - detailsSectionVisible:', detailsSection.offsetParent !== null);
-            console.log('  - panelScrollTop:', panel.scrollTop);
-            console.log('  - panelScrollHeight:', panel.scrollHeight);
-            console.log('  - panelClientHeight:', panel.clientHeight);
-            
+
             // Update panel styling for completion
             panel.style.background = 'rgba(0, 60, 0, 0.4)';
             panel.style.border = '2px solid #00ff41';
             panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
-            
-            // Make rewards section VERY obvious for debugging
-            rewardsSection.style.background = 'rgba(255, 0, 0, 0.5)'; // Red background
-            rewardsSection.style.border = '3px solid #ff0000'; // Red border
-            rewardsSection.style.padding = '20px';
-            rewardsSection.style.margin = '10px';
-            console.log('🔴 MISSION COMPLETION: Added RED BACKGROUND to rewards section for visibility');
-            
-            console.log('🎨 MISSION COMPLETION: Panel styling updated');
-            debug('UI', `✅ Added rewards section to mission panel: ${missionId}`);
-            console.log('🏁 MISSION COMPLETION: showMissionCompletion completed successfully');
-            
-            // Verify the rewards section is still there after a short delay
-            setTimeout(() => {
+
+            // Make rewards section visible with highlighting
+            rewardsSection.style.background = 'rgba(0, 100, 0, 0.5)';
+            rewardsSection.style.border = '2px solid #00ff41';
+            rewardsSection.style.padding = '15px';
+            rewardsSection.style.margin = '10px 0';
+
+            debug('MISSIONS', `✅ Added rewards section to mission panel: ${missionId}`);
+
+            // Verify the rewards section is still there after a short delay (tracked for cleanup)
+            this._createTrackedTimeout(() => {
                 const stillExists = detailsSection.querySelector('.mission-rewards-section');
-                console.log('🔍 MISSION COMPLETION: Rewards section still exists after 1s:', !!stillExists);
                 if (!stillExists) {
-                    console.log('❌ MISSION COMPLETION: Rewards section was removed! Checking panel state...');
-                    console.log('❌ MISSION COMPLETION: Panel still in missionPanels:', this.missionPanels.has(missionId));
-                    console.log('❌ MISSION COMPLETION: Panel still in DOM:', document.contains(panel));
+                    debug('MISSIONS', `❌ MISSION COMPLETION: Rewards section was removed for ${missionId}`);
                 }
             }, 1000);
-            
+
         } catch (error) {
-            console.error('❌ MISSION COMPLETION: Error in showMissionCompletion:', error);
-            console.error('❌ MISSION COMPLETION: Stack trace:', error.stack);
+            debug('MISSIONS', `❌ MISSION COMPLETION: Error in showMissionCompletion: ${error.message}`);
         }
     }
 
@@ -1041,11 +1047,11 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * @param {string} missionId - Mission ID to remove
      */
     removeMission(missionId) {
-        debug('UI', `🗑️ Removing completed mission from HUD: ${missionId}`);
-        
+        debug('MISSIONS', `🗑️ Removing completed mission from HUD: ${missionId}`);
+
         // Remove from completion tracking to allow refreshes again
         this.missionsShowingCompletion.delete(missionId);
-        console.log('🔓 MISSION REMOVAL: Removed mission from completion tracking, allowing refreshes');
+        debug('MISSIONS', '🔓 MISSION REMOVAL: Removed mission from completion tracking, allowing refreshes');
         
         const panel = this.missionPanels.get(missionId);
         if (panel) {
@@ -1053,30 +1059,29 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
             panel.style.transition = 'all 0.3s ease';
             panel.style.opacity = '0';
             panel.style.transform = 'translateX(100%)';
-            
-            // Remove after animation
-            setTimeout(() => {
+
+            // Remove after animation (tracked for cleanup)
+            this._createTrackedTimeout(() => {
                 if (panel.parentNode) {
                     panel.parentNode.removeChild(panel);
                 }
                 this.missionPanels.delete(missionId);
-                
+
                 // Clean up expanded state tracking
                 this.expandedStates.delete(missionId);
-                
+
                 // Remove from active missions list
                 this.activeMissions = this.activeMissions.filter(m => m.id !== missionId);
-                
+
                 // Now actually delete the mission from caches (user has dismissed it)
                 this.deleteMissionFromCaches(missionId);
-                
+
                 // Show no missions message if empty
                 if (this.activeMissions.length === 0) {
                     this.showNoMissionsMessage();
                 }
-                
-                // Allow refreshes to resume now that mission is fully removed
-                console.log('🔄 MISSION REMOVAL: Mission fully removed, refreshes can resume');
+
+                debug('MISSIONS', '🔄 MISSION REMOVAL: Mission fully removed, refreshes can resume');
             }, 300);
         }
     }
@@ -1358,40 +1363,45 @@ debug('UI', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} m
      * Setup event listeners
      */
     setupEventListeners() {
-        // Listen to mission API events
-        this.missionAPI.addEventListener('missionAccepted', (data) => {
-debug('UI', 'MissionStatusHUD: Mission accepted', data.mission);
+        // Create bound handlers for missionAPI events (stored for cleanup)
+        this._missionAPIHandlers.missionAccepted = (data) => {
+            debug('UI', 'MissionStatusHUD: Mission accepted', data.mission);
             this.refreshMissions();
-        });
-        
-        this.missionAPI.addEventListener('missionCompleted', (data) => {
-debug('UI', 'MissionStatusHUD: Mission completed', data.mission);
+        };
+
+        this._missionAPIHandlers.missionCompleted = (data) => {
+            debug('UI', 'MissionStatusHUD: Mission completed', data.mission);
             this.refreshMissions();
-            
+
             // Play mission completion audio
             this.playMissionCompletionAudio();
-            
+
             // Show mission completion UI
             if (this.starfieldManager && this.starfieldManager.showMissionComplete) {
                 this.starfieldManager.showMissionComplete(data.mission.id, this.createCompletionData(data.mission));
             }
-        });
-        
-        this.missionAPI.addEventListener('objectiveCompleted', (data) => {
-debug('UI', 'MissionStatusHUD: Objective completed', data);
-            
+        };
+
+        this._missionAPIHandlers.objectiveCompleted = (data) => {
+            debug('UI', 'MissionStatusHUD: Objective completed', data);
+
             // Play objective completion audio
             this.playObjectiveCompletionAudio();
-            
+
             // Use direct update if we have mission data, otherwise refresh from API
             if (data.mission && Array.isArray([data.mission])) {
                 this.updateMissionsData([data.mission]);
             } else {
                 this.refreshMissions();
             }
-        });
-        
-debug('UI', 'MissionStatusHUD: Event listeners ready');
+        };
+
+        // Listen to mission API events
+        this.missionAPI.addEventListener('missionAccepted', this._missionAPIHandlers.missionAccepted);
+        this.missionAPI.addEventListener('missionCompleted', this._missionAPIHandlers.missionCompleted);
+        this.missionAPI.addEventListener('objectiveCompleted', this._missionAPIHandlers.objectiveCompleted);
+
+        debug('UI', 'MissionStatusHUD: Event listeners ready');
     }
     
     /**
@@ -1463,5 +1473,81 @@ debug('UI', 'MissionStatusHUD: Event listeners ready');
         } catch (error) {
             debug('MISSIONS', `⚠️ Error playing mission completion audio: ${error.message}`);
         }
+    }
+
+    /**
+     * Clean up all resources - call this when destroying the HUD
+     */
+    destroy() {
+        // Stop periodic updates
+        this.stopUpdates();
+
+        // Clear all tracked timeouts
+        this._clearAllTimeouts();
+
+        // Remove closeButton event listeners
+        if (this.closeButton && this._boundHandlers) {
+            this.closeButton.removeEventListener('click', this._boundHandlers.closeButtonClick);
+            this.closeButton.removeEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+            this.closeButton.removeEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+        }
+        this._boundHandlers = null;
+
+        // Remove missionAPI event listeners
+        if (this.missionAPI && this._missionAPIHandlers) {
+            if (this._missionAPIHandlers.missionAccepted) {
+                this.missionAPI.removeEventListener('missionAccepted', this._missionAPIHandlers.missionAccepted);
+            }
+            if (this._missionAPIHandlers.missionCompleted) {
+                this.missionAPI.removeEventListener('missionCompleted', this._missionAPIHandlers.missionCompleted);
+            }
+            if (this._missionAPIHandlers.objectiveCompleted) {
+                this.missionAPI.removeEventListener('objectiveCompleted', this._missionAPIHandlers.objectiveCompleted);
+            }
+        }
+        this._missionAPIHandlers = null;
+
+        // Clear Maps and Sets
+        if (this.missionPanels) {
+            this.missionPanels.clear();
+            this.missionPanels = null;
+        }
+        if (this.expandedStates) {
+            this.expandedStates.clear();
+            this.expandedStates = null;
+        }
+        if (this.missionsShowingCompletion) {
+            this.missionsShowingCompletion.clear();
+            this.missionsShowingCompletion = null;
+        }
+
+        // Remove HUD container from DOM
+        if (this.hudContainer && this.hudContainer.parentNode) {
+            this.hudContainer.parentNode.removeChild(this.hudContainer);
+        }
+
+        // Clear global reference
+        if (window.missionStatusHUD === this) {
+            window.missionStatusHUD = null;
+        }
+
+        // Null out all references
+        this.hudContainer = null;
+        this.headerArea = null;
+        this.contentArea = null;
+        this.closeButton = null;
+        this.activeMissions = null;
+        this.starfieldManager = null;
+        this.missionManager = null;
+        this.missionAPI = null;
+
+        debug('UI', '🧹 MissionStatusHUD destroyed - all resources cleaned up');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
     }
 }

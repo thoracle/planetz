@@ -15,8 +15,21 @@ export class CommodityExchange {
         this.marketData = new Map();
         this.container = null;
         this.dockingInterface = null; // Reference to return to docking
-        
-debug('UTILITY', '🏪 CommodityExchange: Initialized');
+
+        // Track active modal escape handlers for cleanup
+        this._activeEscapeHandlers = new Set();
+
+        // Track style elements for cleanup
+        this._styleElements = new Set();
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            returnBtnClick: null,
+            returnBtnMouseEnter: null,
+            returnBtnMouseLeave: null
+        };
+
+        debug('UTILITY', '🏪 CommodityExchange: Initialized');
     }
     
     /**
@@ -168,24 +181,31 @@ debug('UI', '🏪 CommodityExchange: Closed');
     setupEventListeners() {
         // Return to docking button
         const returnBtn = this.container.querySelector('#return-btn');
-        returnBtn.addEventListener('click', () => {
+        this._returnBtn = returnBtn; // Store reference for cleanup
+
+        // Create bound handlers for later removal
+        this._boundHandlers.returnBtnClick = () => {
             this.hide();
             if (this.dockingInterface) {
                 this.dockingInterface.returnToStationMenu();
             }
-        });
-        
-        // Add hover effects to return button
-        returnBtn.addEventListener('mouseenter', () => {
+        };
+
+        this._boundHandlers.returnBtnMouseEnter = () => {
             returnBtn.style.background = 'rgba(0, 255, 65, 0.2)';
             returnBtn.style.borderColor = '#44ff44';
             returnBtn.style.transform = 'scale(1.05)';
-        });
-        returnBtn.addEventListener('mouseleave', () => {
+        };
+
+        this._boundHandlers.returnBtnMouseLeave = () => {
             returnBtn.style.background = 'rgba(0, 0, 0, 0.5)';
             returnBtn.style.borderColor = '#00ff41';
             returnBtn.style.transform = 'scale(1)';
-        });
+        };
+
+        returnBtn.addEventListener('click', this._boundHandlers.returnBtnClick);
+        returnBtn.addEventListener('mouseenter', this._boundHandlers.returnBtnMouseEnter);
+        returnBtn.addEventListener('mouseleave', this._boundHandlers.returnBtnMouseLeave);
     }
     
     /**
@@ -311,7 +331,7 @@ debug('UI', '🏪 CommodityExchange: Closed');
     refreshCargoDisplay() {
         const ship = this.starfieldManager.ship;
         if (!ship || !ship.cargoHoldManager) {
-            console.warn('🚛 CommodityExchange: No ship or cargoHoldManager available');
+            debug('UI', '🚛 CommodityExchange: No ship or cargoHoldManager available');
             return;
         }
         
@@ -409,7 +429,7 @@ debug('UI', '🚛 CommodityExchange: Cargo manifest:', manifest);
         const progressText = this.container.querySelector('#cargo-progress-text');
         
         if (!progressFill || !progressText) {
-            console.warn('🚛 CommodityExchange: Progress bar elements not found');
+            debug('UI', '🚛 CommodityExchange: Progress bar elements not found');
             return;
         }
         
@@ -608,7 +628,7 @@ debug('UTILITY', `✅ Purchase successful: ${quantity} units loaded`);
                 // TODO: Reduce station availability
             } else {
                 // Failed to deduct credits - this should not happen after canAfford check
-                console.error('❌ Failed to deduct credits after successful cargo load');
+                debug('UI', '❌ Failed to deduct credits after successful cargo load');
                 this.showTradeNotification(`❌ Credit transaction failed`, 'error');
                 return;
             }
@@ -625,7 +645,7 @@ debug('UTILITY', `✅ Purchase successful: ${quantity} units loaded`);
                     this.currentStation,
                     { playerShip: ship.shipType }
                 ).catch(error => {
-                    console.error('🎯 Failed to send cargo loaded event:', error);
+                    debug('MISSIONS', '🎯 Failed to send cargo loaded event:', error);
                 });
             }
         } else {
@@ -659,7 +679,7 @@ debug('UI', `✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
                 
                 // TODO: Update station availability
             } else {
-                console.error('❌ Failed to add credits after successful cargo unload');
+                debug('UI', '❌ Failed to add credits after successful cargo unload');
                 this.showTradeNotification(`❌ Credit transaction failed`, 'error');
                 return;
             }
@@ -876,40 +896,6 @@ debug('UI', '🏪 Testing commodity exchange...');
             okButton.style.transform = 'scale(1)';
         });
         
-        // Close modal function
-        const closeModal = () => {
-            overlay.style.animation = 'fadeOut 0.3s ease';
-            modal.style.animation = 'scaleOut 0.3s ease';
-            setTimeout(() => {
-                if (overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-            }, 300);
-        };
-        
-        // Event listeners
-        okButton.addEventListener('click', closeModal);
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                closeModal();
-            }
-        });
-        
-        // Escape key to close
-        const escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                document.removeEventListener('keydown', escapeHandler);
-            }
-        };
-        document.addEventListener('keydown', escapeHandler);
-        
-        // Assemble modal
-        modal.appendChild(header);
-        modal.appendChild(messageDiv);
-        modal.appendChild(okButton);
-        overlay.appendChild(modal);
-        
         // Add CSS animations
         const style = document.createElement('style');
         style.textContent = `
@@ -931,20 +917,139 @@ debug('UI', '🏪 Testing commodity exchange...');
             }
         `;
         document.head.appendChild(style);
-        
+        this._styleElements.add(style);
+
+        // Escape key handler - defined before closeModal so it can be referenced
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
+        // Track handler for cleanup
+        this._activeEscapeHandlers.add(escapeHandler);
+
+        // Close modal function - cleans up all resources
+        const closeModal = () => {
+            // Remove escape handler from document
+            document.removeEventListener('keydown', escapeHandler);
+            this._activeEscapeHandlers.delete(escapeHandler);
+
+            // Remove style element
+            if (style.parentNode) {
+                style.parentNode.removeChild(style);
+            }
+            this._styleElements.delete(style);
+
+            // Animate and remove overlay
+            overlay.style.animation = 'fadeOut 0.3s ease';
+            modal.style.animation = 'scaleOut 0.3s ease';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        };
+
+        // Event listeners
+        okButton.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', escapeHandler);
+
+        // Assemble modal
+        modal.appendChild(header);
+        modal.appendChild(messageDiv);
+        modal.appendChild(okButton);
+        overlay.appendChild(modal);
+
         // Add to DOM
         document.body.appendChild(overlay);
-        
+
         // Auto-close after 5 seconds if user doesn't interact
         setTimeout(() => {
             if (overlay.parentNode) {
                 closeModal();
             }
         }, 5000);
-        
+
         // Focus the OK button for keyboard accessibility
         setTimeout(() => {
             okButton.focus();
         }, 100);
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('UI', '🏪 CommodityExchange: destroy() called - cleaning up all resources');
+
+        // Remove any active escape handlers from document
+        this._activeEscapeHandlers.forEach(handler => {
+            document.removeEventListener('keydown', handler);
+        });
+        this._activeEscapeHandlers.clear();
+
+        // Remove any style elements we added
+        this._styleElements.forEach(style => {
+            if (style.parentNode) {
+                style.parentNode.removeChild(style);
+            }
+        });
+        this._styleElements.clear();
+
+        // Remove return button event listeners
+        if (this._returnBtn) {
+            if (this._boundHandlers.returnBtnClick) {
+                this._returnBtn.removeEventListener('click', this._boundHandlers.returnBtnClick);
+            }
+            if (this._boundHandlers.returnBtnMouseEnter) {
+                this._returnBtn.removeEventListener('mouseenter', this._boundHandlers.returnBtnMouseEnter);
+            }
+            if (this._boundHandlers.returnBtnMouseLeave) {
+                this._returnBtn.removeEventListener('mouseleave', this._boundHandlers.returnBtnMouseLeave);
+            }
+            this._returnBtn = null;
+        }
+
+        // Clear bound handlers
+        this._boundHandlers.returnBtnClick = null;
+        this._boundHandlers.returnBtnMouseEnter = null;
+        this._boundHandlers.returnBtnMouseLeave = null;
+
+        // Remove any open trading modals
+        const existingModal = document.querySelector('.trading-notification-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Remove container from DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        this.container = null;
+
+        // Clear data structures
+        this.marketData.clear();
+
+        // Clear references
+        this.starfieldManager = null;
+        this.dockingInterface = null;
+        this.currentStation = null;
+        this.isVisible = false;
+
+        debug('UI', '🏪 CommodityExchange: cleanup complete');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
     }
 }

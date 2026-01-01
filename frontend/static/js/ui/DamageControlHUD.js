@@ -24,7 +24,24 @@ export default class DamageControlHUD {
         this.elements = {};
         this.updateInterval = null;
         this.buttonStateInterval = null;
-        
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            closeButtonClick: null,
+            closeButtonMouseEnter: null,
+            closeButtonMouseLeave: null,
+            systemsListClick: null
+        };
+
+        // Store close button reference for cleanup
+        this._closeButton = null;
+
+        // Memory leak prevention: track style element for cleanup
+        this._styleElement = null;
+
+        // Track dynamically created button handlers for cleanup
+        this._buttonHandlers = new Map(); // Maps button element -> {mouseenter, mouseleave}
+
         this.init();
     }
     
@@ -96,21 +113,23 @@ export default class DamageControlHUD {
             text-shadow: 0 0 4px rgba(0, 255, 65, 0.6);
         `;
         
-        // Add hover effects
-        closeButton.addEventListener('mouseenter', () => {
+        // Store close button reference for cleanup
+        this._closeButton = closeButton;
+
+        // Create bound handlers for cleanup
+        this._boundHandlers.closeButtonMouseEnter = () => {
             closeButton.style.backgroundColor = 'rgba(0, 255, 65, 0.4)';
             closeButton.style.boxShadow = '0 0 12px rgba(0, 255, 65, 0.8)';
             closeButton.style.textShadow = '0 0 8px rgba(0, 255, 65, 1)';
-        });
-        
-        closeButton.addEventListener('mouseleave', () => {
+        };
+
+        this._boundHandlers.closeButtonMouseLeave = () => {
             closeButton.style.backgroundColor = 'rgba(0, 255, 65, 0.2)';
             closeButton.style.boxShadow = 'none';
             closeButton.style.textShadow = '0 0 4px rgba(0, 255, 65, 0.6)';
-        });
-        
-        // Add click handler to close the ops HUD
-        closeButton.addEventListener('click', () => {
+        };
+
+        this._boundHandlers.closeButtonClick = () => {
             // Use the same method as the O key to properly sync state
             if (this.starfieldManager && this.starfieldManager.toggleDamageControl) {
                 this.starfieldManager.playCommandSound();
@@ -119,8 +138,15 @@ export default class DamageControlHUD {
                 // Fallback if starfieldManager is not available
                 this.hide();
             }
-        });
-        
+        };
+
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+        closeButton.addEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+
+        // Add click handler to close the ops HUD
+        closeButton.addEventListener('click', this._boundHandlers.closeButtonClick);
+
         this.elements.header.appendChild(headerContent);
         this.elements.header.appendChild(closeButton);
         this.container.appendChild(this.elements.header);
@@ -223,64 +249,61 @@ export default class DamageControlHUD {
             padding-right: 5px;
         `;
         
-        // Add custom scrollbar styling
-        const style = document.createElement('style');
-        style.textContent = `
-            .damage-control-systems-list::-webkit-scrollbar {
-                width: 8px;
-            }
-            .damage-control-systems-list::-webkit-scrollbar-track {
-                background: rgba(0, 0, 0, 0.3);
-                border-radius: 4px;
-            }
-            .damage-control-systems-list::-webkit-scrollbar-thumb {
-                background: #00ff41;
-                border-radius: 4px;
-            }
-            .damage-control-systems-list::-webkit-scrollbar-thumb:hover {
-                background: #00cc33;
-            }
-        `;
-        document.head.appendChild(style);
+        // Add custom scrollbar styling (only if not already added)
+        if (!this._styleElement) {
+            const style = document.createElement('style');
+            style.textContent = `
+                .damage-control-systems-list::-webkit-scrollbar {
+                    width: 8px;
+                }
+                .damage-control-systems-list::-webkit-scrollbar-track {
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 4px;
+                }
+                .damage-control-systems-list::-webkit-scrollbar-thumb {
+                    background: #00ff41;
+                    border-radius: 4px;
+                }
+                .damage-control-systems-list::-webkit-scrollbar-thumb:hover {
+                    background: #00cc33;
+                }
+            `;
+            document.head.appendChild(style);
+            this._styleElement = style; // Track for cleanup
+        }
         
         this.elements.systemsList.className = 'damage-control-systems-list';
         this.container.appendChild(this.elements.systemsList);
     }
     
     bindEvents() {
-        // Event delegation for both toggle buttons and speed control buttons
-        this.elements.systemsList.addEventListener('click', (event) => {
+        // Create bound handler for cleanup
+        this._boundHandlers.systemsListClick = (event) => {
             // Handle regular toggle buttons
             if (event.target.matches('.damage-control-toggle-btn')) {
                 const systemName = event.target.dataset.systemName;
-                console.log('🔧 Button clicked:', {
-                    systemName,
-                    disabled: event.target.disabled,
-                    hasSystemName: !!systemName,
-                    buttonText: event.target.textContent
-                });
+                debug('UI', `🔧 Button clicked: systemName=${systemName}, disabled=${event.target.disabled}`);
                 if (systemName && !event.target.disabled) {
-debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
+                    debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
                     this.toggleSystem(systemName);
                 } else {
-                    console.log('🔧 Button click ignored:', {
-                        reason: !systemName ? 'no system name' : 'button disabled',
-                        systemName,
-                        disabled: event.target.disabled
-                    });
+                    debug('UI', `🔧 Button click ignored: ${!systemName ? 'no system name' : 'button disabled'}`);
                 }
             }
             // Handle impulse speed control buttons
             else if (event.target.matches('.impulse-speed-btn')) {
                 const systemName = event.target.dataset.systemName;
                 const action = event.target.dataset.action;
-                
+
                 if (systemName && action && !event.target.disabled) {
-                    console.log('🔧 Speed button clicked:', { systemName, action });
+                    debug('UI', `🔧 Speed button clicked: systemName=${systemName}, action=${action}`);
                     this.adjustImpulseSpeed(action);
                 }
             }
-        });
+        };
+
+        // Event delegation for both toggle buttons and speed control buttons
+        this.elements.systemsList.addEventListener('click', this._boundHandlers.systemsListClick);
     }
     
     adjustImpulseSpeed(action) {
@@ -288,7 +311,7 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
         const impulseEngines = ship?.getSystem('impulse_engines');
         
         if (!impulseEngines) {
-            console.warn('Cannot adjust impulse speed: no impulse engines');
+            debug('UI', '⚠️ Cannot adjust impulse speed: no impulse engines');
             return;
         }
         
@@ -399,11 +422,13 @@ debug('AI', `🔧 Toggle button clicked for: ${systemName}`);
         
         
         if (!unfilteredStatus || !unfilteredStatus.systems) {
-            console.warn('No ship status available for operations report');
+            debug('UI', '⚠️ No ship status available for operations report');
             return;
         }
-        
-        
+
+        // Clean up existing button handlers before recreating buttons
+        this._cleanupButtonHandlers();
+
         // Clear systems list
         this.elements.systemsList.innerHTML = '';
         
@@ -772,17 +797,20 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 line-height: 1;
             `;
             
-            // Add hover effects for enabled buttons
+            // Add hover effects for enabled buttons (track for cleanup)
             if (!button.disabled) {
-                button.addEventListener('mouseenter', () => {
+                const mouseEnterHandler = () => {
                     button.style.backgroundColor = 'rgba(0, 255, 65, 0.4)';
                     button.style.boxShadow = '0 0 8px rgba(0, 255, 65, 0.5)';
-                });
-                
-                button.addEventListener('mouseleave', () => {
+                };
+                const mouseLeaveHandler = () => {
                     button.style.backgroundColor = 'rgba(0, 255, 65, 0.2)';
                     button.style.boxShadow = 'none';
-                });
+                };
+                button.addEventListener('mouseenter', mouseEnterHandler);
+                button.addEventListener('mouseleave', mouseLeaveHandler);
+                // Track handlers for cleanup
+                this._buttonHandlers.set(button, { mouseenter: mouseEnterHandler, mouseleave: mouseLeaveHandler });
             }
         });
         
@@ -866,9 +894,9 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
         // Click handler is handled by event delegation in bindEvents()
         // No need for direct onclick handler to avoid double-firing
         
-        // Hover effects (only if button is enabled)
+        // Hover effects (only if button is enabled) - track for cleanup
         if (!isDisabled && !isDamaged) {
-            button.addEventListener('mouseenter', () => {
+            const mouseEnterHandler = () => {
                 if (!isDisabled) {
                     button.style.transform = 'scale(1.05)';
                     // Use the stored system state for hover effects
@@ -879,12 +907,15 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         button.style.borderColor = '#ff4444';
                     }
                 }
-            });
-
-            button.addEventListener('mouseleave', () => {
+            };
+            const mouseLeaveHandler = () => {
                 button.style.transform = 'scale(1)';
                 button.style.borderColor = '#555';
-            });
+            };
+            button.addEventListener('mouseenter', mouseEnterHandler);
+            button.addEventListener('mouseleave', mouseLeaveHandler);
+            // Track handlers for cleanup
+            this._buttonHandlers.set(button, { mouseenter: mouseEnterHandler, mouseleave: mouseLeaveHandler });
         }
 
         return button;
@@ -958,7 +989,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
     updateButtonState(systemName, logUpdate = true) {
         const button = this.elements.systemsList.querySelector(`[data-system-name="${systemName}"]`);
         if (!button) {
-            if (logUpdate) console.warn(`Button not found for system: ${systemName}`);
+            if (logUpdate) debug('UI', `⚠️ Button not found for system: ${systemName}`);
             return;
         }
         
@@ -1028,28 +1059,23 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             // Passive systems cannot be toggled
             const passiveSystems = ['energy_reactor', 'hull_plating', 'impulse_engines', 'warp_drive', 'cargo_hold'];
             if (passiveSystems.includes(systemName)) {
-                console.warn(`Cannot toggle passive system: ${systemName}`);
+                debug('UI', `⚠️ Cannot toggle passive system: ${systemName}`);
                 return;
             }
-            
+
             const ship = this.ship;
             if (!ship || !ship.getSystem) {
-                console.error('No ship or ship.getSystem method available for system toggle');
+                debug('UI', '❌ No ship or ship.getSystem method available for system toggle');
                 return;
             }
 
             const system = ship.getSystem(systemName);
             if (!system) {
-                console.error(`System ${systemName} not found`);
+                debug('UI', `❌ System ${systemName} not found`);
                 return;
             }
 
-            console.log(`System ${systemName} current state:`, {
-                isActive: system.isActive,
-                hasActivate: typeof system.activate === 'function',
-                hasDeactivate: typeof system.deactivate === 'function',
-                hasCanActivate: typeof system.canActivate === 'function'
-            });
+            debug('UI', `System ${systemName} current state: isActive=${system.isActive}, hasActivate=${typeof system.activate === 'function'}`);
 
             // Special handling for systems with keyboard shortcuts - do exactly what keys do
             if (systemName === 'target_computer') {
@@ -1108,7 +1134,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         }
                     }
                 } else {
-                    console.error('StarfieldManager or toggleTargetComputer method not available');
+                    debug('UI', '❌ StarfieldManager or toggleTargetComputer method not available');
                     return;
                 }
             } else if (systemName === 'shields') {
@@ -1213,11 +1239,11 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         if (scanStarted) {
                             // Show the long range scanner interface
                             this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner.show();
-                            
+
                             // Update button state immediately
                             setTimeout(() => this.updateButtonState(systemName), 50);
                         } else {
-                            console.warn('🔧 Failed to start Long Range Scanner');
+                            debug('UI', '⚠️ Failed to start Long Range Scanner');
                         }
                     } else {
                         // Same error handling as L key
@@ -1241,7 +1267,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         }
                     }
                 } else {
-                    console.error('ViewManager not available for Long Range Scanner');
+                    debug('UI', '❌ ViewManager not available for Long Range Scanner');
                 }
             } else if (systemName === 'star_charts') {
                 // Star Charts - do exactly what C key does (via ViewManager)
@@ -1288,7 +1314,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         }
                     }
                 } else {
-                    console.error('ViewManager not available for Star Charts');
+                    debug('UI', '❌ ViewManager not available for Star Charts');
                 }
             } else if (systemName === 'galactic_chart') {
                 // Galactic Chart - do exactly what G key does (via ViewManager)
@@ -1335,7 +1361,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         }
                     }
                 } else {
-                    console.error('ViewManager not available for Galactic Chart');
+                    debug('UI', '❌ ViewManager not available for Galactic Chart');
                 }
             } else if (systemName === 'subspace_radio') {
                 // Subspace Radio - do exactly what R key does (handled by SubspaceRadio UI class)
@@ -1391,28 +1417,23 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                     
                     if (subspaceRadioUI && subspaceRadioUI.toggle) {
                         subspaceRadioUI.toggle();
-                        
+
                         // Update button state immediately
                         setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
-                        console.warn('SubspaceRadio UI not available via any access method');
-                        console.log('Available paths:', {
-                            'starfieldManager.viewManager': !!this.starfieldManager.viewManager,
-                            'starfieldManager.viewManager.subspaceRadio': !!this.starfieldManager.viewManager?.subspaceRadio,
-                            'window.subspaceRadio': !!window.subspaceRadio
-                        });
+                        debug('UI', '⚠️ SubspaceRadio UI not available via any access method');
                     }
                 }
             } else {
                 // Standard system toggle for other systems
                 // Check if system can be activated
                 if (!system.canActivate) {
-                    console.warn(`System ${systemName} does not have canActivate method`);
+                    debug('UI', `⚠️ System ${systemName} does not have canActivate method`);
                     return;
                 }
 
                 if (!system.canActivate(ship)) {
-                    console.log(`Cannot activate system ${systemName}`);
+                    debug('UI', `Cannot activate system ${systemName}`);
                     return;
                 }
 
@@ -1421,28 +1442,21 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                     // Deactivate the system
                     try {
                         system.deactivate();
-                        console.log(`Deactivated system: ${systemName}`);
+                        debug('UI', `Deactivated system: ${systemName}`);
                     } catch (error) {
-                        console.error(`Error deactivating system ${systemName}:`, error);
+                        debug('UI', `❌ Error deactivating system ${systemName}: ${error.message}`);
                     }
                 } else {
                     // Activate the system
                     try {
                         const result = system.activate(ship);
                         if (result) {
-                            console.log(`Activated system: ${systemName}`);
+                            debug('UI', `Activated system: ${systemName}`);
                         } else {
-                            console.warn(`Failed to activate system ${systemName} - activate() returned false`);
+                            debug('UI', `⚠️ Failed to activate system ${systemName} - activate() returned false`);
                         }
                     } catch (error) {
-                        console.error(`Error activating system ${systemName}:`, error);
-                        // Try to show more details about the system state
-                        console.log(`System ${systemName} state:`, {
-                            isActive: system.isActive,
-                            healthPercentage: system.healthPercentage,
-                            state: system.state,
-                            canActivate: typeof system.canActivate === 'function' ? system.canActivate(ship) : 'N/A'
-                        });
+                        debug('UI', `❌ Error activating system ${systemName}: ${error.message}`);
                     }
                 }
             }
@@ -1450,7 +1464,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             // Refresh the display to update button states
             this.refresh();
         } catch (error) {
-            console.error(`Error toggling system ${systemName}:`, error);
+            debug('UI', `❌ Error toggling system ${systemName}: ${error.message}`);
             // If there's an error, also try to refresh the display to show current states
             this.refresh();
         }
@@ -1524,7 +1538,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
             return defaultEnergyMap[systemName] || '5';
             
         } catch (error) {
-            console.warn(`Failed to get energy consumption for ${systemName}:`, error);
+            debug('UI', `⚠️ Failed to get energy consumption for ${systemName}: ${error.message}`);
             return '?';
         }
     }
@@ -1537,7 +1551,7 @@ debug('TARGETING', `🔧 Repair already in progress: ${this.manualRepairSystem.r
         
         const system = this.ship.getSystem(systemName);
         if (!system) {
-            console.error(`🔧 System not found: ${systemName}`);
+            debug('UI', `❌ System not found for repair: ${systemName}`);
             return;
         }
         
@@ -1629,14 +1643,104 @@ debug('AI', `🔧 Repair completed for ${systemName}`);
     }
     
     dispose() {
+        debug('UI', '🧹 Disposing DamageControlHUD...');
+
+        // Clear all intervals
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+        }
+        if (this.buttonStateInterval) {
+            clearInterval(this.buttonStateInterval);
+            this.buttonStateInterval = null;
         }
         if (this.updateTimeout) {
             clearTimeout(this.updateTimeout);
             this.updateTimeout = null;
         }
+
+        debug('UI', '🧹 DamageControlHUD disposed');
+    }
+
+    /**
+     * Clean up dynamically created button handlers
+     * @private
+     */
+    _cleanupButtonHandlers() {
+        if (this._buttonHandlers) {
+            for (const [button, handlers] of this._buttonHandlers) {
+                if (handlers.mouseenter) {
+                    button.removeEventListener('mouseenter', handlers.mouseenter);
+                }
+                if (handlers.mouseleave) {
+                    button.removeEventListener('mouseleave', handlers.mouseleave);
+                }
+            }
+            this._buttonHandlers.clear();
+        }
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('UI', '🧹 DamageControlHUD destroy() called - cleaning up all resources');
+
+        // First call dispose to clear intervals/timeouts
+        this.dispose();
+
+        // Remove close button event listeners
+        if (this._closeButton) {
+            if (this._boundHandlers.closeButtonMouseEnter) {
+                this._closeButton.removeEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+            }
+            if (this._boundHandlers.closeButtonMouseLeave) {
+                this._closeButton.removeEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+            }
+            if (this._boundHandlers.closeButtonClick) {
+                this._closeButton.removeEventListener('click', this._boundHandlers.closeButtonClick);
+            }
+            this._closeButton = null;
+        }
+
+        // Remove systemsList click listener
+        if (this.elements.systemsList && this._boundHandlers.systemsListClick) {
+            this.elements.systemsList.removeEventListener('click', this._boundHandlers.systemsListClick);
+        }
+
+        // Clean up dynamically created button handlers
+        this._cleanupButtonHandlers();
+
+        // Remove style element from document head
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Clear bound handlers
+        this._boundHandlers.closeButtonMouseEnter = null;
+        this._boundHandlers.closeButtonMouseLeave = null;
+        this._boundHandlers.closeButtonClick = null;
+        this._boundHandlers.systemsListClick = null;
+
+        // Clear container contents
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+
+        // Clear element references
+        this.elements = {};
+
+        // Clear manual repair state
+        this.manualRepairSystem = null;
+
+        // Clear references
+        this.ship = null;
+        this.starfieldManager = null;
+        this.container = null;
+        this.isVisible = false;
+
+        debug('UI', '🧹 DamageControlHUD cleanup complete');
     }
     
     /**

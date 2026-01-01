@@ -20,11 +20,14 @@ export default class SimplifiedDamageControl {
         this.ship = null;
         this.isDocked = false;
         this.refreshInterval = null;
-        
+
         // Bind event handlers
         this.boundKeyHandler = this.handleKeyPress.bind(this);
-        
-debug('COMBAT', 'Simplified Damage Control Interface initialized');
+
+        // Memory leak prevention: track resources for cleanup
+        this._styleElement = null;
+
+        debug('COMBAT', 'Simplified Damage Control Interface initialized');
     }
     
     /**
@@ -437,7 +440,7 @@ debug('UI', `Slider moved: ${systemName} = ${priority}`);
 debug('UI', `Setting priority for ${systemName} to ${priority}`);
         
         if (!this.ship || !this.ship.autoRepairSystem) {
-            console.warn('Ship or auto-repair system not available');
+            debug('COMBAT', '⚠️ Ship or auto-repair system not available');
             return;
         }
         
@@ -520,10 +523,14 @@ debug('UI', `Priority set successfully for ${systemName}: ${priorityNum}`);
      * Add CSS styles for the interface
      */
     addCSS() {
-        if (document.getElementById('simplified-damage-control-styles')) return;
-        
+        if (document.getElementById('simplified-damage-control-styles')) {
+            this._styleElement = document.getElementById('simplified-damage-control-styles');
+            return;
+        }
+
         const style = document.createElement('style');
         style.id = 'simplified-damage-control-styles';
+        this._styleElement = style;
         style.textContent = `
             .simplified-damage-control-overlay {
                 position: fixed;
@@ -1039,5 +1046,39 @@ debug('UI', `Priority set successfully for ${systemName}: ${priorityNum}`);
         // Most ship systems are repairable, except for some special cases
         const nonRepairableSystems = ['hull', 'cargo']; // Add more if needed
         return !nonRepairableSystems.includes(systemName);
+    }
+
+    /**
+     * Dispose of all resources - call when destroying the instance
+     */
+    dispose() {
+        debug('COMBAT', '🧹 SimplifiedDamageControl disposing...');
+
+        // Hide and clean up interface
+        this.hide();
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+        }
+        this._styleElement = null;
+
+        // Remove global reference if it points to this instance
+        if (window.simplifiedDamageControl === this) {
+            delete window.simplifiedDamageControl;
+        }
+
+        // Null out references
+        this.ship = null;
+        this.boundKeyHandler = null;
+
+        debug('COMBAT', '🧹 SimplifiedDamageControl disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 } 

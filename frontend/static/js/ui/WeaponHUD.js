@@ -16,8 +16,13 @@ debug('COMBAT', '🔫 WeaponHUD constructor called with container:', !!hudContai
         this.targetLockIndicator = null;
         this.unifiedDisplay = null; // Combined message and feedback display
         this.displayTimeout = null; // Track display timeout
+        this._fadeTimeout = null; // Track inner fade timeout
         this.currentMessagePriority = 0; // Track message priority (higher = more important)
         this.lastWeaponConfiguration = null; // Track weapon configuration to avoid unnecessary rebuilds
+
+        // Memory leak prevention: track slot elements and their handlers
+        this._slotElements = [];
+        this._slotHandlers = [];
         
 debug('COMBAT', '🔫 WeaponHUD: About to create HUD elements...');
         this.createHUDElements();
@@ -145,7 +150,10 @@ debug('COMBAT', '🔫 createHUDElements: weaponSlotsDisplay added to DOM');
         if (needsRebuild) {
             // Only rebuild when weapon configuration actually changes
             debug('COMBAT', 'WeaponHUD: Rebuilding weapon slots display');
-            
+
+            // Clean up existing slot handlers before rebuild
+            this._cleanupSlotHandlers();
+
             // Clear existing display
             this.weaponSlotsDisplay.innerHTML = '';
             this.cooldownBars = [];
@@ -208,27 +216,40 @@ debug('COMBAT', '🔫 createHUDElements: weaponSlotsDisplay added to DOM');
         // Add click functionality for equipped weapons
         if (!slot.isEmpty) {
             debug('COMBAT', `WeaponHUD: Adding click listener to slot ${slot.slotIndex + 1}`);
-            
-            slotElement.addEventListener('click', (event) => {
+
+            // Create bound handlers for cleanup tracking
+            const clickHandler = (event) => {
                 debug('COMBAT', `WeaponHUD: Click event fired for slot ${slot.slotIndex + 1}`);
                 event.preventDefault();
                 event.stopPropagation();
                 this.onWeaponSlotClick(slot.slotIndex);
-            });
-            
-            // Add hover effect for equipped weapons
-            slotElement.addEventListener('mouseenter', () => {
+            };
+
+            const mouseenterHandler = () => {
                 if (!isActive) {
                     slotElement.style.borderColor = '#00aa00';
                     slotElement.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
                 }
-            });
-            
-            slotElement.addEventListener('mouseleave', () => {
+            };
+
+            const mouseleaveHandler = () => {
                 if (!isActive) {
                     slotElement.style.borderColor = '#666666';
                     slotElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
                 }
+            };
+
+            slotElement.addEventListener('click', clickHandler);
+            slotElement.addEventListener('mouseenter', mouseenterHandler);
+            slotElement.addEventListener('mouseleave', mouseleaveHandler);
+
+            // Track for cleanup
+            this._slotElements.push(slotElement);
+            this._slotHandlers.push({
+                element: slotElement,
+                click: clickHandler,
+                mouseenter: mouseenterHandler,
+                mouseleave: mouseleaveHandler
             });
         }
         
@@ -609,9 +630,11 @@ debug('UI', `🎯 UNIFIED DISPLAY: "${text}" (priority: ${priority}, duration: $
         // Hide after duration and reset priority
         this.displayTimeout = setTimeout(() => {
             this.unifiedDisplay.style.opacity = '0';
-            setTimeout(() => {
+            // Track inner fade timeout for cleanup
+            this._fadeTimeout = setTimeout(() => {
                 this.unifiedDisplay.style.display = 'none';
                 this.currentMessagePriority = 0; // Reset priority when hidden
+                this._fadeTimeout = null;
             }, 200); // Fade out duration
         }, duration);
     }
@@ -876,29 +899,86 @@ debug('COMBAT', `🎯 FEEDBACK: ${weaponName} blastRadius: ${activeWeapon.equipp
     }
     
     /**
+     * Clean up slot event handlers before rebuild or dispose
+     * @private
+     */
+    _cleanupSlotHandlers() {
+        // Remove all event listeners from tracked slot elements
+        this._slotHandlers.forEach(handlerSet => {
+            if (handlerSet.element) {
+                if (handlerSet.click) {
+                    handlerSet.element.removeEventListener('click', handlerSet.click);
+                }
+                if (handlerSet.mouseenter) {
+                    handlerSet.element.removeEventListener('mouseenter', handlerSet.mouseenter);
+                }
+                if (handlerSet.mouseleave) {
+                    handlerSet.element.removeEventListener('mouseleave', handlerSet.mouseleave);
+                }
+            }
+        });
+
+        // Clear tracking arrays
+        this._slotElements = [];
+        this._slotHandlers = [];
+    }
+
+    /**
      * Clean up HUD elements
      */
     dispose() {
-        if (this.weaponSlotsDisplay) {
-            this.weaponSlotsDisplay.remove();
+        debug('COMBAT', '🧹 Disposing WeaponHUD...');
+
+        // Clean up slot handlers first
+        this._cleanupSlotHandlers();
+
+        // Remove DOM elements
+        if (this.weaponSlotsDisplay && this.weaponSlotsDisplay.parentNode) {
+            this.weaponSlotsDisplay.parentNode.removeChild(this.weaponSlotsDisplay);
         }
-        if (this.autofireIndicator) {
-            this.autofireIndicator.remove();
+        if (this.autofireIndicator && this.autofireIndicator.parentNode) {
+            this.autofireIndicator.parentNode.removeChild(this.autofireIndicator);
         }
-        if (this.targetLockIndicator) {
-            this.targetLockIndicator.remove();
+        if (this.targetLockIndicator && this.targetLockIndicator.parentNode) {
+            this.targetLockIndicator.parentNode.removeChild(this.targetLockIndicator);
         }
-        if (this.unifiedDisplay) {
-            this.unifiedDisplay.remove();
+        if (this.unifiedDisplay && this.unifiedDisplay.parentNode) {
+            this.unifiedDisplay.parentNode.removeChild(this.unifiedDisplay);
         }
-        
-        // Clear timeouts
+
+        // Clear all timeouts
         if (this.displayTimeout) {
             clearTimeout(this.displayTimeout);
+            this.displayTimeout = null;
         }
-        
+        if (this._fadeTimeout) {
+            clearTimeout(this._fadeTimeout);
+            this._fadeTimeout = null;
+        }
+
+        // Clear arrays
         this.cooldownBars = [];
-        
-debug('COMBAT', 'WeaponHUD disposed');
+        this._slotElements = [];
+        this._slotHandlers = [];
+
+        // Clear state
+        this.lastWeaponConfiguration = null;
+        this.currentMessagePriority = 0;
+
+        // Null out references
+        this.weaponSlotsDisplay = null;
+        this.autofireIndicator = null;
+        this.targetLockIndicator = null;
+        this.unifiedDisplay = null;
+        this.hudContainer = null;
+
+        debug('COMBAT', '🧹 WeaponHUD disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 } 

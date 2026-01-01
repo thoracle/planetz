@@ -25,7 +25,13 @@ export class StarfieldAudioManager {
         // User interaction tracking to prevent warning spam
         this.userHasInteracted = false;
         this.interactionWarningShown = false;
-        
+
+        // Memory leak prevention: track resources for cleanup
+        this._fadeInterval = null;
+        this._boundVisibilityHandler = null;
+        this._boundInteractionHandler = null;
+        this._interactionEvents = ['click', 'keydown', 'touchstart', 'mousedown'];
+
         // Initialize audio system
         this.initializeAudio();
     }
@@ -45,13 +51,14 @@ export class StarfieldAudioManager {
         this.loadEngineAudio(`${audioBasePath}engines.wav`);
         this.loadCommandAudio(`${audioBasePath}command.wav`);
         this.loadCommandFailedAudio(`${audioBasePath}command_failed.mp3`);
-        
-        // Add visibility change listener for audio context
-        document.addEventListener('visibilitychange', () => {
+
+        // Add visibility change listener for audio context (store for cleanup)
+        this._boundVisibilityHandler = () => {
             if (document.visibilityState === 'visible') {
                 this.ensureAudioContextRunning();
             }
-        });
+        };
+        document.addEventListener('visibilitychange', this._boundVisibilityHandler);
     }
 
     /**
@@ -73,7 +80,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                     }
                 }).catch(error => {
                     if (this.userHasInteracted) {
-                        console.warn('⚠️ Failed to resume AudioContext:', error);
+                        debug('UTILITY', '⚠️ Failed to resume AudioContext:', error);
                     }
                 });
             }
@@ -112,10 +119,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 // Progress callback (optional)
             },
             (error) => {
-                console.error('❌ Error loading engine sound:', {
-                    path: audioPath,
-                    error: error
-                });
+                debug('UTILITY', `❌ Error loading engine sound: ${audioPath}`, error);
             }
         );
     }
@@ -136,10 +140,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 // Progress callback (optional)
             },
             (error) => {
-                console.error('❌ Error loading command sound:', {
-                    path: audioPath,
-                    error: error
-                });
+                debug('UTILITY', `❌ Error loading command sound: ${audioPath}`, error);
             }
         );
     }
@@ -160,10 +161,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 // Progress callback (optional)
             },
             (error) => {
-                console.error('❌ Error loading command failed sound:', {
-                    path: audioPath,
-                    error: error
-                });
+                debug('UTILITY', `❌ Error loading command failed sound: ${audioPath}`, error);
             }
         );
     }
@@ -187,14 +185,17 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 const fadeSteps = 20;
                 const fadeInterval = startupDuration / fadeSteps;
                 let currentStep = 0;
-                
-                const fadeIn = setInterval(() => {
+
+                // Clear any existing fade interval
+                this._clearFadeInterval();
+
+                this._fadeInterval = setInterval(() => {
                     currentStep++;
                     const volume = (currentStep / fadeSteps) * 0.3; // Max volume 0.3
                     this.engineSound.setVolume(volume);
-                    
+
                     if (currentStep >= fadeSteps) {
-                        clearInterval(fadeIn);
+                        this._clearFadeInterval();
                         this.engineState = 'running';
                     }
                 }, fadeInterval);
@@ -203,27 +204,40 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
     }
 
     /**
+     * Clear fade interval if active
+     */
+    _clearFadeInterval() {
+        if (this._fadeInterval) {
+            clearInterval(this._fadeInterval);
+            this._fadeInterval = null;
+        }
+    }
+
+    /**
      * Play engine shutdown sound and transition to stopped state
      */
     playEngineShutdown() {
         if (!this.soundLoaded) return;
-        
+
         if (this.engineState === 'running') {
             this.engineState = 'stopping';
-            
+
             // Fade out engine sound
             const fadeSteps = 15;
             const fadeInterval = 50; // 50ms per step
             let currentStep = 0;
             const initialVolume = this.engineSound.getVolume();
-            
-            const fadeOut = setInterval(() => {
+
+            // Clear any existing fade interval
+            this._clearFadeInterval();
+
+            this._fadeInterval = setInterval(() => {
                 currentStep++;
                 const volume = initialVolume * (1 - (currentStep / fadeSteps));
                 this.engineSound.setVolume(Math.max(0, volume));
-                
+
                 if (currentStep >= fadeSteps) {
-                    clearInterval(fadeOut);
+                    this._clearFadeInterval();
                     this.engineSound.stop();
                     this.engineState = 'stopped';
                 }
@@ -290,7 +304,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.15);
             } catch (error) {
-                console.warn('⚠️ Failed to generate command success beep:', error);
+                debug('UTILITY', '⚠️ Failed to generate command success beep:', error);
             }
         }
     }
@@ -318,7 +332,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.8);
             } catch (error) {
-                console.warn('⚠️ Failed to generate command failed beep:', error);
+                debug('UTILITY', '⚠️ Failed to generate command failed beep:', error);
             }
         }
     }
@@ -345,71 +359,115 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
      * Dispose of all audio resources
      */
     dispose() {
-debug('UTILITY', '🎵 Disposing StarfieldAudioManager...');
-        
+        debug('UTILITY', '🧹 Disposing StarfieldAudioManager...');
+
+        // Clear any active fade interval
+        this._clearFadeInterval();
+
+        // Remove event listeners
+        if (this._boundVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._boundVisibilityHandler);
+            this._boundVisibilityHandler = null;
+        }
+
+        // Remove interaction listeners if not yet triggered
+        this._removeInteractionListeners();
+        this._boundInteractionHandler = null;
+
         // Stop and clean up audio
         if (this.engineSound) {
-            this.engineSound.stop();
+            if (this.engineSound.isPlaying) {
+                this.engineSound.stop();
+            }
             if (this.engineSound.buffer) {
                 this.engineSound.setBuffer(null);
             }
         }
-        
+
         if (this.commandSound) {
-            this.commandSound.stop();
+            if (this.commandSound.isPlaying) {
+                this.commandSound.stop();
+            }
             if (this.commandSound.buffer) {
                 this.commandSound.setBuffer(null);
             }
         }
-        
+
         if (this.commandFailedSound) {
-            this.commandFailedSound.stop();
+            if (this.commandFailedSound.isPlaying) {
+                this.commandFailedSound.stop();
+            }
             if (this.commandFailedSound.buffer) {
                 this.commandFailedSound.setBuffer(null);
             }
         }
-        
+
+        // Null out references
+        this.engineSound = null;
+        this.commandSound = null;
+        this.commandFailedSound = null;
+        this.audioLoader = null;
+        this.audioListener = null;
+        this.THREE = null;
+
         // Reset state
         this.engineState = 'stopped';
         this.soundLoaded = false;
         this.commandSoundLoaded = false;
         this.commandFailedSoundLoaded = false;
+
+        debug('UTILITY', '🧹 StarfieldAudioManager disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 
     /**
      * Set up user interaction detection to prevent audio policy warnings
      */
     setupUserInteractionDetection() {
-        const interactionEvents = ['click', 'keydown', 'touchstart', 'mousedown'];
-        
-        const handleUserInteraction = () => {
+        // Store handler for cleanup
+        this._boundInteractionHandler = () => {
             if (!this.userHasInteracted) {
                 this.userHasInteracted = true;
-debug('UTILITY', '🎵 User interaction detected - audio policy satisfied');
-                
+                debug('UTILITY', '🎵 User interaction detected - audio policy satisfied');
+
                 // Reset warning flag so future audio attempts work
                 this.interactionWarningShown = false;
-                
+
                 // Resume AudioContext if suspended
                 if (this.audioListener?.context && this.audioListener.context.state === 'suspended') {
                     this.audioListener.context.resume().then(() => {
-debug('UTILITY', '🎵 AudioContext resumed after user interaction');
+                        debug('UTILITY', '🎵 AudioContext resumed after user interaction');
                     }).catch(error => {
-                        console.warn('⚠️ Failed to resume AudioContext after interaction:', error);
+                        debug('UTILITY', '⚠️ Failed to resume AudioContext after interaction:', error);
                     });
                 }
-                
+
                 // Remove event listeners after first successful interaction
-                interactionEvents.forEach(event => {
-                    document.removeEventListener(event, handleUserInteraction);
-                });
+                this._removeInteractionListeners();
             }
         };
-        
-        // Add event listeners for user interaction (not using once: true to avoid double cleanup)
-        interactionEvents.forEach(event => {
-            document.addEventListener(event, handleUserInteraction, false);
+
+        // Add event listeners for user interaction
+        this._interactionEvents.forEach(event => {
+            document.addEventListener(event, this._boundInteractionHandler, false);
         });
+    }
+
+    /**
+     * Remove interaction event listeners
+     */
+    _removeInteractionListeners() {
+        if (this._boundInteractionHandler) {
+            this._interactionEvents.forEach(event => {
+                document.removeEventListener(event, this._boundInteractionHandler);
+            });
+        }
     }
 
     /**

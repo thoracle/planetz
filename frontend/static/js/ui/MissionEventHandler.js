@@ -13,30 +13,34 @@ export class MissionEventHandler {
         this.starfieldManager = starfieldManager;
         this.activeMissions = new Map(); // mission_id -> mission data
         this.missionAPI = null; // Will be set when needed
-        
-        
+
+        // Memory leak prevention: track resources for cleanup
+        this._pendingTimeouts = new Set();
+        this._originalCreateExplosionEffect = null; // Store original for restoration
+
         // Initialize event listeners
         this.bindGameEvents();
-        
+
         debug('MISSIONS', 'Mission Event Handler initialized');
     }
     
     bindGameEvents() {
         // Listen for enemy destruction events
         if (this.starfieldManager) {
-            // Monkey patch the existing enemy destruction handling
-            const originalCreateExplosionEffect = this.starfieldManager.createExplosionEffect;
-            
-            if (originalCreateExplosionEffect) {
+            // Store original function for restoration in dispose()
+            this._originalCreateExplosionEffect = this.starfieldManager.createExplosionEffect;
+
+            if (this._originalCreateExplosionEffect) {
+                const self = this;
                 this.starfieldManager.createExplosionEffect = (position, scale, target, weapon) => {
                     // Call original function
-                    const result = originalCreateExplosionEffect.call(this.starfieldManager, position, scale, target, weapon);
-                    
+                    const result = self._originalCreateExplosionEffect.call(self.starfieldManager, position, scale, target, weapon);
+
                     // Handle mission events if target was destroyed
                     if (target && target.ship && target.ship.hull <= 0) {
-                        this.handleEnemyDestroyed(target.ship);
+                        self.handleEnemyDestroyed(target.ship);
                     }
-                    
+
                     return result;
                 };
             }
@@ -80,7 +84,7 @@ debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from en
             }
             
         } catch (error) {
-            console.error('❌ Failed to handle enemy destroyed event:', error);
+            debug('MISSIONS', '❌ Failed to handle enemy destroyed event:', error);
         }
     }
     
@@ -119,7 +123,7 @@ debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from lo
             }
             
         } catch (error) {
-            console.error('❌ Failed to handle location reached event:', error);
+            debug('MISSIONS', '❌ Failed to handle location reached event:', error);
         }
     }
     
@@ -159,7 +163,7 @@ debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from ca
             }
             
         } catch (error) {
-            console.error('❌ Failed to handle cargo delivered event:', error);
+            debug('MISSIONS', '❌ Failed to handle cargo delivered event:', error);
         }
     }
     
@@ -238,20 +242,24 @@ debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from ca
         
         notification.textContent = message;
         document.body.appendChild(notification);
-        
-        // Auto-remove after 4 seconds
-        setTimeout(() => {
+
+        // Auto-remove after 4 seconds (track timeouts for cleanup)
+        const fadeTimeout = setTimeout(() => {
+            this._pendingTimeouts.delete(fadeTimeout);
             if (notification.parentNode) {
                 notification.style.opacity = '0';
                 notification.style.transition = 'opacity 0.5s';
-                
-                setTimeout(() => {
+
+                const removeTimeout = setTimeout(() => {
+                    this._pendingTimeouts.delete(removeTimeout);
                     if (notification.parentNode) {
                         notification.parentNode.removeChild(notification);
                     }
                 }, 500);
+                this._pendingTimeouts.add(removeTimeout);
             }
         }, 4000);
+        this._pendingTimeouts.add(fadeTimeout);
     }
     
     playMissionCompleteAudio() {
@@ -261,7 +269,7 @@ debug('MISSIONS', `🎯 Updated ${data.updated_missions.length} missions from ca
                 this.starfieldManager.starfieldAudioManager.play('explosion', 0.3); // Placeholder sound
             }
         } catch (error) {
-            console.warn('⚠️ Could not play mission complete audio:', error);
+            debug('MISSIONS', '⚠️ Could not play mission complete audio:', error);
         }
     }
     
@@ -315,7 +323,7 @@ debug('TARGETING', 'Spawning mission enemies using target dummy system');
             // This would need to be enhanced to spawn specific enemy types
             this.starfieldManager.createTargetDummyShips();
         } else {
-            console.warn('⚠️ Enemy spawning not available - mission enemies not spawned');
+            debug('MISSIONS', '⚠️ Enemy spawning not available - mission enemies not spawned');
         }
     }
     
@@ -334,7 +342,7 @@ debug('TARGETING', 'Spawning mission enemies using target dummy system');
                 this.starfieldManager.starfieldAudioManager.play(gameSound, volume);
             }
         } catch (error) {
-            console.warn('⚠️ Could not play mission audio:', error);
+            debug('MISSIONS', '⚠️ Could not play mission audio:', error);
         }
     }
     
@@ -406,7 +414,7 @@ debug('UI', `💰 Processing reward package ${rewardData.reward_package_id}`);
             return false;
             
         } catch (error) {
-            console.error('❌ Failed to update mission progress:', error);
+            debug('MISSIONS', '❌ Failed to update mission progress:', error);
             return false;
         }
     }
@@ -432,7 +440,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             }
             
         } catch (error) {
-            console.error('❌ Failed to load active missions:', error);
+            debug('MISSIONS', '❌ Failed to load active missions:', error);
         }
         
         return [];
@@ -452,7 +460,6 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async handleWaypointCompleted(waypoint) {
         debug('MISSIONS', `🎯 MissionEventHandler: Waypoint completed: ${waypoint.name} (mission: ${waypoint.missionId})`);
-        console.log('🎯 MISSION COMPLETION: handleWaypointCompleted called for waypoint:', waypoint.name, 'mission:', waypoint.missionId);
         
         if (!waypoint.missionId) {
             debug('MISSIONS', '⚠️ Waypoint has no mission ID, skipping mission completion check');
@@ -477,7 +484,8 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
         debug('MISSIONS', `🎯 Mission ${waypoint.missionId} status: ${completedWaypoints.length} completed, ${pendingWaypoints.length} pending`);
         
         // Wait a bit longer to ensure waypoint manager has processed next waypoint activation
-        setTimeout(async () => {
+        const waypointCheckTimeout = setTimeout(async () => {
+            this._pendingTimeouts.delete(waypointCheckTimeout);
             // Re-check waypoint status after delay
             const updatedMissionWaypoints = Array.from(waypointManager.activeWaypoints.values())
                 .filter(wp => wp.missionId === waypoint.missionId);
@@ -485,17 +493,13 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             const updatedCompletedWaypoints = updatedMissionWaypoints.filter(wp => wp.status === 'completed');
             
             debug('MISSIONS', `🎯 Mission ${waypoint.missionId} DELAYED status check: ${updatedCompletedWaypoints.length} completed, ${updatedPendingWaypoints.length} pending`);
-            console.log('🎯 MISSION COMPLETION: Delayed status check for mission:', waypoint.missionId);
-            console.log('🎯 MISSION COMPLETION: Total waypoints:', updatedMissionWaypoints.length);
-            console.log('🎯 MISSION COMPLETION: Completed waypoints:', updatedCompletedWaypoints.length);
-            console.log('🎯 MISSION COMPLETION: Pending waypoints:', updatedPendingWaypoints.length);
+            debug('MISSIONS', `🎯 Total waypoints: ${updatedMissionWaypoints.length}, Completed: ${updatedCompletedWaypoints.length}, Pending: ${updatedPendingWaypoints.length}`);
             
             // Only complete mission if ALL waypoints are completed AND no pending ones remain
             if (updatedPendingWaypoints.length === 0 && updatedCompletedWaypoints.length > 0 && 
                 updatedCompletedWaypoints.length === updatedMissionWaypoints.length) {
                 
                 debug('MISSIONS', `🏁 Mission ${waypoint.missionId} FULLY completed - removing from active missions`);
-                console.log('🏁 MISSION COMPLETION: Mission FULLY completed!', waypoint.missionId);
                 
                 // Get mission data to check for completion screen suppression
                 const missionData = await this.getMissionData(waypoint.missionId);
@@ -543,7 +547,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 debug('MISSIONS', `🔄 Mission ${waypoint.missionId} still in progress - ${updatedPendingWaypoints.length} waypoints remaining`);
             }
         }, 200); // Increased delay to 200ms
-        
+        this._pendingTimeouts.add(waypointCheckTimeout);
     }
 
     /**
@@ -579,7 +583,6 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async awardMissionCompletionRewards(missionId, missionData = null) {
         debug('MISSIONS', `🎁 Awarding mission completion rewards for: ${missionId}`);
-        console.log('🎁 MISSION COMPLETION: awardMissionCompletionRewards called for:', missionId);
 
         try {
             // Check if this is the exploration test mission
@@ -627,7 +630,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                         );
                         debug('MISSIONS', '🎉 Simple mission completion overlay shown');
                     } else {
-                        console.error('❌ SimpleMissionRewards not available - loading it now');
+                        debug('MISSIONS', '❌ SimpleMissionRewards not available - loading it now');
                         // Fallback: load the simple rewards system
                         import('../ui/SimpleMissionRewards.js').then(module => {
                             module.SimpleMissionRewards.showCompletion(missionId, displayMissionData, rewards);
@@ -652,7 +655,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 return { success: true, rewards: null };
             }
         } catch (error) {
-            console.error('Failed to award mission completion rewards:', error);
+            debug('MISSIONS', '❌ Failed to award mission completion rewards:', error);
             return { success: false, error: error.message };
         }
     }
@@ -667,9 +670,9 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             if (rewards.credits && rewards.credits > 0) {
                 const success = playerCredits.addCredits(rewards.credits, `Mission completion: ${rewards.rewardPackageId}`);
                 if (success) {
-                    console.log('✅ MISSION COMPLETION: Credits granted:', rewards.credits);
+                    debug('MISSIONS', `✅ Credits granted: ${rewards.credits}`);
                 } else {
-                    console.error('❌ MISSION COMPLETION: Failed to add credits');
+                    debug('MISSIONS', '❌ Failed to add credits');
                 }
             }
 
@@ -684,7 +687,7 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             }
 
         } catch (error) {
-            console.error('❌ Error granting rewards:', error);
+            debug('MISSIONS', '❌ Error granting rewards:', error);
         }
     }
 
@@ -706,11 +709,11 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     const currentStanding = ship.factionStandings[faction] || 0;
                     const newStanding = Math.max(-100, Math.min(100, currentStanding + amount));
                     ship.factionStandings[faction] = newStanding;
-                    console.log('✅ MISSION COMPLETION: Faction reputation granted:', faction, '+', amount, '->', newStanding + '%');
+                    debug('MISSIONS', `✅ Faction reputation granted: ${faction} +${amount} -> ${newStanding}%`);
                 });
             }
         } catch (error) {
-            console.error('❌ Error granting faction reputation:', error);
+            debug('MISSIONS', '❌ Error granting faction reputation:', error);
         }
     }
 
@@ -720,19 +723,16 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
      */
     async grantNFTCards(cardData) {
         debug('MISSIONS', '🃏 Granting NFT cards:', cardData);
-        console.log('🃏 MISSION COMPLETION: grantNFTCards called with:', cardData);
 
         try {
             // Get the CardInventoryUI instance - try multiple approaches
             let cardInventoryUI = window.cardInventoryUI;
             debug('MISSIONS', `🃏 window.cardInventoryUI exists: ${!!cardInventoryUI}`);
-            console.log(`🃏 MISSION COMPLETION: window.cardInventoryUI exists: ${!!cardInventoryUI}`);
 
             // If not available globally, try to get it from the starfieldManager
             if (!cardInventoryUI && this.starfieldManager?.viewManager?.dockingInterface) {
                 cardInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
                 debug('MISSIONS', '🃏 Got CardInventoryUI from dockingInterface');
-                console.log('🃏 MISSION COMPLETION: Got CardInventoryUI from dockingInterface');
             }
 
             // CRITICAL: Always prefer the dockingInterface instance if available
@@ -742,26 +742,26 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
             
             // If dockingInterface doesn't exist yet, create it now to ensure consistency
             if (!this.starfieldManager?.viewManager?.dockingInterface) {
-                console.log('🔧 MISSION COMPLETION: Creating dockingInterface to ensure consistent CardInventoryUI instance');
+                debug('MISSIONS', '🔧 Creating dockingInterface to ensure consistent CardInventoryUI instance');
                 // Import and create DockingInterface if it doesn't exist
                 try {
                     const { DockingInterface } = await import('../ui/DockingInterface.js');
                     if (!this.starfieldManager.viewManager.dockingInterface) {
                         this.starfieldManager.viewManager.dockingInterface = new DockingInterface(this.starfieldManager);
-                        console.log('✅ MISSION COMPLETION: Created dockingInterface with CardInventoryUI');
+                        debug('MISSIONS', '✅ Created dockingInterface with CardInventoryUI');
                     }
                 } catch (error) {
-                    console.error('❌ MISSION COMPLETION: Failed to create dockingInterface:', error);
+                    debug('MISSIONS', '❌ Failed to create dockingInterface:', error);
                 }
             }
             
             // Now use the dockingInterface CardInventoryUI if available
             if (this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI) {
                 const dockingInventoryUI = this.starfieldManager.viewManager.dockingInterface.cardInventoryUI;
-                console.log('🃏 MISSION COMPLETION: Using dockingInterface CardInventoryUI (collection screen instance)');
+                debug('MISSIONS', '🃏 Using dockingInterface CardInventoryUI (collection screen instance)');
                 cardInventoryUI = dockingInventoryUI;
             } else {
-                console.log('⚠️ MISSION COMPLETION: Still no dockingInterface CardInventoryUI - using window.cardInventoryUI');
+                debug('MISSIONS', '⚠️ Still no dockingInterface CardInventoryUI - using window.cardInventoryUI');
             }
 
             // If still not available, try to import and create it
@@ -772,13 +772,13 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     const CardInventoryUI = module.default;
                     cardInventoryUI = CardInventoryUI.getInstance(null);
                 } catch (importError) {
-                    console.error('❌ MISSION COMPLETION: Failed to import CardInventoryUI:', importError);
+                    debug('MISSIONS', '❌ Failed to import CardInventoryUI:', importError);
                     return;
                 }
             }
 
             if (!cardInventoryUI || !cardInventoryUI.inventory) {
-                console.error('❌ MISSION COMPLETION: CardInventoryUI not available or has no inventory');
+                debug('MISSIONS', '❌ CardInventoryUI not available or has no inventory');
                 return;
             }
 
@@ -792,21 +792,16 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                 for (const cardName of cardData.names) {
                     const cardType = this.mapCardNameToType(cardName);
                     debug('MISSIONS', `🃏 Mapping card name "${cardName}" to type "${cardType}"`);
-                    console.log(`🃏 MISSION COMPLETION: Mapping card name "${cardName}" to type "${cardType}"`);
-                    debug('MISSIONS', `🃏 CARD_TYPES.BASIC_RADAR = "${CARD_TYPES.BASIC_RADAR}"`);
-                    debug('MISSIONS', `🃏 CARD_TYPES.LONG_RANGE_SCANNER = "${CARD_TYPES.LONG_RANGE_SCANNER}"`);
                     if (cardType) {
                         // Check if this card type was already discovered BEFORE adding it
                         const wasAlreadyDiscovered = cardInventory.discoveredCards.has(cardType);
-                        console.log(`🃏 MISSION COMPLETION: Card ${cardType} was already discovered: ${wasAlreadyDiscovered}`);
+                        debug('MISSIONS', `🃏 Card ${cardType} was already discovered: ${wasAlreadyDiscovered}`);
                         
                         const card = cardInventory.generateSpecificCard(cardType, 'common');
                         const result = cardInventory.addCard(card);
                         if (result.success) {
                             cardsGranted++;
                             debug('MISSIONS', `✅ Granted card: ${cardName}`);
-                            console.log('✅ MISSION COMPLETION: Card granted:', cardName);
-                            console.log(`🃏 MISSION COMPLETION: Card result:`, result);
                             
                             // Check if this was a new card discovery or quantity increase
                             const wasNewDiscovery = !wasAlreadyDiscovered; // True if card wasn't discovered before
@@ -814,38 +809,26 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                             if (wasNewDiscovery) {
                                 // This is a completely new card type - mark as NEW
                                 debug('MISSIONS', `🆕 New card type discovered: ${cardType}`);
-                                console.log(`🆕 MISSION COMPLETION: New card type discovered: ${cardType}`);
-                                
+
                                 if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                                     cardInventoryUI.constructor.markCardAsNewlyAwarded(cardType);
-                                    console.log(`🆕 MISSION COMPLETION: Marked new card as NEW: ${cardType}`);
-                                    
-                                    // Verify the NEW badge was actually set
-                                    const isMarkedNew = cardInventoryUI.isCardNew ? cardInventoryUI.isCardNew(cardType) : 'method not available';
-                                    console.log(`🆕 MISSION COMPLETION: Verification - isCardNew(${cardType}): ${isMarkedNew}`);
-                                    
-                                    // Check localStorage directly
-                                    const stored = localStorage.getItem('planetz_new_card_timestamps');
-                                    const timestamps = stored ? JSON.parse(stored) : {};
-                                    console.log(`🆕 MISSION COMPLETION: localStorage timestamps:`, timestamps);
+                                    debug('MISSIONS', `🆕 Marked new card as NEW: ${cardType}`);
                                 }
                             } else {
                                 // This is a quantity increase for existing card - mark with red badge
                                 debug('MISSIONS', `📈 Card quantity increased: ${cardType} (now ${result.newCount})`);
-                                console.log(`📈 MISSION COMPLETION: Card quantity increased: ${cardType} (now ${result.newCount})`);
-                                console.log(`📈 MISSION COMPLETION: Marking as quantity increase - red badge`);
-                                
+
                                 // Mark as quantity increase for red badge highlighting
                                 if (cardInventoryUI.constructor.markCardQuantityIncrease) {
                                     cardInventoryUI.constructor.markCardQuantityIncrease(cardType);
-                                    console.log(`📈 MISSION COMPLETION: Marked quantity increase: ${cardType}`);
+                                    debug('MISSIONS', `📈 Marked quantity increase: ${cardType}`);
                                 }
                             }
                         } else {
-                            console.error(`❌ Failed to grant card ${cardName}:`, result.error);
+                            debug('MISSIONS', `❌ Failed to grant card ${cardName}:`, result.error);
                         }
                     } else {
-                        console.warn(`⚠️ Unknown card name: ${cardName}`);
+                        debug('MISSIONS', `⚠️ Unknown card name: ${cardName}`);
                     }
                 }
             } else if (cardData.preferredTypes && cardData.preferredTypes.length > 0) {
@@ -857,18 +840,14 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     if (result.success) {
                         cardsGranted++;
                         debug('MISSIONS', `✅ Granted card: ${randomType}`);
-                        console.log('✅ MISSION COMPLETION: Card granted:', randomType);
-                        
+
                         // Mark card as newly awarded for NEW badge system
-                        debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${randomType}`);
                         if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                             cardInventoryUI.constructor.markCardAsNewlyAwarded(randomType);
                             debug('MISSIONS', `🆕 Marked card as NEW: ${randomType}`);
-                        } else {
-                            debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found for ${randomType}`);
                         }
                     } else {
-                        console.error(`❌ Failed to grant card ${randomType}:`, result.error);
+                        debug('MISSIONS', `❌ Failed to grant card ${randomType}:`, result.error);
                     }
                 }
             } else {
@@ -879,53 +858,36 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
                     if (result.success) {
                         cardsGranted++;
                         debug('MISSIONS', `✅ Granted random card: ${card.cardType}`);
-                        console.log('✅ MISSION COMPLETION: Random card granted:', card.cardType);
-                        
+
                         // Mark card as newly awarded for NEW badge system
-                        debug('MISSIONS', `🃏 Attempting to mark card as NEW: ${card.cardType}`);
                         if (cardInventoryUI.constructor.markCardAsNewlyAwarded) {
                             cardInventoryUI.constructor.markCardAsNewlyAwarded(card.cardType);
                             debug('MISSIONS', `🆕 Marked card as NEW: ${card.cardType}`);
-                        } else {
-                            debug('MISSIONS', `❌ markCardAsNewlyAwarded method not found for ${card.cardType}`);
                         }
                     } else {
-                        console.error(`❌ Failed to grant random card:`, result.error);
+                        debug('MISSIONS', `❌ Failed to grant random card:`, result.error);
                     }
                 }
             }
 
             if (cardsGranted > 0) {
-                console.log('✅ MISSION COMPLETION: NFT cards granted successfully:', cardsGranted);
-                
+                debug('MISSIONS', `✅ NFT cards granted successfully: ${cardsGranted}`);
+
                 // Refresh the CardInventoryUI to show updated counts
                 if (cardInventoryUI && typeof cardInventoryUI.render === 'function') {
                     try {
-                        // Debug: Check current card counts before and after refresh
-                        const galacticStack = cardInventoryUI.inventory.cardStacks.get('galactic_chart');
-                        const radioStack = cardInventoryUI.inventory.cardStacks.get('subspace_radio');
-                        console.log('🔍 MISSION COMPLETION: Pre-refresh counts - Galactic:', galacticStack?.count, 'Radio:', radioStack?.count);
-                        console.log('🔍 MISSION COMPLETION: CardInventoryUI instance ID:', cardInventoryUI.containerId);
-                        console.log('🔍 MISSION COMPLETION: Is this the docking interface instance?', cardInventoryUI === this.starfieldManager?.viewManager?.dockingInterface?.cardInventoryUI);
-                        
                         cardInventoryUI.render();
                         debug('MISSIONS', '🔄 CardInventoryUI refreshed after card grants');
-                        console.log('🔄 MISSION COMPLETION: CardInventoryUI refreshed to show updated counts');
-                        
-                        // Debug: Verify counts after refresh
-                        console.log('🔍 MISSION COMPLETION: Post-refresh counts - Galactic:', galacticStack?.count, 'Radio:', radioStack?.count);
                     } catch (renderError) {
-                        console.error('❌ MISSION COMPLETION: Failed to refresh CardInventoryUI:', renderError);
+                        debug('MISSIONS', '❌ Failed to refresh CardInventoryUI:', renderError);
                     }
                 }
             } else {
-                console.warn('⚠️ MISSION COMPLETION: No cards were granted');
+                debug('MISSIONS', '⚠️ No cards were granted');
             }
 
         } catch (error) {
-            console.error('❌ Error granting NFT cards:', error);
-            debug('MISSIONS', `❌ Error in grantNFTCards: ${error.message}`);
-            console.log('🐛 MISSION COMPLETION: ErrorReporter captured: "Console Error"');
+            debug('MISSIONS', `❌ Error granting NFT cards: ${error.message}`);
         }
     }
 
@@ -961,5 +923,40 @@ debug('MISSIONS', `🎯 Loaded ${acceptedMissions.length} active missions`);
         };
 
         return nameToTypeMap[cardName] || null;
+    }
+
+    /**
+     * Dispose of all resources - call when destroying the instance
+     */
+    dispose() {
+        debug('MISSIONS', '🧹 MissionEventHandler disposing...');
+
+        // Clear all pending timeouts
+        for (const timeout of this._pendingTimeouts) {
+            clearTimeout(timeout);
+        }
+        this._pendingTimeouts.clear();
+
+        // Restore original monkey-patched function
+        if (this.starfieldManager && this._originalCreateExplosionEffect) {
+            this.starfieldManager.createExplosionEffect = this._originalCreateExplosionEffect;
+            this._originalCreateExplosionEffect = null;
+        }
+
+        // Clear active missions cache
+        this.activeMissions.clear();
+
+        // Null out references
+        this.starfieldManager = null;
+        this.missionAPI = null;
+
+        debug('MISSIONS', '🧹 MissionEventHandler disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }

@@ -98,7 +98,13 @@ export class ProximityDetector3D {
         // Container elements
         this.detectorContainer = null;
         this.canvas3D = null;
-        
+
+        // Memory leak prevention: track resize handlers
+        this._boundHandlers = {
+            windowResize: null,
+            setupResize: null
+        };
+
         // Logging control for production
         this.debugMode = false; // Set to true for debugging
         this.lastLogTime = 0;
@@ -159,12 +165,13 @@ export class ProximityDetector3D {
         this.setupEventListeners();
         
         this.logControlled('log', '3D Proximity Detector initialized', null, true);
-        
+
         // Expose debug method globally for console access
         window.debugRadarRotation = () => this.debugRadarRotation();
-        
-        // Add window resize handler for responsive positioning
-        window.addEventListener('resize', () => this.handleWindowResize());
+
+        // Add window resize handler for responsive positioning - store for cleanup
+        this._boundHandlers.windowResize = () => this.handleWindowResize();
+        window.addEventListener('resize', this._boundHandlers.windowResize);
     }
     
     /**
@@ -630,12 +637,13 @@ debug('UI', `🔄 Creating player indicator with size: ${triangleSize} for ${thi
      * Setup event listeners for responsive resizing
      */
     setupEventListeners() {
-        // Handle window resize
-        window.addEventListener('resize', () => {
+        // Handle window resize - store handler for cleanup
+        this._boundHandlers.setupResize = () => {
             if (this.isVisible) {
                 this.handleResize();
             }
-        });
+        };
+        window.addEventListener('resize', this._boundHandlers.setupResize);
     }
     
     /**
@@ -843,11 +851,8 @@ debug('AI', 'ProximityDetector: Radar system available and operational');
             // Update detector configuration based on radar system capabilities
             this.config.detectionRange = radarSystem.getRange();
             this.config.updateFrequency = radarSystem.getUpdateFrequency();
-            
-            console.log(`🎯 ProximityDetector3D: Updated to Level ${radarSystem.level} specifications:`, {
-                range: `${(this.config.detectionRange / 1000).toFixed(0)}km`,
-                updateFrequency: `${this.config.updateFrequency}Hz`
-            });
+
+            debug('RADAR', `🎯 ProximityDetector3D: Updated to Level ${radarSystem.level} specifications: range=${(this.config.detectionRange / 1000).toFixed(0)}km, updateFrequency=${this.config.updateFrequency}Hz`);
         } else {
             // Use basic specifications if no radar system
             this.config.detectionRange = 10000;  // 10km basic range
@@ -2066,5 +2071,128 @@ debug('UI', `🎯 PLAYER INDICATOR: Position (${this.playerIndicator.position.x}
         if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
+    }
+
+    /**
+     * Dispose of Three.js object (geometry, material, mesh)
+     * @param {THREE.Object3D} object - Three.js object to dispose
+     */
+    disposeObject(object) {
+        if (!object) return;
+
+        // Dispose geometry
+        if (object.geometry) {
+            object.geometry.dispose();
+        }
+
+        // Dispose material(s)
+        if (object.material) {
+            if (Array.isArray(object.material)) {
+                object.material.forEach(material => material.dispose());
+            } else {
+                object.material.dispose();
+            }
+        }
+
+        // Recursively dispose children
+        if (object.children) {
+            while (object.children.length > 0) {
+                this.disposeObject(object.children[0]);
+                object.remove(object.children[0]);
+            }
+        }
+    }
+
+    /**
+     * Clean up all resources
+     */
+    dispose() {
+        // Remove window event listeners
+        if (this._boundHandlers) {
+            if (this._boundHandlers.windowResize) {
+                window.removeEventListener('resize', this._boundHandlers.windowResize);
+            }
+            if (this._boundHandlers.setupResize) {
+                window.removeEventListener('resize', this._boundHandlers.setupResize);
+            }
+        }
+
+        // Remove global debug function
+        if (window.debugRadarRotation) {
+            delete window.debugRadarRotation;
+        }
+
+        // Clear blips and altitude lines
+        this.objectBlips.forEach((blip) => {
+            this.disposeObject(blip);
+            if (this.scene) this.scene.remove(blip);
+        });
+        this.objectBlips.clear();
+
+        this.altitudeLines.forEach((line) => {
+            this.disposeObject(line);
+            if (this.scene) this.scene.remove(line);
+        });
+        this.altitudeLines.clear();
+
+        // Dispose grid mesh
+        if (this.gridMesh) {
+            this.disposeObject(this.gridMesh);
+            if (this.scene) this.scene.remove(this.gridMesh);
+            this.gridMesh = null;
+        }
+
+        // Dispose player indicator
+        if (this.playerIndicator) {
+            this.disposeObject(this.playerIndicator);
+            if (this.scene) this.scene.remove(this.playerIndicator);
+            this.playerIndicator = null;
+        }
+
+        // Dispose player altitude line
+        if (this.playerAltitudeLine) {
+            this.disposeObject(this.playerAltitudeLine);
+            if (this.scene) this.scene.remove(this.playerAltitudeLine);
+            this.playerAltitudeLine = null;
+        }
+
+        // Dispose renderer
+        if (this.renderer) {
+            this.renderer.dispose();
+            this.renderer.forceContextLoss();
+            this.renderer = null;
+        }
+
+        // Remove canvas from DOM
+        if (this.canvas3D && this.canvas3D.parentNode) {
+            this.canvas3D.parentNode.removeChild(this.canvas3D);
+            this.canvas3D = null;
+        }
+
+        // Remove container from DOM
+        if (this.detectorContainer && this.detectorContainer.parentNode) {
+            this.detectorContainer.parentNode.removeChild(this.detectorContainer);
+            this.detectorContainer = null;
+        }
+
+        // Null out Three.js references
+        this.scene = null;
+        this.camera = null;
+
+        // Null out other references
+        this.starfieldManager = null;
+        this.container = null;
+        this.trackedObjects.clear();
+        this._boundHandlers = null;
+        this.config = null;
+
+        debug('RADAR', 'ProximityDetector3D: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }

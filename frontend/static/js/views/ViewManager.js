@@ -37,6 +37,11 @@ export class ViewManager {
         this.starfieldManager = null;
         this.solarSystemManager = null;  // Initialize solarSystemManager
         this.shipSystemsInitialized = false; // Flag to prevent duplicate initialization
+
+        // Memory leak prevention: track event handlers and DOM elements for cleanup
+        this._boundKeydownHandler = null;
+        this._crosshairStyleElement = null;
+        this._globalReferences = ['navigationSystemManager', 'starChartsManager'];
         
         // Initialize Ship instance (replacing simple shipEnergy)
         this.ship = new Ship('starter_ship');
@@ -286,10 +291,11 @@ debug('UTILITY', 'SolarSystemManager set in ViewManager');
         this.crosshairContainer.appendChild(this.frontCrosshair);
         this.crosshairContainer.appendChild(this.aftCrosshair);
         document.body.appendChild(this.crosshairContainer);
-        
-        // Add CSS for crosshair animations
-        const style = document.createElement('style');
-        style.textContent = `
+
+        // Add CSS for crosshair animations (track for cleanup)
+        this._crosshairStyleElement = document.createElement('style');
+        this._crosshairStyleElement.id = 'view-manager-crosshair-styles';
+        this._crosshairStyleElement.textContent = `
             @keyframes pulse {
                 0% { opacity: 0.9; }
                 50% { opacity: 0.6; }
@@ -300,29 +306,30 @@ debug('UTILITY', 'SolarSystemManager set in ViewManager');
                 100% { transform: translate(-50%, -50%) rotate(360deg); }
             }
         `;
-        document.head.appendChild(style);
-        
+        document.head.appendChild(this._crosshairStyleElement);
+
         // Get references to crosshair elements after DOM creation
         this.frontCrosshairElements = Array.from(this.frontCrosshair.querySelectorAll('.crosshair-element'));
         this.aftCrosshairElements = Array.from(this.aftCrosshair.querySelectorAll('.crosshair-element'));
     }
 
     bindKeyEvents() {
-        document.addEventListener('keydown', (event) => {
+        // Store handler for cleanup
+        this._boundKeydownHandler = (event) => {
             if (this.editMode) return; // Ignore view changes in edit mode
-            
+
             const key = event.key.toLowerCase();
             const isGalacticChartVisible = this.galacticChart.isVisible();
             const isLongRangeScannerVisible = this.navigationSystemManager?.isNavigationVisible();
             const isDocked = this.starfieldManager?.isDocked;
-            
+
             if (key === 'g') {
                 // Block galactic chart completely when docked
                 if (isDocked) {
                     return; // Early return - completely ignore the key when docked
                 }
                 
-                console.log('G key pressed:', {
+                debug('UI', 'G key pressed:', {
                     isGalacticChartVisible,
                     isLongRangeScannerVisible,
                     currentView: this.currentView,
@@ -346,7 +353,7 @@ debug('UTILITY', 'Restoring previous view');
                 } else {
                     // Check if chart system is operational
                     if (!chartSystem) {
-                        console.warn('No Galactic Chart system found on ship');
+                        debug('UI', 'No Galactic Chart system found on ship');
                         // Show HUD error message instead of just console warning
 debug('AI', 'ViewManager G key: starfieldManager available?', !!this.starfieldManager);
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
@@ -355,17 +362,17 @@ debug('AI', 'ViewManager G key: starfieldManager available?', !!this.starfieldMa
                                 'System not installed on this ship'
                             );
                         } else {
-                            console.warn('StarfieldManager not available for HUD error display');
+                            debug('UI', 'StarfieldManager not available for HUD error display');
                         }
                         if (this.starfieldManager && this.starfieldManager.playCommandFailedSound) {
                             this.starfieldManager.playCommandFailedSound();
                         }
                         return;
                     }
-                    
+
                     // Check basic operability and cards FIRST (required for any chart usage)
                     if (!chartSystem.isOperational()) {
-                        console.warn('Cannot use Galactic Chart: System damaged or offline');
+                        debug('UI', 'Cannot use Galactic Chart: System damaged or offline');
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'GALACTIC CHART DAMAGED',
@@ -389,14 +396,14 @@ debug('UI', `🗺️ ViewManager G key: Card check result:`, hasChartCards);
 debug('UI', `🗺️ ViewManager G key: No card system - allowing access`);
                         }
                     } catch (error) {
-                        console.warn('Chart card check failed:', error);
+                        debug('UI', 'Chart card check failed:', error);
                         hasChartCards = false;
                     }
-                    
+
 debug('UI', `🗺️ ViewManager G key: Final hasChartCards result:`, hasChartCards);
-                    
+
                     if (!hasChartCards) {
-                        console.warn('Cannot use Galactic Chart: No chart cards installed');
+                        debug('UI', 'Cannot use Galactic Chart: No chart cards installed');
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'GALACTIC CHART CARDS MISSING',
@@ -460,7 +467,7 @@ debug('UTILITY', 'Hiding Long Range Scanner');
                 } else {
                     // Check if scanner system is operational
                     if (!scannerSystem) {
-                        console.warn('No Long Range Scanner system found on ship');
+                        debug('UI', 'No Long Range Scanner system found on ship');
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'LONG RANGE SCANNER UNAVAILABLE',
@@ -472,10 +479,10 @@ debug('UTILITY', 'Hiding Long Range Scanner');
                         }
                         return;
                     }
-                    
+
                     if (!scannerSystem.canActivate(this.ship)) {
                         if (!scannerSystem.isOperational()) {
-                            console.warn('Cannot activate Long Range Scanner: System damaged or offline');
+                            debug('UI', 'Cannot activate Long Range Scanner: System damaged or offline');
                             if (this.starfieldManager && this.starfieldManager.showHUDError) {
                                 this.starfieldManager.showHUDError(
                                     'LONG RANGE SCANNER DAMAGED',
@@ -483,7 +490,7 @@ debug('UTILITY', 'Hiding Long Range Scanner');
                                 );
                             }
                         } else {
-                            console.warn('Cannot activate Long Range Scanner: Insufficient energy');
+                            debug('UI', 'Cannot activate Long Range Scanner: Insufficient energy');
                             if (this.starfieldManager && this.starfieldManager.showHUDError) {
                                 this.starfieldManager.showHUDError(
                                     'INSUFFICIENT ENERGY',
@@ -505,7 +512,7 @@ debug('UTILITY', 'Hiding Long Range Scanner');
                     // Start scanning operation
                     const scanStarted = scannerSystem.startScan(this.ship);
                     if (!scanStarted) {
-                        console.warn('Failed to start Long Range Scanner');
+                        debug('UI', 'Failed to start Long Range Scanner');
                         return;
                     }
                     
@@ -542,7 +549,7 @@ debug('UTILITY', 'Hiding Star Charts');
                 } else {
                     // Check if Star Charts system is available
                     if (!this.navigationSystemManager?.starChartsManager || !this.navigationSystemManager.starChartsManager.isEnabled()) {
-                        console.warn('Star Charts system not available');
+                        debug('UI', 'Star Charts system not available');
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'STAR CHARTS UNAVAILABLE',
@@ -569,11 +576,11 @@ debug('UI', `🗺️ ViewManager C key: Star Charts card check (sync) result:`, 
                             }
                         }
                     } catch (error) {
-                        console.error('Error checking Star Charts cards:', error);
+                        debug('P1', 'Error checking Star Charts cards:', error);
                     }
-                    
+
                     if (!hasStarChartsCards) {
-                        console.warn('Cannot use Star Charts: No star charts cards installed');
+                        debug('UI', 'Cannot use Star Charts: No star charts cards installed');
                         if (this.starfieldManager && this.starfieldManager.showHUDError) {
                             this.starfieldManager.showHUDError(
                                 'STAR CHARTS CARDS MISSING',
@@ -669,7 +676,8 @@ debug('COMBAT', 'Damage control key pressed - handled by StarfieldManager');
                 event.stopPropagation();
                 this.setView(VIEW_TYPES.AFT);
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundKeydownHandler);
     }
 
     setView(viewType) {
@@ -991,10 +999,35 @@ debug('UTILITY', `Ship energy updated: ${oldEnergy.toFixed(2)} -> ${this.ship.cu
     }
 
     dispose() {
+        debug('UTILITY', '🧹 Disposing ViewManager...');
+
+        // Remove document-level keydown listener
+        if (this._boundKeydownHandler) {
+            document.removeEventListener('keydown', this._boundKeydownHandler);
+            this._boundKeydownHandler = null;
+        }
+
+        // Remove crosshair style element
+        if (this._crosshairStyleElement && this._crosshairStyleElement.parentNode) {
+            this._crosshairStyleElement.parentNode.removeChild(this._crosshairStyleElement);
+            this._crosshairStyleElement = null;
+        }
+
+        // Clean up global window references
+        if (typeof window !== 'undefined') {
+            for (const refName of this._globalReferences) {
+                if (window[refName]) {
+                    delete window[refName];
+                }
+            }
+        }
+
         // Clean up DOM elements
         if (this.crosshairContainer && this.crosshairContainer.parentNode) {
             this.crosshairContainer.parentNode.removeChild(this.crosshairContainer);
         }
+
+        // Dispose subsystems
         if (this.galacticChart) {
             this.galacticChart.dispose();
         }
@@ -1004,6 +1037,40 @@ debug('UTILITY', `Ship energy updated: ${oldEnergy.toFixed(2)} -> ${this.ship.cu
         if (this.subspaceRadio) {
             this.subspaceRadio.dispose();
         }
+        if (this.warpFeedback && this.warpFeedback.dispose) {
+            this.warpFeedback.dispose();
+        }
+        if (this.warpDriveManager && this.warpDriveManager.dispose) {
+            this.warpDriveManager.dispose();
+        }
+
+        // Null out references
+        this.crosshairContainer = null;
+        this.frontCrosshair = null;
+        this.aftCrosshair = null;
+        this.frontCrosshairElements = null;
+        this.aftCrosshairElements = null;
+        this.galacticChart = null;
+        this.navigationSystemManager = null;
+        this.longRangeScanner = null;
+        this.subspaceRadio = null;
+        this.warpFeedback = null;
+        this.warpDriveManager = null;
+        this.ship = null;
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.starfieldManager = null;
+        this.solarSystemManager = null;
+
+        debug('UTILITY', '🧹 ViewManager disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 
     getGalacticChart() {
@@ -1058,7 +1125,7 @@ debug('UTILITY', 'ViewManager: Initializing ship systems using unified approach'
         if (this.starfieldManager && typeof this.starfieldManager.initializeShipSystems === 'function') {
             // Use unified initialization method from StarfieldManager
             this.starfieldManager.initializeShipSystems().catch(error => {
-                console.error('Failed to initialize ship systems via StarfieldManager:', error);
+                debug('P1', 'Failed to initialize ship systems via StarfieldManager:', error);
             });
 debug('UTILITY', '✅ ViewManager: Ship systems initialized via StarfieldManager');
         } else {
@@ -1117,7 +1184,7 @@ debug('COMBAT', 'Test damage applied. Press D to open Damage Control Interface.'
      * @returns {null} Always returns null as old interface is disabled
      */
     getDamageControl() {
-        console.warn('getDamageControl() is deprecated - use StarfieldManager.damageControlInterface instead');
+        debug('UTILITY', 'getDamageControl() is deprecated - use StarfieldManager.damageControlInterface instead');
         return null;
     }
 
@@ -1766,11 +1833,11 @@ debug('UI', '✅ Starter card systems initialized');
                 if (impulseEngines) {
 debug('UTILITY', '✅ Impulse engines loaded successfully:', impulseEngines.isOperational());
                 } else {
-                    console.error('❌ Impulse engines still not found after configuration loading');
+                    debug('P1', '❌ Impulse engines still not found after configuration loading');
                 }
             }
         } catch (error) {
-            console.error('❌ Error loading saved configuration:', error);
+            debug('P1', '❌ Error loading saved configuration:', error);
         }
         
         // Update SubspaceRadio with new ship reference

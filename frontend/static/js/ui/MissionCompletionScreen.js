@@ -16,7 +16,16 @@ export class MissionCompletionScreen {
         this.isVisible = false;
         this.completionElement = null;
         this.currentMission = null;
-        
+
+        // Memory leak prevention: track resources for cleanup
+        this._pendingTimeouts = new Set();
+        this._styleElement = null;
+        this._boundHandlers = {
+            keydown: null,
+            closeClick: null,
+            overlayClick: null
+        };
+
         debug('UI', '🎉 MissionCompletionScreen initialized');
     }
 
@@ -50,15 +59,17 @@ export class MissionCompletionScreen {
             this.displayScreen(showBackground, playSound);
             
             // Auto-hide after duration
-            setTimeout(() => {
+            const autoHideTimeout = setTimeout(() => {
+                this._pendingTimeouts.delete(autoHideTimeout);
                 this.hide();
             }, duration);
+            this._pendingTimeouts.add(autoHideTimeout);
 
             this.currentMission = missionData;
             return { success: true, suppressed: false };
 
         } catch (error) {
-            console.error('Failed to show mission completion screen:', error);
+            debug('UI', '❌ Failed to show mission completion screen:', error);
             return { success: false, error: error.message };
         }
     }
@@ -251,16 +262,42 @@ export class MissionCompletionScreen {
 
         // Fade out animation
         this.completionElement.style.opacity = '0';
-        
+
         // Remove from DOM after animation
-        setTimeout(() => {
-            if (this.completionElement && this.completionElement.parentNode) {
-                document.body.removeChild(this.completionElement);
-            }
-            this.completionElement = null;
-            this.isVisible = false;
-            this.currentMission = null;
+        const fadeTimeout = setTimeout(() => {
+            this._pendingTimeouts.delete(fadeTimeout);
+            this._cleanupElement();
         }, 500);
+        this._pendingTimeouts.add(fadeTimeout);
+    }
+
+    /**
+     * Clean up the completion element and reset state
+     */
+    _cleanupElement() {
+        // Remove event listeners before removing element
+        this._removeEventListeners();
+
+        if (this.completionElement && this.completionElement.parentNode) {
+            document.body.removeChild(this.completionElement);
+        }
+        this.completionElement = null;
+        this.isVisible = false;
+        this.currentMission = null;
+    }
+
+    /**
+     * Remove event listeners for cleanup
+     */
+    _removeEventListeners() {
+        if (this._boundHandlers.keydown) {
+            document.removeEventListener('keydown', this._boundHandlers.keydown);
+            this._boundHandlers.keydown = null;
+        }
+
+        // Button and overlay handlers are cleaned up when element is removed
+        this._boundHandlers.closeClick = null;
+        this._boundHandlers.overlayClick = null;
     }
 
     /**
@@ -270,22 +307,23 @@ export class MissionCompletionScreen {
         // Close button
         const closeBtn = this.completionElement.querySelector('.completion-close-btn');
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.hide());
+            this._boundHandlers.closeClick = () => this.hide();
+            closeBtn.addEventListener('click', this._boundHandlers.closeClick);
         }
 
-        // ESC key to close
-        const handleKeyPress = (event) => {
+        // ESC key to close - stored for cleanup
+        this._boundHandlers.keydown = (event) => {
             if (event.key === 'Escape' && this.isVisible) {
                 this.hide();
-                document.removeEventListener('keydown', handleKeyPress);
             }
         };
-        document.addEventListener('keydown', handleKeyPress);
+        document.addEventListener('keydown', this._boundHandlers.keydown);
 
         // Click overlay to close
         const overlay = this.completionElement.querySelector('.completion-overlay');
         if (overlay) {
-            overlay.addEventListener('click', () => this.hide());
+            this._boundHandlers.overlayClick = () => this.hide();
+            overlay.addEventListener('click', this._boundHandlers.overlayClick);
         }
     }
 
@@ -325,11 +363,13 @@ export class MissionCompletionScreen {
      */
     ensureScreenStyles() {
         if (document.getElementById('mission-completion-styles')) {
+            this._styleElement = document.getElementById('mission-completion-styles');
             return; // Already added
         }
 
         const style = document.createElement('style');
         style.id = 'mission-completion-styles';
+        this._styleElement = style;
         style.textContent = `
             .mission-completion-screen .completion-overlay {
                 position: absolute;
@@ -530,6 +570,52 @@ export class MissionCompletionScreen {
      */
     get visible() {
         return this.isVisible;
+    }
+
+    /**
+     * Dispose of all resources - call when destroying the instance
+     */
+    dispose() {
+        debug('UI', '🧹 MissionCompletionScreen disposing...');
+
+        // Clear all pending timeouts
+        for (const timeout of this._pendingTimeouts) {
+            clearTimeout(timeout);
+        }
+        this._pendingTimeouts.clear();
+
+        // Remove event listeners
+        this._removeEventListeners();
+
+        // Clean up completion element
+        if (this.completionElement && this.completionElement.parentNode) {
+            document.body.removeChild(this.completionElement);
+        }
+        this.completionElement = null;
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+        }
+        this._styleElement = null;
+
+        // Clean up global reference
+        if (window.missionCompletionScreen === this) {
+            delete window.missionCompletionScreen;
+        }
+
+        // Null out references
+        this.currentMission = null;
+        this.isVisible = false;
+
+        debug('UI', '🧹 MissionCompletionScreen disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }
 

@@ -30,7 +30,7 @@ debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
         try {
             // Validate star count before proceeding
             if (typeof this.starCount !== 'number' || isNaN(this.starCount)) {
-                console.warn('Invalid starCount:', this.starCount, 'falling back to 5000');
+                debug('RENDER', `⚠️ Invalid starCount: ${this.starCount}, falling back to 5000`);
                 this.starCount = 5000;
             }
 
@@ -103,7 +103,7 @@ debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
                     
                     validVertices++;
                 } catch (error) {
-                    console.warn('Failed to create vertex', i, error);
+                    debug('RENDER', `⚠️ Failed to create vertex ${i}:`, error);
                     continue;
                 }
             }
@@ -115,7 +115,7 @@ debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
             
             // Trim arrays to actual size if needed
             if (validVertices < validStarCount) {
-                console.warn(`Created ${validVertices} valid stars out of ${validStarCount} attempted`);
+                debug('RENDER', `⚠️ Created ${validVertices} valid stars out of ${validStarCount} attempted`);
                 const trimmedPositions = new Float32Array(positions.buffer, 0, validVertices * 3);
                 const trimmedColors = new Float32Array(colors.buffer, 0, validVertices * 3);
                 const trimmedSizes = new Float32Array(sizes.buffer, 0, validVertices);
@@ -149,7 +149,7 @@ debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
             return new this.THREE.Points(geometry, material);
             
         } catch (error) {
-            console.error('Error in createStarfield:', error);
+            debug('RENDER', '❌ Error in createStarfield:', error);
             // Create a minimal fallback starfield
             return this.createFallbackStarfield();
         }
@@ -326,7 +326,7 @@ debug('RENDER', '🌟 StarfieldRenderer initialized with', starCount, 'stars');
 debug('UTILITY', '🌟 Starfield recreated with', this.starCount, 'stars');
             }
         } catch (error) {
-            console.error('Error recreating starfield:', error);
+            debug('RENDER', '❌ Error recreating starfield:', error);
             // Fallback to minimum star count if there's an error
             this.starCount = 5000;
             this.starfield = this.createStarfield();
@@ -378,16 +378,38 @@ debug('UTILITY', '🌟 Starfield initialized and added to scene');
      * Clean up resources
      */
     dispose() {
+        debug('RENDER', '🧹 Disposing StarfieldRenderer...');
+
         if (this.starfield) {
             this.scene.remove(this.starfield);
+
+            // Dispose geometry
             if (this.starfield.geometry) {
                 this.starfield.geometry.dispose();
             }
+
+            // Dispose material and its texture map
             if (this.starfield.material) {
+                if (this.starfield.material.map) {
+                    this.starfield.material.map.dispose();
+                }
                 this.starfield.material.dispose();
             }
+
             this.starfield = null;
         }
-debug('RENDER', '🌟 StarfieldRenderer disposed');
+
+        // Null out references
+        this.scene = null;
+        this.THREE = null;
+
+        debug('RENDER', '🧹 StarfieldRenderer disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 } 

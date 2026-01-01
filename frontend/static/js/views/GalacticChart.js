@@ -9,7 +9,14 @@ export class GalacticChart {
         this.currentSystemIndex = null;
         this.shipSystemIndex = 0;  // Set initial position to A0 (index 0)
         this._isVisible = false;  // Add internal visibility state
-        
+
+        // Memory leak prevention: track event handlers for cleanup
+        this._boundKeydownHandler = null;
+        this._boundCloseHandler = null;
+        this._cellClickHandlers = new Map(); // Map cell element -> handler
+        this._cellMouseEnterHandlers = new Map();
+        this._cellMouseLeaveHandlers = new Map();
+
         // Create the modal container
         this.container = document.createElement('div');
         this.container.className = 'galactic-chart';
@@ -43,13 +50,14 @@ export class GalacticChart {
         // Initialize grid
         this.initializeGrid();
 
-        // Add event listeners
-        this.closeButton.addEventListener('click', () => {
+        // Add event listeners (store for cleanup)
+        this._boundCloseHandler = () => {
             this.viewManager.restorePreviousView();
             this.hide(false);
-        });
-        
-        document.addEventListener('keydown', (event) => {
+        };
+        this.closeButton.addEventListener('click', this._boundCloseHandler);
+
+        this._boundKeydownHandler = (event) => {
             if (this.container.classList.contains('visible')) {
                 const key = event.key.toLowerCase();
                 if (key === 'g' || key === 'escape') {
@@ -66,14 +74,16 @@ export class GalacticChart {
                     this.viewManager.setView(VIEW_TYPES.FORE);
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundKeydownHandler);
 
         // Add to document
         document.body.appendChild(this.container);
     }
 
     initializeGrid() {
-        // Clear existing grid
+        // Clear existing grid and event handlers
+        this._cleanupCellHandlers();
         this.gridContainer.innerHTML = '';
 
         // Add empty cell for top-left corner
@@ -106,21 +116,46 @@ export class GalacticChart {
                 cell.dataset.col = String(col);
                 cell.dataset.sector = `${String.fromCharCode(65 + row)}${col}`;
                 
-                // Add click event listener
-                cell.addEventListener('click', () => {
+                // Add click event listener (track for cleanup)
+                const clickHandler = () => {
                     const index = row * 9 + col;
                     if (this.universe && this.universe[index]) {
                         this.setCurrentSystem(index);
                     }
-                });
+                };
+                cell.addEventListener('click', clickHandler);
+                this._cellClickHandlers.set(cell, clickHandler);
 
                 this.gridContainer.appendChild(cell);
             }
         }
     }
 
+    /**
+     * Clean up cell event handlers
+     */
+    _cleanupCellHandlers() {
+        // Remove click handlers
+        for (const [cell, handler] of this._cellClickHandlers) {
+            cell.removeEventListener('click', handler);
+        }
+        this._cellClickHandlers.clear();
+
+        // Remove mouseenter handlers
+        for (const [cell, handler] of this._cellMouseEnterHandlers) {
+            cell.removeEventListener('mouseenter', handler);
+        }
+        this._cellMouseEnterHandlers.clear();
+
+        // Remove mouseleave handlers
+        for (const [cell, handler] of this._cellMouseLeaveHandlers) {
+            cell.removeEventListener('mouseleave', handler);
+        }
+        this._cellMouseLeaveHandlers.clear();
+    }
+
     async show() {
-        console.log('GalacticChart.show called:', {
+        debug('UI', 'GalacticChart.show called:', {
             isVisible: this._isVisible,
             hasVisibleClass: this.container.classList.contains('visible')
         });
@@ -135,7 +170,7 @@ debug('UTILITY', 'Showing galactic chart and fetching data');
             try {
                 await this.fetchUniverseData();
             } catch (error) {
-                console.error('Error showing galactic chart:', error);
+                debug('P1', 'Error showing galactic chart:', error);
                 // If fetch fails, hide the chart and restore previous view
                 this.hide(true);
                 return;
@@ -192,7 +227,7 @@ debug('UTILITY', `Galactic Chart data processed - Range: ${systemStatus.dataRang
                 
                 // Show warning if data is limited due to damage
                 if (systemStatus.dataRange < 100 || systemStatus.accuracy < 100) {
-                    console.warn(`Chart system performance degraded - showing ${systemStatus.dataRange}% of systems with ${systemStatus.accuracy}% accuracy`);
+                    debug('NAVIGATION', `Chart system performance degraded - showing ${systemStatus.dataRange}% of systems with ${systemStatus.accuracy}% accuracy`);
                 }
             } else {
                 // Fallback to raw data if no chart system (shouldn't happen)
@@ -219,7 +254,7 @@ debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation
 
             return this.universe;
         } catch (error) {
-            console.error('Error fetching universe data:', error);
+            debug('P1', 'Error fetching universe data:', error);
             // Re-throw the error to be handled by the caller
             throw error;
         }
@@ -266,23 +301,31 @@ debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation
                     
                     // Add the new tooltip
                     cell.appendChild(tooltip);
-                    
-                    // Add hover events
-                    cell.addEventListener('mouseenter', () => {
+
+                    // Remove existing hover handlers if any (prevent memory leak)
+                    if (this._cellMouseEnterHandlers.has(cell)) {
+                        cell.removeEventListener('mouseenter', this._cellMouseEnterHandlers.get(cell));
+                    }
+                    if (this._cellMouseLeaveHandlers.has(cell)) {
+                        cell.removeEventListener('mouseleave', this._cellMouseLeaveHandlers.get(cell));
+                    }
+
+                    // Add hover events (track for cleanup)
+                    const mouseEnterHandler = () => {
                         // Get the cell's position
                         const cellRect = cell.getBoundingClientRect();
-                        
+
                         // Create tooltip but keep it hidden initially
                         tooltip.style.display = 'block';
                         tooltip.style.visibility = 'hidden';
-                        
+
                         // Get tooltip dimensions
                         const tooltipRect = tooltip.getBoundingClientRect();
-                        
+
                         // Check available space
                         const spaceBelow = window.innerHeight - cellRect.bottom;
                         const spaceAbove = cellRect.top;
-                        
+
                         // Position tooltip based on available space
                         if (spaceBelow < tooltipRect.height + 10 && spaceAbove > tooltipRect.height + 10) {
                             // Position above
@@ -305,11 +348,11 @@ debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation
                             tooltip.style.setProperty('--arrow-bottom', 'auto');
                             tooltip.style.setProperty('--arrow-border-color', 'transparent transparent #00ff41 transparent');
                         }
-                        
+
                         // Check horizontal positioning
                         const spaceRight = window.innerWidth - cellRect.left;
                         const spaceLeft = cellRect.right;
-                        
+
                         if (spaceRight < tooltipRect.width / 2) {
                             // Adjust for right edge
                             tooltip.style.left = 'auto';
@@ -326,14 +369,18 @@ debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation
                             tooltip.style.right = 'auto';
                             tooltip.style.transform = 'translateX(-50%)';
                         }
-                        
+
                         // Make tooltip visible after positioning
                         tooltip.style.visibility = 'visible';
-                    });
-                    
-                    cell.addEventListener('mouseleave', () => {
+                    };
+                    cell.addEventListener('mouseenter', mouseEnterHandler);
+                    this._cellMouseEnterHandlers.set(cell, mouseEnterHandler);
+
+                    const mouseLeaveHandler = () => {
                         tooltip.style.display = 'none';
-                    });
+                    };
+                    cell.addEventListener('mouseleave', mouseLeaveHandler);
+                    this._cellMouseLeaveHandlers.set(cell, mouseLeaveHandler);
                 }
                 
                 // Clear existing state classes
@@ -549,10 +596,10 @@ debug('UI', `🚀 WARP DEBUG: Warp drive cards found:`, warpCards.length, warpCa
                         } else if (cardCheck && typeof cardCheck === 'object') {
                             hasWarpCards = cardCheck.hasCards;
                         }
-                        
+
 debug('UI', `🚀 WARP DEBUG: Card check result: hasWarpCards=${hasWarpCards}, cardCheck=`, cardCheck);
                     } catch (error) {
-                        console.warn('Warp drive card check failed:', error);
+                        debug('NAVIGATION', 'Warp drive card check failed:', error);
                         hasWarpCards = false;
                     }
                     
@@ -629,7 +676,7 @@ debug('UTILITY', 'Grid not initialized, initializing now');
             if (cells[systemIndex]) {
                 cells[systemIndex].classList.add('ship-location');
             } else {
-                console.warn('Grid cell not found for index:', systemIndex);
+                debug('NAVIGATION', 'Grid cell not found for index:', systemIndex);
             }
         }
 
@@ -646,8 +693,45 @@ debug('UTILITY', 'Grid not initialized, initializing now');
     }
 
     dispose() {
+        debug('UI', '🧹 Disposing GalacticChart...');
+
+        // Remove document-level event listener
+        if (this._boundKeydownHandler) {
+            document.removeEventListener('keydown', this._boundKeydownHandler);
+            this._boundKeydownHandler = null;
+        }
+
+        // Remove close button handler
+        if (this._boundCloseHandler && this.closeButton) {
+            this.closeButton.removeEventListener('click', this._boundCloseHandler);
+            this._boundCloseHandler = null;
+        }
+
+        // Clean up all cell handlers
+        this._cleanupCellHandlers();
+
+        // Remove container from DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
+
+        // Null out references
+        this.container = null;
+        this.closeButton = null;
+        this.contentWrapper = null;
+        this.gridContainer = null;
+        this.sectorInfo = null;
+        this.detailsPanel = null;
+        this.viewManager = null;
+        this.universe = null;
+
+        debug('UI', '🧹 GalacticChart disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 } 

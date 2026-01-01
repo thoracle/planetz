@@ -146,7 +146,20 @@ export default class CardInventoryUI {
         this.dockedLocation = null;
         this.dockingInterface = null;
         this.isInitialized = false;
-        
+
+        // Track timeouts for cleanup
+        this.activeTimeouts = new Set();
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            dragStart: null,
+            dragEnd: null,
+            trackInteraction: null
+        };
+
+        // Track event listener types for interaction tracking
+        this._interactionEventTypes = ['click', 'touchstart', 'keydown'];
+
         // Track NEW card badges
         this.lastShopVisit = this.getLastShopVisit();
         this.newCardTimestamps = this.getNewCardTimestamps();
@@ -163,7 +176,7 @@ export default class CardInventoryUI {
         
         // Only check for container if containerId was provided
         if (containerId && !this.container) {
-            console.error(`Container with id '${containerId}' not found`);
+            debug('UI', `❌ Container with id '${containerId}' not found`);
             return;
         }
         
@@ -181,10 +194,10 @@ export default class CardInventoryUI {
         this.container = containerId ? document.getElementById(containerId) : null;
         
         if (containerId && !this.container) {
-            console.error(`Container with id '${containerId}' not found`);
+            debug('UI', `❌ Container with id '${containerId}' not found`);
             return;
         }
-        
+
         // Re-initialize UI if we now have a container
         if (this.container && !this.isInitialized) {
             this.init();
@@ -273,12 +286,9 @@ export default class CardInventoryUI {
      * @param {string} cardType - The type of card that had a quantity increase
      */
     markCardQuantityIncrease(cardType) {
-        console.log(`🔴 MARKING: Setting quantity increase for ${cardType}`);
-        console.log(`🔴 MARKING: Before - quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
+        debug('UI', `🔴 Marking quantity increase for ${cardType}`);
         this.quantityIncreaseTimestamps[cardType] = Date.now();
-        console.log(`🔴 MARKING: After - quantityIncreaseTimestamps:`, this.quantityIncreaseTimestamps);
         this.saveQuantityIncreaseTimestamps();
-        console.log(`🔴 MARKING: Saved to localStorage`);
     }
 
     /**
@@ -335,13 +345,13 @@ debug('UTILITY', '🔊 Initializing upgrade audio...');
                 
                 this.loadAudio(audioLoader, 'static/audio/blurb.mp3');
             } else {
-                console.warn('⚠️ THREE.js not available for audio initialization, using fallback');
+                debug('UI', '⚠️ THREE.js not available for audio initialization, using fallback');
                 this.upgradeSoundLoaded = false;
                 // Use fallback HTML5 audio
                 this.initializeFallbackAudio();
             }
         } catch (error) {
-            console.error('❌ Error initializing upgrade audio:', error);
+            debug('UI', `❌ Error initializing upgrade audio: ${error.message}`);
             this.upgradeSoundLoaded = false;
             // Use fallback HTML5 audio
             this.initializeFallbackAudio();
@@ -363,7 +373,7 @@ debug('UTILITY', '🔊 Initializing upgrade audio...');
                 // Loading progress (silent)
             },
             (error) => {
-                console.error('❌ Error loading upgrade sound:', error);
+                debug('UI', `❌ Error loading upgrade sound: ${error.message || error}`);
                 this.upgradeSoundLoaded = false;
                 // Try fallback HTML5 audio
                 this.initializeFallbackAudio();
@@ -403,12 +413,12 @@ debug('UTILITY', '✅ Fallback audio loaded successfully');
             });
             
             this.fallbackAudio.addEventListener('error', (e) => {
-                console.error('❌ Fallback audio loading failed:', e);
+                debug('UI', `❌ Fallback audio loading failed: ${e.type}`);
                 this.fallbackAudioLoaded = false;
             });
-            
+
         } catch (error) {
-            console.error('❌ Error initializing fallback audio:', error);
+            debug('UI', `❌ Error initializing fallback audio: ${error.message}`);
             this.fallbackAudioLoaded = false;
         }
     }
@@ -448,18 +458,18 @@ debug('UI', `🎵 Audio ${index} finished playing`);
         });
         
         audioClone.addEventListener('error', (e) => {
-            console.error(`❌ Audio ${index} error:`, e);
+            debug('UI', `❌ Audio ${index} error: ${e.type}`);
             // Immediately recreate this element after a delay
             setTimeout(() => this.recreateAudioElement(index), 100);
         });
-        
+
         // Monitor for potential corruption - if an element gets stuck
         audioClone.addEventListener('stalled', () => {
-            console.warn(`⚠️ Audio ${index} stalled - may need recreation`);
+            debug('UI', `⚠️ Audio ${index} stalled - may need recreation`);
         });
-        
+
         audioClone.addEventListener('suspend', () => {
-            console.warn(`⚠️ Audio ${index} suspended - may need recreation`);
+            debug('UI', `⚠️ Audio ${index} suspended - may need recreation`);
         });
         
         this.audioPool[index] = audioClone;
@@ -499,14 +509,14 @@ debug('UI', `🔄 Audio element ${index} reached threshold (${useCount}/${maxUse
         
         // Check if element is in a bad state
         if (!audio || audio.error || audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
-            console.warn(`⚠️ Audio element ${index} unhealthy, recreating...`);
+            debug('UI', `⚠️ Audio element ${index} unhealthy, recreating...`);
             this.recreateAudioElement(index);
             return false;
         }
-        
+
         // Check for silent corruption - element exists but may not actually play sound
         if (this.detectSilentCorruption(audio, index)) {
-            console.warn(`🔇 Audio element ${index} appears silently corrupted, recreating...`);
+            debug('UI', `🔇 Audio element ${index} appears silently corrupted, recreating...`);
             this.recreateAudioElement(index);
             return false;
         }
@@ -520,29 +530,29 @@ debug('UI', `🔄 Audio element ${index} reached threshold (${useCount}/${maxUse
     detectSilentCorruption(audio, index) {
         // Check if audio duration is invalid (common corruption sign)
         if (isNaN(audio.duration) || audio.duration === 0) {
-            console.warn(`⚠️ Audio ${index} has invalid duration: ${audio.duration}`);
+            debug('UI', `⚠️ Audio ${index} has invalid duration: ${audio.duration}`);
             return true;
         }
-        
+
         // Check if audio source is missing or corrupted
         if (!audio.src || audio.src === '') {
-            console.warn(`⚠️ Audio ${index} missing source`);
+            debug('UI', `⚠️ Audio ${index} missing source`);
             return true;
         }
-        
+
         // Check readyState - if it's dropped below HAVE_ENOUGH_DATA, it may be corrupted
         if (audio.readyState < 2) {
-            console.warn(`⚠️ Audio ${index} readyState dropped to ${audio.readyState}`);
+            debug('UI', `⚠️ Audio ${index} readyState dropped to ${audio.readyState}`);
             return true;
         }
-        
+
         // Check if volume has been mysteriously set to 0 (corruption symptom)
         if (audio.volume === 0) {
-            console.warn(`⚠️ Audio ${index} volume is 0 (possible corruption)`);
+            debug('UI', `⚠️ Audio ${index} volume is 0 (possible corruption)`);
             audio.volume = 0.7; // Try to restore volume
             return true; // Still recreate to be safe
         }
-        
+
         return false;
     }
 
@@ -576,37 +586,146 @@ debug('UI', '🔊 AudioContext resumed after user interaction');
             this.interactionCheckInterval = setInterval(checkInteractionState, 100);
         } else {
             // Fallback to local user interaction detection if StarfieldAudioManager not available
-debug('AI', 'StarfieldAudioManager not available, using local user interaction detection');
-            
-            const trackInteraction = () => {
+            debug('AI', 'StarfieldAudioManager not available, using local user interaction detection');
+
+            // Store handler reference for cleanup
+            this._boundHandlers.trackInteraction = () => {
                 if (!this.userHasInteracted) {
                     this.userHasInteracted = true;
-debug('UI', 'User interaction detected - audio should work now');
-                    
+                    debug('UI', 'User interaction detected - audio should work now');
+
                     // Resume AudioContext if suspended
                     if (this.audioListener && this.audioListener.context && this.audioListener.context.state === 'suspended') {
                         this.audioListener.context.resume().then(() => {
-debug('UI', '🔊 AudioContext resumed after user interaction');
+                            debug('UI', '🔊 AudioContext resumed after user interaction');
                         });
                     }
                 }
             };
-            
+
             // Track various user interactions
-            ['click', 'touchstart', 'keydown'].forEach(event => {
-                document.addEventListener(event, trackInteraction, { once: false });
+            this._interactionEventTypes.forEach(event => {
+                document.addEventListener(event, this._boundHandlers.trackInteraction, { once: false });
             });
         }
     }
 
     /**
-     * Clean up resources
+     * Create a tracked timeout that will be cleared on destroy
+     * @param {Function} callback - Callback to execute
+     * @param {number} delay - Delay in milliseconds
+     * @returns {number} - Timeout ID
+     */
+    _createTrackedTimeout(callback, delay) {
+        const timeoutId = setTimeout(() => {
+            this.activeTimeouts.delete(timeoutId);
+            callback();
+        }, delay);
+        this.activeTimeouts.add(timeoutId);
+        return timeoutId;
+    }
+
+    /**
+     * Clear all tracked timeouts
+     */
+    _clearAllTimeouts() {
+        this.activeTimeouts.forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+        this.activeTimeouts.clear();
+    }
+
+    /**
+     * Clean up resources (legacy alias for destroy)
      */
     dispose() {
+        this.destroy();
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('UI', 'CardInventoryUI destroy() called - cleaning up all resources');
+
+        // Clear interaction check interval
         if (this.interactionCheckInterval) {
             clearInterval(this.interactionCheckInterval);
             this.interactionCheckInterval = null;
         }
+
+        // Clear all tracked timeouts
+        this._clearAllTimeouts();
+
+        // Remove document-level drag event listeners
+        if (this._boundHandlers.dragStart) {
+            document.removeEventListener('dragstart', this._boundHandlers.dragStart);
+            this._boundHandlers.dragStart = null;
+        }
+
+        if (this._boundHandlers.dragEnd) {
+            document.removeEventListener('dragend', this._boundHandlers.dragEnd);
+            this._boundHandlers.dragEnd = null;
+        }
+
+        // Remove document-level interaction tracking listeners
+        if (this._boundHandlers.trackInteraction) {
+            this._interactionEventTypes.forEach(event => {
+                document.removeEventListener(event, this._boundHandlers.trackInteraction);
+            });
+            this._boundHandlers.trackInteraction = null;
+        }
+
+        // Clean up audio resources
+        if (this.upgradeSound) {
+            if (this.upgradeSound.isPlaying) {
+                this.upgradeSound.stop();
+            }
+            this.upgradeSound = null;
+        }
+
+        if (this.audioListener) {
+            this.audioListener = null;
+        }
+
+        // Clean up audio pool
+        if (this.audioPool) {
+            this.audioPool.forEach(audio => {
+                audio.pause();
+                audio.src = '';
+            });
+            this.audioPool = null;
+        }
+
+        if (this.fallbackAudio) {
+            this.fallbackAudio.pause();
+            this.fallbackAudio.src = '';
+            this.fallbackAudio = null;
+        }
+
+        // Clear data structures
+        if (this.shipSlots) {
+            this.shipSlots.clear();
+        }
+
+        // Clear DOM container reference
+        if (this.container) {
+            this.container.innerHTML = '';
+            this.container = null;
+        }
+
+        // Clear singleton instance and global reference
+        if (CardInventoryUI.instance === this) {
+            CardInventoryUI.instance = null;
+        }
+
+        if (window.cardInventoryUI === this) {
+            window.cardInventoryUI = null;
+        }
+
+        this.isInitialized = false;
+
+        debug('UI', 'CardInventoryUI cleanup complete');
     }
 
     /**
@@ -658,34 +777,34 @@ debug('UI', '🎵 Playing fallback HTML5 upgrade sound');
                 while (attemptsRemaining > 0) {
                     // Check if this audio element is healthy
                     if (!this.checkAudioElementHealth(currentPoolIndex)) {
-                        console.warn(`⚠️ Audio element ${currentPoolIndex} unhealthy, trying next...`);
+                        debug('UI', `⚠️ Audio element ${currentPoolIndex} unhealthy, trying next...`);
                         currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                         attemptsRemaining--;
                         continue;
                     }
-                    
+
                     const audioToPlay = this.audioPool[currentPoolIndex];
-                    
+
                     // Increment use count for health monitoring
                     this.audioElementUseCount[currentPoolIndex]++;
-                    
+
                     // Update pool index for next use
                     this.audioPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
-                    
-debug('UI', `🎵 Using audio pool slot ${currentPoolIndex} (next will be ${this.audioPoolIndex}) [use #${this.audioElementUseCount[currentPoolIndex]}]`);
-                    
+
+                    debug('UI', `🎵 Using audio pool slot ${currentPoolIndex} [use #${this.audioElementUseCount[currentPoolIndex]}]`);
+
                     // Ensure audio exists and is ready
                     if (!audioToPlay) {
-                        console.error(`❌ Audio pool slot ${currentPoolIndex} is null/undefined`);
+                        debug('UI', `❌ Audio pool slot ${currentPoolIndex} is null/undefined`);
                         this.recreateAudioElement(currentPoolIndex);
                         currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                         attemptsRemaining--;
                         continue;
                     }
-                    
+
                     // Perform final health check before playing
                     if (this.detectSilentCorruption(audioToPlay, currentPoolIndex)) {
-                        console.warn(`🔇 Last-minute corruption detected for audio ${currentPoolIndex}, skipping...`);
+                        debug('UI', `🔇 Last-minute corruption detected for audio ${currentPoolIndex}, skipping...`);
                         this.recreateAudioElement(currentPoolIndex);
                         currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                         attemptsRemaining--;
@@ -713,26 +832,13 @@ debug('UI', `🔧 Resetting audio ${currentPoolIndex} volume from ${audioToPlay.
                                 // Set up a corruption detection timeout
                                 setTimeout(() => {
                                     if (audioToPlay.paused && audioToPlay.currentTime === 0) {
-                                        console.warn(`🔇 Audio ${currentPoolIndex} may have failed silently - recreating for next use`);
+                                        debug('UI', `🔇 Audio ${currentPoolIndex} may have failed silently - recreating for next use`);
                                         this.recreateAudioElement(currentPoolIndex);
                                     }
                                 }, 100); // Check after 100ms
-                                
+
                             }).catch((error) => {
-                                console.error(`❌ HTML5 audio play failed for pool ${currentPoolIndex}:`, error);
-                                console.error('Error details:', {
-                                    name: error.name,
-                                    message: error.message,
-                                    code: error.code,
-                                    audioState: {
-                                        readyState: audioToPlay.readyState,
-                                        paused: audioToPlay.paused,
-                                        currentTime: audioToPlay.currentTime,
-                                        duration: audioToPlay.duration,
-                                        networkState: audioToPlay.networkState,
-                                        error: audioToPlay.error
-                                    }
-                                });
+                                debug('UI', `❌ HTML5 audio play failed for pool ${currentPoolIndex}: ${error.message}`);
                                 
                                 // Mark this element for recreation and try next
                                 this.recreateAudioElement(currentPoolIndex);
@@ -750,23 +856,23 @@ debug('UI', `🔄 Trying next audio element...`);
                         }
                         return; // Successfully attempted playback
                     } else {
-                        console.warn(`⚠️ Audio pool ${currentPoolIndex} not ready (readyState: ${audioToPlay.readyState}), trying to load...`);
+                        debug('UI', `⚠️ Audio pool ${currentPoolIndex} not ready (readyState: ${audioToPlay.readyState}), trying to load...`);
                         audioToPlay.load();
                         audioToPlay.addEventListener('canplaythrough', () => {
                             audioToPlay.currentTime = 0;
                             audioToPlay.play().then(() => {
-debug('UTILITY', `✅ Audio pool ${currentPoolIndex} played after loading`);
+                                debug('UI', `✅ Audio pool ${currentPoolIndex} played after loading`);
                             }).catch(err => {
-                                console.error(`❌ Audio pool ${currentPoolIndex} play failed after loading:`, err);
+                                debug('UI', `❌ Audio pool ${currentPoolIndex} play failed after loading: ${err.message}`);
                                 this.recreateAudioElement(currentPoolIndex);
                             });
                         }, { once: true });
                         return; // Attempted to load and play
                     }
                 }
-                
+
                 // If we get here, all audio elements failed
-                console.error(`❌ All audio elements failed, recreating pool...`);
+                debug('UI', '❌ All audio elements failed, recreating pool...');
                 this.createAudioPool();
                 this.tryAlternativeAudioPlayback();
                 return;
@@ -781,9 +887,9 @@ debug('UI', '🎵 Playing fallback HTML5 upgrade sound (original method)');
             
             // If no audio method worked, try creating new instance
             this.tryAlternativeAudioPlayback();
-            
+
         } catch (error) {
-            console.error('❌ Error playing upgrade sound:', error);
+            debug('UI', `❌ Error playing upgrade sound: ${error.message}`);
             this.tryAlternativeAudioPlayback();
         }
     }
@@ -794,18 +900,18 @@ debug('UI', '🎵 Playing fallback HTML5 upgrade sound (original method)');
     playOriginalFallbackAudio() {
         try {
             this.fallbackAudio.currentTime = 0;
-            
+
             const playPromise = this.fallbackAudio.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-debug('UI', '✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio (original)');
+                    debug('UI', '✅ Playing upgrade success sound via HTML5 audio');
                 }).catch((error) => {
-                    console.error('❌ Original HTML5 audio play failed:', error);
+                    debug('UI', `❌ Original HTML5 audio play failed: ${error.message}`);
                     this.tryAlternativeAudioPlayback();
                 });
             }
         } catch (error) {
-            console.error('❌ Original fallback audio error:', error);
+            debug('UI', `❌ Original fallback audio error: ${error.message}`);
             this.tryAlternativeAudioPlayback();
         }
     }
@@ -814,29 +920,29 @@ debug('UI', '✅ Playing upgrade success sound (blurb.mp3) via HTML5 audio (orig
      * Try alternative audio playback methods
      */
     tryAlternativeAudioPlayback() {
-debug('NAVIGATION', '🔄 Trying alternative audio playback with path fallback...');
-        
+        debug('UI', '🔄 Trying alternative audio playback...');
+
         try {
             // Method 1: Create fresh Audio instance
             const immediateAudio = new Audio('static/audio/blurb.mp3');
             immediateAudio.volume = 0.7;
-            
+
             // Add a small delay to ensure browser readiness
             setTimeout(() => {
                 const playPromise = immediateAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-debug('UI', '✅ Emergency audio playback successful');
+                        debug('UI', '✅ Emergency audio playback successful');
                     }).catch(err => {
-                        console.error('❌ Emergency audio playback failed:', err);
+                        debug('UI', `❌ Emergency audio playback failed: ${err.message}`);
                         // Method 2: Try Web Audio API if available
                         this.tryWebAudioPlayback();
                     });
                 }
             }, 10);
-            
+
         } catch (emergencyError) {
-            console.error('❌ Emergency audio creation failed:', emergencyError);
+            debug('UI', `❌ Emergency audio creation failed: ${emergencyError.message}`);
             this.tryWebAudioPlayback();
         }
     }
@@ -846,12 +952,12 @@ debug('UI', '✅ Emergency audio playback successful');
      */
     tryWebAudioPlayback() {
         if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-debug('NAVIGATION', '🔊 Trying Web Audio API with path fallback...');
-            
+            debug('UI', '🔊 Trying Web Audio API...');
+
             try {
                 const AudioCtx = AudioContext || webkitAudioContext;
                 const audioContext = new AudioCtx();
-                
+
                 // Load and play audio
                 fetch('static/audio/blurb.mp3')
                     .then(response => response.arrayBuffer())
@@ -859,27 +965,25 @@ debug('NAVIGATION', '🔊 Trying Web Audio API with path fallback...');
                     .then(audioBuffer => {
                         const source = audioContext.createBufferSource();
                         const gainNode = audioContext.createGain();
-                        
+
                         source.buffer = audioBuffer;
                         gainNode.gain.value = 0.7;
-                        
+
                         source.connect(gainNode);
                         gainNode.connect(audioContext.destination);
-                        
+
                         source.start();
-debug('UI', '✅ Web Audio API playback successful');
+                        debug('UI', '✅ Web Audio API playback successful');
                     })
                     .catch(error => {
-                        console.error('❌ Web Audio API failed:', error);
-                        console.warn('💔 All audio playback methods failed');
+                        debug('UI', `❌ Web Audio API failed: ${error.message}`);
                     });
-                    
+
             } catch (webAudioError) {
-                console.error('❌ Web Audio API not supported:', webAudioError);
-                console.warn('💔 All audio playback methods failed');
+                debug('UI', `❌ Web Audio API not supported: ${webAudioError.message}`);
             }
         } else {
-            console.warn('💔 All audio playback methods failed - no Web Audio API support');
+            debug('UI', '💔 All audio playback methods failed - no Web Audio API support');
         }
     }
 
@@ -907,7 +1011,7 @@ debug('UI', '✅ Web Audio API playback successful');
                 }
             }
         } else {
-            console.warn(`Cannot add unknown ship type: ${shipType}`);
+            debug('UI', `⚠️ Cannot add unknown ship type: ${shipType}`);
         }
     }
 
@@ -1001,12 +1105,11 @@ debug('UI', '✅ Web Audio API playback successful');
         
         // Reload quantity increase timestamps from localStorage before displaying
         this.quantityIncreaseTimestamps = this.getQuantityIncreaseTimestamps();
-        console.log('🔍 COLLECTION: Reloaded quantity increase timestamps from localStorage:', this.quantityIncreaseTimestamps);
-        console.log('🔍 COLLECTION: Raw localStorage for verification:', localStorage.getItem('planetz_quantity_increase_timestamps'));
-        
+        debug('UI', '🔍 COLLECTION: Reloaded quantity increase timestamps from localStorage');
+
         // Clear quantity increase status after a delay to let user see red badges first
         setTimeout(() => {
-            console.log('🔍 COLLECTION: Clearing quantity increase timestamps after delay');
+            debug('UI', '🔍 COLLECTION: Clearing quantity increase timestamps after delay');
             this.clearQuantityIncreaseStatus();
         }, 5000); // 5 second delay to see red badges
         
@@ -1025,11 +1128,11 @@ debug('UI', 'Docking interface reference stored:', !!this.dockingInterface);
         if (!playerData.ownsShip(this.currentShipType)) {
             const ownedShips = playerData.getOwnedShips();
             if (ownedShips.length > 0) {
-                console.warn(`Player doesn't own ${this.currentShipType}, falling back to ${ownedShips[0]}`);
+                debug('UI', `⚠️ Player doesn't own ${this.currentShipType}, falling back to ${ownedShips[0]}`);
                 this.currentShipType = ownedShips[0];
                 this.currentShipConfig = SHIP_CONFIGS[this.currentShipType];
             } else {
-                console.error('Player owns no ships! Adding starter ship as fallback.');
+                debug('UI', '❌ Player owns no ships! Adding starter ship as fallback.');
                 playerData.addShip('starter_ship');
                 this.currentShipType = 'starter_ship';
                 this.currentShipConfig = SHIP_CONFIGS[this.currentShipType];
@@ -1061,15 +1164,15 @@ debug('UI', 'Docked location exists:', !!this.dockedLocation);
         
         // Return to station menu
         if (this.dockingInterface) {
-debug('UI', 'Attempting to show station menu...');
+            debug('UI', 'Attempting to show station menu...');
             try {
                 this.dockingInterface.returnToStationMenu();
-debug('UI', 'Successfully returned to station menu');
+                debug('UI', 'Successfully returned to station menu');
             } catch (error) {
-                console.error('Error showing station menu:', error);
+                debug('UI', `❌ Error showing station menu: ${error.message}`);
             }
         } else {
-            console.error('Cannot return to station menu - missing docking interface reference');
+            debug('UI', '❌ Cannot return to station menu - missing docking interface reference');
         }
         
 debug('UI', 'Card shop closed');
@@ -1295,7 +1398,7 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
      */
     createUI() {
         if (!this.container) {
-            console.warn('Cannot create UI - no container available');
+            debug('UI', '⚠️ Cannot create UI - no container available');
             return;
         }
 
@@ -1421,7 +1524,7 @@ debug('UTILITY', 'Test data loaded with high-level upgrade capabilities');
      */
     createInventoryGrid() {
         // This method is kept for backward compatibility but should not be used
-        console.warn('createInventoryGrid is deprecated, use createInventoryPanel instead');
+        debug('UI', '⚠️ createInventoryGrid is deprecated, use createInventoryPanel instead');
     }
 
     /**
@@ -1545,21 +1648,26 @@ debug('RENDER', `🔧 Rendered ${config.systemSlots} ship slots for ${config.nam
      * Setup event listeners for drag and drop
      */
     setupEventListeners() {
-        // Add drag start event listeners to all cards
-        document.addEventListener('dragstart', (e) => {
+        // Create bound handlers for later removal
+        this._boundHandlers.dragStart = (e) => {
             if (e.target.classList.contains('card-stack') || e.target.classList.contains('collection-card-item')) {
                 this.handleDragStart(e);
             }
-        });
-        
-        // Add drag end event listeners
-        document.addEventListener('dragend', (e) => {
+        };
+
+        this._boundHandlers.dragEnd = (e) => {
             if (e.target.classList.contains('card-stack') || e.target.classList.contains('collection-card-item')) {
                 this.handleDragEnd(e);
             }
-        });
-        
-debug('UI', 'Drag and drop event listeners set up');
+        };
+
+        // Add drag start event listeners to all cards
+        document.addEventListener('dragstart', this._boundHandlers.dragStart);
+
+        // Add drag end event listeners
+        document.addEventListener('dragend', this._boundHandlers.dragEnd);
+
+        debug('UI', 'Drag and drop event listeners set up');
     }
 
     /**
@@ -1722,12 +1830,12 @@ debug('UI', `🔗 Synced card with ship's CardSystemIntegration: ${card.cardType
 debug('UI', '🚛 Cargo holds refreshed after card installation');
                     }
                     
-debug('UI', '🔄 Ship systems refreshed after card installation');
+                    debug('UI', '🔄 Ship systems refreshed after card installation');
                 } catch (error) {
-                    console.error('⚠️ Failed to refresh ship systems:', error);
+                    debug('UI', `⚠️ Failed to refresh ship systems: ${error.message}`);
                 }
             } else {
-                console.warn('⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
+                debug('UI', '⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
             }
 
             // Save the configuration to ensure changes persist
@@ -1745,9 +1853,9 @@ debug('UI', '🔄 Ship systems refreshed after card installation');
 debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
             
         } catch (error) {
-            console.error('❌ Failed to drop card:', error);
+            debug('UI', `❌ Failed to drop card: ${error.message}`);
         }
-        
+
         return false;
     }
 
@@ -2379,14 +2487,14 @@ debug('UI', `🔗 Removed card from ship's CardSystemIntegration: ${card.cardTyp
 debug('UI', '🚛 Cargo holds refreshed after card removal');
                     }
                     
-debug('UI', '🔄 Ship systems refreshed after card removal');
+                    debug('UI', '🔄 Ship systems refreshed after card removal');
                 } catch (error) {
-                    console.error('⚠️ Failed to refresh ship systems:', error);
+                    debug('UI', `⚠️ Failed to refresh ship systems: ${error.message}`);
                 }
             } else {
-                console.warn('⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
+                debug('UI', '⚠️ Could not sync with ship CardSystemIntegration - ship may not be available');
             }
-            
+
             // Save the configuration to ensure changes persist
             this.saveCurrentShipConfiguration();
             
@@ -2636,10 +2744,10 @@ debug('UI', `🛡️ Added ${shipType} to player's owned ships`);
         // **CRITICAL FIX**: Update the actual ship instance in ViewManager
         // This ensures the ship type persists when launching and docking
         if (this.dockingInterface?.starfieldManager?.viewManager) {
-debug('UI', '🔄 CardInventoryUI: Updating ViewManager ship instance to', shipType);
+            debug('UI', `🔄 CardInventoryUI: Updating ViewManager ship instance to ${shipType}`);
             await this.dockingInterface.starfieldManager.viewManager.switchShip(shipType);
         } else {
-            console.warn('⚠️ CardInventoryUI: ViewManager not available - ship instance not updated');
+            debug('UI', '⚠️ CardInventoryUI: ViewManager not available - ship instance not updated');
         }
         
 debug('UI', `Ship switched to ${shipType}`);
@@ -2738,7 +2846,7 @@ debug('UI', `No stored configuration found for ${shipType}, loading default star
                     
                     // For weapons, only allow weapon slots - NO FALLBACK to utility
                     if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
-                        console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                        debug('UI', `❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
                         return; // Skip this weapon instead of placing it in wrong slot type
                     }
                     
@@ -2758,7 +2866,7 @@ debug('UI', `No stored configuration found for ${shipType}, loading default star
                         this.shipSlots.set(targetSlotIndex.toString(), card);
 debug('TARGETING', `Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
-                        console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
+                        debug('UI', `❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
                 });
             }
@@ -2849,7 +2957,7 @@ debug('UI', `Loaded ${cardType} (Lv.${level}) from numeric slot ${slotId}`);
                     
                     // For weapons, only allow weapon slots - NO FALLBACK to utility
                     if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
-                        console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                        debug('UI', `❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
                         return; // Skip this weapon instead of placing it in wrong slot type
                     }
                     
@@ -2869,7 +2977,7 @@ debug('UI', `Loaded ${cardType} (Lv.${level}) from numeric slot ${slotId}`);
                         this.shipSlots.set(targetSlotIndex.toString(), card);
 debug('TARGETING', `Loaded ${cardType} (Lv.${level}) from named slot ${slotId} to slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                     } else {
-                        console.error(`❌ FAILED: No available slot found for card ${cardType} from named slot ${slotId} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
+                        debug('UI', `❌ FAILED: No available slot found for card ${cardType} from named slot ${slotId} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                     }
                 });
             } else {
@@ -2899,7 +3007,7 @@ debug('UI', `Loaded ${this.shipSlots.size} cards for ${shipType}`);
             
 debug('UI', `🔗 Synced ${this.shipSlots.size} cards with ship's CardSystemIntegration`);
         } else {
-            console.warn('⚠️ Could not sync with ship CardSystemIntegration during load - ship may not be available');
+            debug('UI', '⚠️ Could not sync with ship CardSystemIntegration during load - ship may not be available');
         }
     }
 
@@ -3022,7 +3130,7 @@ debug('UI', 'Ship inventory closed');
      */
     loadCurrentShipConfiguration(ship) {
         if (!ship) {
-            console.warn('No ship provided to load configuration from');
+            debug('UI', 'No ship provided to load configuration from');
             return;
         }
         
@@ -3090,7 +3198,7 @@ debug('UI', `Loading starter cards for ${ship.shipType}`);
                 
                 // For weapons, only allow weapon slots - NO FALLBACK to utility
                 if (targetSlotIndex === null && this.isWeaponCard(cardType)) {
-                    console.error(`❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
+                    debug('UI', `❌ WEAPON SLOT VIOLATION: Cannot place weapon ${cardType} - no weapon slots available`);
                     return; // Skip this weapon instead of placing it in wrong slot type
                 }
                 
@@ -3110,7 +3218,7 @@ debug('UI', `Loading starter cards for ${ship.shipType}`);
                     this.shipSlots.set(targetSlotIndex.toString(), card);
 debug('TARGETING', `Loaded default starter card ${cardType} (Lv.${level}) into slot ${targetSlotIndex} (${slotTypeMapping[targetSlotIndex]})`);
                 } else {
-                    console.error(`❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
+                    debug('UI', `❌ FAILED: No available slot found for starter card ${cardType} - ship only has ${shipConfig.systemSlots} slots, ${this.shipSlots.size} already used`);
                 }
             });
         } else {
@@ -3197,12 +3305,12 @@ debug('UI', `💰 Current credits: ${this.credits}`);
         const cardStack = this.inventory.cardStacks.get(cardType);
         
         if (!cardStack) {
-            console.error(`❌ Card stack not found: ${cardType}`);
+            debug('UI', `❌ Card stack not found: ${cardType}`);
             return;
         }
-        
+
         if (!cardStack.discovered) {
-            console.error(`❌ Cannot upgrade undiscovered card: ${cardType}`);
+            debug('UI', `❌ Cannot upgrade undiscovered card: ${cardType}`);
             return;
         }
         
@@ -3214,7 +3322,7 @@ debug('UI', `📊 Card ${cardType} - Current Level: ${currentLevel}, Next Level:
         
         // Check if upgrade is possible
         if (nextLevel > maxLevel) {
-            console.error(`❌ Card ${cardType} is already at maximum level ${maxLevel}`);
+            debug('UI', `❌ Card ${cardType} is already at maximum level ${maxLevel}`);
             return;
         }
         
@@ -3231,12 +3339,12 @@ debug('UI', `💎 Upgrade to level ${nextLevel} requires: ${upgradeCost.cards} c
         
         // Validate requirements
         if (cardStack.count < upgradeCost.cards) {
-            console.error(`❌ Not enough cards for upgrade. Have ${cardStack.count}, need ${upgradeCost.cards}`);
+            debug('UI', `❌ Not enough cards for upgrade. Have ${cardStack.count}, need ${upgradeCost.cards}`);
             return;
         }
-        
+
         if (!playerCredits.canAfford(upgradeCost.credits)) {
-            console.error(`❌ Not enough credits for upgrade. Have ${playerCredits.getCredits()}, need ${upgradeCost.credits}`);
+            debug('UI', `❌ Not enough credits for upgrade. Have ${playerCredits.getCredits()}, need ${upgradeCost.credits}`);
             return;
         }
         
@@ -3251,7 +3359,7 @@ debug('AI', `📦 Cards consumed: ${upgradeCost.cards}, remaining: ${cardStack.c
             // Consume credits
             const creditsSpent = playerCredits.spendCredits(upgradeCost.credits, `Upgrade ${cardType} to level ${nextLevel}`);
             if (!creditsSpent) {
-                console.error('❌ Failed to spend credits for upgrade');
+                debug('UI', '❌ Failed to spend credits for upgrade');
                 return;
             }
 debug('AI', `💰 Credits consumed: ${upgradeCost.credits}, remaining: ${playerCredits.getCredits()}`);
@@ -3303,9 +3411,9 @@ debug('UI', '🚛 Cargo holds refreshed after card upgrade');
                     }
                 }
             } catch (error) {
-                console.error('⚠️ Failed to refresh ship systems after upgrade:', error);
+                debug('UI', '⚠️ Failed to refresh ship systems after upgrade:', error);
             }
-            
+
             // Re-render the inventory to reflect changes
 debug('UI', `🔄 Re-rendering inventory...`);
             this.render();
@@ -3315,7 +3423,7 @@ debug('UI', `🎵 Playing upgrade sound...`);
             this.playUpgradeSound();
             
         } catch (error) {
-            console.error(`❌ Error during upgrade:`, error);
+            debug('UI', `❌ Error during upgrade:`, error);
         }
     }
 

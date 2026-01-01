@@ -3,15 +3,18 @@
  * Replaces the complex Mission HUD integration with a simple, reliable overlay
  */
 
+import { debug } from '../debug.js';
+
 export class SimpleMissionRewards {
+    // Track active overlay's event handlers for cleanup
+    static _activeOverlay = null;
+    static _activeHandlers = null;
+
     static showCompletion(missionId, missionData, rewards) {
-        console.log('🎉 SIMPLE REWARDS: Creating Mission HUD overlay for mission:', missionId);
+        debug('MISSIONS', `🎉 Creating Mission HUD overlay for mission: ${missionId}`);
         
-        // Remove any existing overlay
-        const existingOverlay = document.getElementById('mission-rewards-overlay');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
+        // Remove any existing overlay with proper cleanup
+        SimpleMissionRewards._cleanup();
 
         // Create simple overlay positioned over Mission HUD
         const overlay = document.createElement('div');
@@ -106,38 +109,48 @@ export class SimpleMissionRewards {
             width: 100%;
         `;
 
-        // Button hover effects
-        okButton.addEventListener('mouseenter', () => {
-            okButton.style.background = 'linear-gradient(135deg, #00cc33, #009922)';
-            okButton.style.color = '#ffffff';
-            okButton.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.6)';
-        });
+        // Store handlers for cleanup
+        const handlers = {
+            mouseenter: () => {
+                okButton.style.background = 'linear-gradient(135deg, #00cc33, #009922)';
+                okButton.style.color = '#ffffff';
+                okButton.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.6)';
+            },
+            mouseleave: () => {
+                okButton.style.background = 'linear-gradient(135deg, #00ff41, #00cc33)';
+                okButton.style.color = '#000000';
+                okButton.style.boxShadow = 'none';
+            },
+            click: () => {
+                // Remove mission from Mission HUD if it exists
+                if (window.starfieldManager?.missionStatusHUD) {
+                    window.starfieldManager.missionStatusHUD.removeMission(missionId);
+                }
 
-        okButton.addEventListener('mouseleave', () => {
-            okButton.style.background = 'linear-gradient(135deg, #00ff41, #00cc33)';
-            okButton.style.color = '#000000';
-            okButton.style.boxShadow = 'none';
-        });
+                debug('MISSIONS', '✅ Overlay dismissed and mission removed');
 
-        okButton.addEventListener('click', () => {
-            overlay.remove();
-            
-            // Remove mission from Mission HUD if it exists
-            if (window.starfieldManager?.missionStatusHUD) {
-                window.starfieldManager.missionStatusHUD.removeMission(missionId);
-            }
-            
-            console.log('✅ SIMPLE REWARDS: Overlay dismissed and mission removed');
-        });
+                // Clean up properly
+                SimpleMissionRewards._cleanup();
+            },
+            keydown: null // Will be set below
+        };
 
         // ESC key to close
-        const escHandler = (event) => {
+        handlers.keydown = (event) => {
             if (event.key === 'Escape') {
-                okButton.click();
-                document.removeEventListener('keydown', escHandler);
+                handlers.click();
             }
         };
-        document.addEventListener('keydown', escHandler);
+
+        // Attach event listeners
+        okButton.addEventListener('mouseenter', handlers.mouseenter);
+        okButton.addEventListener('mouseleave', handlers.mouseleave);
+        okButton.addEventListener('click', handlers.click);
+        document.addEventListener('keydown', handlers.keydown);
+
+        // Store references for cleanup
+        SimpleMissionRewards._activeOverlay = overlay;
+        SimpleMissionRewards._activeHandlers = { okButton, handlers };
 
         // Assemble overlay
         panel.appendChild(title);
@@ -148,10 +161,62 @@ export class SimpleMissionRewards {
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
 
-        console.log('✅ SIMPLE REWARDS: Mission HUD overlay created and displayed');
-        
+        debug('MISSIONS', '✅ Mission HUD overlay created and displayed');
+
         // Focus the OK button for keyboard accessibility
         okButton.focus();
+    }
+
+    /**
+     * Clean up active overlay and event listeners
+     */
+    static _cleanup() {
+        // Remove event listeners from button
+        if (SimpleMissionRewards._activeHandlers) {
+            const { okButton, handlers } = SimpleMissionRewards._activeHandlers;
+
+            if (okButton) {
+                okButton.removeEventListener('mouseenter', handlers.mouseenter);
+                okButton.removeEventListener('mouseleave', handlers.mouseleave);
+                okButton.removeEventListener('click', handlers.click);
+            }
+
+            if (handlers.keydown) {
+                document.removeEventListener('keydown', handlers.keydown);
+            }
+
+            SimpleMissionRewards._activeHandlers = null;
+        }
+
+        // Remove overlay from DOM
+        if (SimpleMissionRewards._activeOverlay) {
+            if (SimpleMissionRewards._activeOverlay.parentNode) {
+                SimpleMissionRewards._activeOverlay.remove();
+            }
+            SimpleMissionRewards._activeOverlay = null;
+        }
+
+        // Also check for orphaned overlay by ID
+        const existingOverlay = document.getElementById('mission-rewards-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+    }
+
+    /**
+     * Dispose of all resources - for consistency with other UI components
+     */
+    static dispose() {
+        debug('MISSIONS', '🧹 SimpleMissionRewards disposing...');
+        SimpleMissionRewards._cleanup();
+        debug('MISSIONS', '🧹 SimpleMissionRewards disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    static destroy() {
+        SimpleMissionRewards.dispose();
     }
 }
 

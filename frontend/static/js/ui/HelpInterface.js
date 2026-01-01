@@ -9,18 +9,27 @@ export class HelpInterface {
         this.starfieldManager = starfieldManager;
         this.isVisible = false;
         this.container = null;
-        
+
+        // Track style element for cleanup
+        this._styleElement = null;
+
+        // Track global debug helpers for cleanup
+        this._globalHelpers = ['refreshHelpScreen', 'checkWeaponSystem', 'clearWeaponSystem'];
+
+        // Track tab button handlers for cleanup
+        this._tabHandlers = new Map();
+
         debug('P1', '🔧 HelpInterface v2.0 - COMMIT 8bd0b7a - STARTER SHIP VERSION LOADED');
         debug('UI', 'HelpInterface initialized');
         
         // Debug helper for testing help screen refresh
         window.refreshHelpScreen = () => {
             if (window.starfieldManager?.helpInterface) {
-                console.log('🔄 Manually refreshing help screen...');
+                debug('UI', '🔄 Manually refreshing help screen...');
                 window.starfieldManager.helpInterface.forceRefresh();
-                console.log('✅ Help screen refreshed');
+                debug('UI', '✅ Help screen refreshed');
             } else {
-                console.log('❌ Help interface not available');
+                debug('UI', '❌ Help interface not available');
             }
         };
         
@@ -28,33 +37,33 @@ export class HelpInterface {
         window.checkWeaponSystem = () => {
             const ship = window.starfieldManager?.viewManager?.getShip();
             if (!ship) {
-                console.log('❌ No ship found');
+                debug('UI', '❌ No ship found');
                 return;
             }
-            
-            console.log('🚀 Ship Info:');
-            console.log(`  Type: ${ship.shipType}`);
-            console.log(`  Docked: ${window.starfieldManager?.isDocked}`);
-            console.log(`  Has weaponSystem: ${!!ship.weaponSystem}`);
-            
+
+            debug('UI', '🚀 Ship Info:');
+            debug('UI', `  Type: ${ship.shipType}`);
+            debug('UI', `  Docked: ${window.starfieldManager?.isDocked}`);
+            debug('UI', `  Has weaponSystem: ${!!ship.weaponSystem}`);
+
             if (ship.weaponSystem) {
-                console.log('🔫 Weapon System:');
-                console.log(`  Slots: ${ship.weaponSystem.weaponSlots?.length || 0}`);
-                console.log(`  Active slot: ${ship.weaponSystem.activeSlotIndex}`);
-                
+                debug('UI', '🔫 Weapon System:');
+                debug('UI', `  Slots: ${ship.weaponSystem.weaponSlots?.length || 0}`);
+                debug('UI', `  Active slot: ${ship.weaponSystem.activeSlotIndex}`);
+
                 if (ship.weaponSystem.weaponSlots) {
                     ship.weaponSystem.weaponSlots.forEach((slot, i) => {
-                        console.log(`  Slot ${i}: ${slot.isEmpty ? 'Empty' : slot.equippedWeapon?.name || 'Unknown'}`);
+                        debug('UI', `  Slot ${i}: ${slot.isEmpty ? 'Empty' : slot.equippedWeapon?.name || 'Unknown'}`);
                     });
                 }
             }
-            
+
             if (ship.weapons) {
-                console.log(`🗡️ Ship.weapons array: ${ship.weapons.length} items`);
+                debug('UI', `🗡️ Ship.weapons array: ${ship.weapons.length} items`);
             }
-            
+
             if (ship.weaponSyncManager) {
-                console.log('🔄 WeaponSyncManager available');
+                debug('UI', '🔄 WeaponSyncManager available');
             }
         };
         
@@ -62,31 +71,31 @@ export class HelpInterface {
         window.clearWeaponSystem = async () => {
             const ship = window.starfieldManager?.viewManager?.getShip();
             if (!ship) {
-                console.log('❌ No ship found');
+                debug('UI', '❌ No ship found');
                 return;
             }
-            
-            console.log('🔫 Clearing weapon system...');
-            
+
+            debug('UI', '🔫 Clearing weapon system...');
+
             // Clear weapon system
             if (ship.weaponSystem) {
                 ship.weaponSystem = null;
-                console.log('✅ Cleared weaponSystem');
+                debug('UI', '✅ Cleared weaponSystem');
             }
-            
+
             // Clear weapon sync manager
             if (ship.weaponSyncManager) {
                 ship.weaponSyncManager.weaponSystem = null;
                 ship.weaponSyncManager.weapons.clear();
-                console.log('✅ Cleared weaponSyncManager');
+                debug('UI', '✅ Cleared weaponSyncManager');
             }
-            
+
             // Reinitialize weapon system
             if (ship.weaponSyncManager) {
-                console.log('🔄 Reinitializing weapon system...');
+                debug('UI', '🔄 Reinitializing weapon system...');
                 ship.weaponSystem = await ship.weaponSyncManager.initializeWeapons();
-                console.log('✅ Weapon system reinitialized');
-                
+                debug('UI', '✅ Weapon system reinitialized');
+
                 // Check result
                 window.checkWeaponSystem();
             }
@@ -803,6 +812,7 @@ debug('UI', 'Ship Tech Manual closed');
 
         const style = document.createElement('style');
         style.id = 'tech-manual-styles';
+        this._styleElement = style; // Track for cleanup
         style.textContent = `
             .tech-manual-interface {
                 position: fixed;
@@ -1730,27 +1740,30 @@ debug('UI', 'Ship Tech Manual closed');
      * Initialize tab switching functionality
      */
     initializeTabSwitching() {
+        // Clear previous handlers if any
+        this._cleanupTabHandlers();
+
         const tabButtons = this.container.querySelectorAll('.help-tab-button');
         const tabContents = this.container.querySelectorAll('.help-tab-content');
 
         tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
+            const handler = () => {
                 const targetTab = button.getAttribute('data-tab');
-                
+
                 // Remove active class from all buttons and contents
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 tabContents.forEach(content => content.classList.remove('active'));
-                
+
                 // Add active class to clicked button and corresponding content
                 button.classList.add('active');
                 const targetContent = this.container.querySelector(`#${targetTab}-tab`);
                 if (targetContent) {
                     targetContent.classList.add('active');
                 }
-                
+
                 // Update current tab tracking
                 this.currentTab = targetTab;
-                
+
                 // Refresh dynamic content for specific tabs
                 if (targetTab === 'ships-log') {
                     this.refreshShipsLogDisplay();
@@ -1759,10 +1772,26 @@ debug('UI', 'Ship Tech Manual closed');
                 } else if (targetTab === 'achievements') {
                     this.refreshAchievementsDisplay();
                 }
-                
+
                 debug('UI', `Switched to tab: ${targetTab}`);
-            });
+            };
+
+            // Store handler for cleanup
+            this._tabHandlers.set(button, handler);
+            button.addEventListener('click', handler);
         });
+    }
+
+    /**
+     * Clean up tab button handlers
+     */
+    _cleanupTabHandlers() {
+        if (this._tabHandlers) {
+            this._tabHandlers.forEach((handler, button) => {
+                button.removeEventListener('click', handler);
+            });
+            this._tabHandlers.clear();
+        }
     }
 
     /**
@@ -2226,22 +2255,54 @@ debug('UI', 'Ship Tech Manual closed');
     }
 
     /**
-     * Dispose of the help interface
+     * Dispose of the help interface (alias for destroy)
      */
     dispose() {
+        this.destroy();
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('UI', 'HelpInterface destroy() called - cleaning up all resources');
+
+        // Clean up tab handlers before hiding
+        this._cleanupTabHandlers();
+
+        // Hide and remove container
         this.hide();
-        
+
         // Remove key handler
         if (this.keyHandler) {
             document.removeEventListener('keydown', this.keyHandler);
             this.keyHandler = null;
         }
-        
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Remove global debug helpers
+        this._globalHelpers.forEach(helperName => {
+            if (window[helperName]) {
+                delete window[helperName];
+            }
+        });
+
         // Remove global reference
         if (window.helpInterface === this) {
             delete window.helpInterface;
         }
-        
-debug('UI', 'HelpInterface disposed');
+
+        // Clear references
+        this.starfieldManager = null;
+        this.container = null;
+        this.isVisible = false;
+        this._tabHandlers = null;
+
+        debug('UI', 'HelpInterface cleanup complete');
     }
 } 

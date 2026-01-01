@@ -21,7 +21,15 @@ export class LongRangeScanner {
             x: -500,
             y: -500
         };
-        
+
+        // Memory leak prevention: track event handlers for cleanup
+        this._boundKeydownHandler = null;
+        this._boundCloseHandler = null;
+        this._boundBeaconKeyHandler = null;  // B key handler for beacon zoom
+        this._boundStarSystemReadyHandler = null;
+        this._readyInterval = null;
+        this._pendingTimeouts = new Set();
+
         // Create the modal container
         this.container = document.createElement('div');
         this.container.className = 'long-range-scanner';
@@ -53,13 +61,14 @@ export class LongRangeScanner {
         this.tooltip.style.display = 'none';
         document.body.appendChild(this.tooltip);
 
-        // Add event listeners
-        this.closeButton.addEventListener('click', () => {
+        // Add event listeners (store for cleanup)
+        this._boundCloseHandler = () => {
             this.viewManager.restorePreviousView();
             this.hide(false);
-        });
-        
-        document.addEventListener('keydown', (event) => {
+        };
+        this.closeButton.addEventListener('click', this._boundCloseHandler);
+
+        this._boundKeydownHandler = (event) => {
             if (this.container.classList.contains('visible')) {
                 const key = event.key.toLowerCase();
                 if (key === 'l' || key === 'escape') {
@@ -76,7 +85,22 @@ export class LongRangeScanner {
                     this.viewManager.setView(VIEW_TYPES.FORE);
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundKeydownHandler);
+
+        // B key handler for beacon zoom (added once, not per updateScannerMap call)
+        this._boundBeaconKeyHandler = (e) => {
+            if (this._isVisible && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault();
+                this.currentZoomLevel = 0.4;
+                this.currentCenter = { x: 0, y: 0 };
+                this.lastClickedBody = null;
+                debug('UTILITY', `🔍 LRS: KEYBOARD SUPER ZOOM (B key) to level ${this.currentZoomLevel} to show beacon ring`);
+                debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
+                this.updateScannerMap();
+            }
+        };
+        document.addEventListener('keydown', this._boundBeaconKeyHandler);
 
         // Add to document
         document.body.appendChild(this.container);
@@ -103,25 +127,42 @@ export class LongRangeScanner {
             if (!ssm || !ssm.starSystem) {
                 this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">Scanning sector data...</div>';
                 this._readyTries = 0;
-                // Event-driven readiness (from SolarSystemManager)
-                const onReady = () => {
-                    window.removeEventListener('starSystemReady', onReady);
+
+                // Clean up any previous handler before adding new one
+                if (this._boundStarSystemReadyHandler) {
+                    window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+                }
+
+                // Event-driven readiness (from SolarSystemManager) - track for cleanup
+                this._boundStarSystemReadyHandler = () => {
+                    window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+                    this._boundStarSystemReadyHandler = null;
                     if (this._isVisible) this.updateScannerMap();
                 };
-                window.addEventListener('starSystemReady', onReady);
+                window.addEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+
                 // Fallback polling in case event is missed
+                if (this._readyInterval) {
+                    clearInterval(this._readyInterval);
+                }
                 this._readyInterval = setInterval(() => {
                     this._readyTries += 1;
                     const readySsm = this.viewManager.getSolarSystemManager();
                     if (readySsm && readySsm.starSystem) {
                         clearInterval(this._readyInterval);
                         this._readyInterval = null;
-                        window.removeEventListener('starSystemReady', onReady);
+                        if (this._boundStarSystemReadyHandler) {
+                            window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+                            this._boundStarSystemReadyHandler = null;
+                        }
                         this.updateScannerMap();
                     } else if (this._readyTries > 50) { // ~10s
                         clearInterval(this._readyInterval);
                         this._readyInterval = null;
-                        window.removeEventListener('starSystemReady', onReady);
+                        if (this._boundStarSystemReadyHandler) {
+                            window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+                            this._boundStarSystemReadyHandler = null;
+                        }
                         this.mapContainer.innerHTML = '<div style="color:#888; padding:20px; text-align:center;">No sector data available</div>';
                     }
                 }, 200);
@@ -136,19 +177,26 @@ export class LongRangeScanner {
             this._isVisible = false;
             this.container.classList.remove('visible');
             this.container.classList.remove('targeting-active');
+
+            // Clean up interval
             if (this._readyInterval) {
                 clearInterval(this._readyInterval);
                 this._readyInterval = null;
             }
-            
+
+            // Clean up starSystemReady listener
+            if (this._boundStarSystemReadyHandler) {
+                window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+                this._boundStarSystemReadyHandler = null;
+            }
+
             // Clear manual navigation selection flag when user closes LRS
             // This allows the system to auto-select targets again when appropriate
             if (this.viewManager?.starfieldManager?.targetComputerManager) {
                 this.viewManager.starfieldManager.targetComputerManager.isManualNavigationSelection = false;
                 debug('TARGETING', '🔍 Long Range Scanner closed - clearing manual navigation selection flag');
             }
-            
-            // Note: onReady function is defined locally in show() method and cleaned up there
+
             if (shouldRestoreView && this.viewManager) {
                 this.viewManager.restorePreviousView();
             }
@@ -183,7 +231,7 @@ export class LongRangeScanner {
             }
         } else {
             // If scanner is non-operational, show very limited data
-            console.warn('Long Range Scanner not operational - limited scan data available');
+            debug('NAVIGATION', 'Long Range Scanner not operational - limited scan data available');
             starSystem = {
                 star_name: rawStarSystem.star_name,
                 star_size: rawStarSystem.star_size,
@@ -337,19 +385,9 @@ debug('UTILITY', `🔍 LRS: DOUBLE-CLICK SUPER ZOOM to level ${this.currentZoomL
 debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
             this.updateScannerMap();
         });
-        
-        // Add keyboard shortcut for super zoom (B for Beacons)
-        document.addEventListener('keydown', (e) => {
-            if (this._isVisible && (e.key === 'b' || e.key === 'B')) {
-                e.preventDefault();
-                this.currentZoomLevel = 0.4;
-                this.currentCenter = { x: 0, y: 0 };
-                this.lastClickedBody = null;
-debug('UTILITY', `🔍 LRS: KEYBOARD SUPER ZOOM (B key) to level ${this.currentZoomLevel} to show beacon ring`);
-debug('UTILITY', `🔍 LRS: ViewBox will be ~${Math.round(1000/0.4)}x${Math.round(1000/0.4)} (beacons at radius 350 should be visible)`);
-                this.updateScannerMap();
-            }
-        });
+
+        // NOTE: B key keyboard shortcut moved to constructor to prevent memory leak
+        // (was being added each time updateScannerMap was called)
 
         // Add mouse move handler for tooltips
         svg.addEventListener('mousemove', (e) => {
@@ -977,12 +1015,70 @@ debug('TARGETING', `🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}
     }
 
     dispose() {
+        debug('UI', '🧹 Disposing LongRangeScanner...');
+
+        // Remove document-level keydown listeners
+        if (this._boundKeydownHandler) {
+            document.removeEventListener('keydown', this._boundKeydownHandler);
+            this._boundKeydownHandler = null;
+        }
+
+        if (this._boundBeaconKeyHandler) {
+            document.removeEventListener('keydown', this._boundBeaconKeyHandler);
+            this._boundBeaconKeyHandler = null;
+        }
+
+        // Remove close button handler
+        if (this._boundCloseHandler && this.closeButton) {
+            this.closeButton.removeEventListener('click', this._boundCloseHandler);
+            this._boundCloseHandler = null;
+        }
+
+        // Clean up starSystemReady listener
+        if (this._boundStarSystemReadyHandler) {
+            window.removeEventListener('starSystemReady', this._boundStarSystemReadyHandler);
+            this._boundStarSystemReadyHandler = null;
+        }
+
+        // Clear interval
+        if (this._readyInterval) {
+            clearInterval(this._readyInterval);
+            this._readyInterval = null;
+        }
+
+        // Clear pending timeouts
+        for (const timeout of this._pendingTimeouts) {
+            clearTimeout(timeout);
+        }
+        this._pendingTimeouts.clear();
+
+        // Remove container from DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
+
+        // Remove tooltip from DOM
         if (this.tooltip && this.tooltip.parentNode) {
             this.tooltip.parentNode.removeChild(this.tooltip);
         }
+
+        // Null out references
+        this.container = null;
+        this.closeButton = null;
+        this.contentWrapper = null;
+        this.mapContainer = null;
+        this.detailsPanel = null;
+        this.tooltip = null;
+        this.viewManager = null;
+
+        debug('UI', '🧹 LongRangeScanner disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 
     /**
@@ -994,7 +1090,7 @@ debug('TARGETING', `🔍 LRS: Target setting check - setAsTarget: ${setAsTarget}
     setScannerTargetRobustly(bodyName, bodyInfo, targetBody) {
         const starfieldManager = this.viewManager.starfieldManager;
         if (!starfieldManager?.targetComputerManager) {
-            console.warn('🔍 LRS: No TargetComputerManager available for robust target setting');
+            debug('TARGETING', '🔍 LRS: No TargetComputerManager available for robust target setting');
             return;
         }
 
@@ -1055,7 +1151,7 @@ debug('TARGETING', `🔍 LRS: Target ${bodyName} not in range - creating out-of-
 
         // Step 5: Validate the target index
         if (targetIndex < 0 || targetIndex >= tcm.targetObjects.length) {
-            console.error(`🔍 LRS: Invalid target index ${targetIndex} for target list of size ${tcm.targetObjects.length}`);
+            debug('P1', `🔍 LRS: Invalid target index ${targetIndex} for target list of size ${tcm.targetObjects.length}`);
             return;
         }
 
@@ -1095,7 +1191,7 @@ debug('TARGETING', `🔍 LRS: UI update completed for ${targetData.name}`);
 debug('TARGETING', `🔍 LRS: Robust target setting completed successfully for ${bodyName}`);
 
         } catch (error) {
-            console.error(`🔍 LRS: Error during robust target setting:`, error);
+            debug('P1', `🔍 LRS: Error during robust target setting:`, error);
 
             // Attempt recovery by restoring previous state if possible
             if (previousTargetState.name) {

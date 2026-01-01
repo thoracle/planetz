@@ -31,7 +31,17 @@ export class CommunicationHUD {
         
         // Effects toggle state (scan lines + faction colors disabled by default)
         this.effectsEnabled = false;
-        
+
+        // Memory leak prevention: track handlers, timeouts, and style elements
+        this._boundHandlers = {
+            audioInitClick: null,
+            audioInitKeydown: null,
+            audioErrorHandlers: []
+        };
+        this._pendingTimeouts = new Set();
+        this._styleElement = null;
+        this._globalHelpers = ['communicationHUD'];
+
         this.initialize();
     }
     
@@ -140,7 +150,7 @@ debug('UTILITY', `🔊 ${type} audio initialized`);
                     }).catch(e => {
                         // Restore original volume even on error
                         audio.volume = originalVolume;
-                        console.warn(`🔊 ${type} audio initialization failed:`, e);
+                        debug('UTILITY', `🔊 ${type} audio initialization failed: ${e.message || 'unknown error'}`);
                     });
                 });
                 
@@ -254,6 +264,7 @@ debug('AI', 'CommunicationHUD: Container created');
         `;
 
         document.head.appendChild(style);
+        this._styleElement = style; // Track for cleanup
     }
     
     /**
@@ -521,19 +532,21 @@ debug('AI', 'CommunicationHUD: Container created');
             audio.preload = 'auto';
             audio.volume = 0.7;
             audio.muted = false;
-            
-            // Add error handling for audio loading
-            audio.addEventListener('error', (e) => {
-                console.warn(`🔊 CommunicationHUD: Audio loading error for ${src}:`, e);
-            });
-            
+
+            // Add error handling for audio loading - track handler for cleanup
+            const errorHandler = (e) => {
+                debug('UTILITY', `🔊 CommunicationHUD: Audio loading error for ${src}: ${e.message || 'unknown error'}`);
+            };
+            audio.addEventListener('error', errorHandler);
+            this._boundHandlers.audioErrorHandlers.push({ audio, handler: errorHandler });
+
             // Add to container but keep hidden
             this.avatarArea.appendChild(audio);
-            
-debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
+
+            debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
             return audio;
         } catch (error) {
-            console.error(`🔊 CommunicationHUD: Failed to create audio element for ${src}:`, error);
+            debug('P1', `🔊 CommunicationHUD: Failed to create audio element for ${src}: ${error.message}`);
             return null;
         }
     }
@@ -542,6 +555,14 @@ debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
      * Initialize audio playback on first user interaction
      */
     initializeAudioOnInteraction() {
+        // Remove any existing handlers first
+        if (this._boundHandlers.audioInitClick) {
+            document.removeEventListener('click', this._boundHandlers.audioInitClick);
+        }
+        if (this._boundHandlers.audioInitKeydown) {
+            document.removeEventListener('keydown', this._boundHandlers.audioInitKeydown);
+        }
+
         const initAudio = () => {
             if (!this.audioInitialized && this.audioElements) {
                 // Try to initialize all audio elements (silently)
@@ -549,7 +570,7 @@ debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
                     // Store original volume and set to 0 for silent initialization
                     const originalVolume = audio.volume;
                     audio.volume = 0;
-                    
+
                     return audio.play().then(() => {
                         audio.pause();
                         audio.currentTime = 0;
@@ -558,21 +579,31 @@ debug('UI', `🔊 CommunicationHUD: Created audio element for ${src}`);
                     }).catch(e => {
                         // Restore original volume even on error
                         audio.volume = originalVolume;
-                        console.warn('🔊 CommunicationHUD: Audio element initialization failed:', e);
+                        debug('UTILITY', `🔊 CommunicationHUD: Audio element initialization failed: ${e.message || 'unknown error'}`);
                     });
                 });
-                
+
                 Promise.all(initPromises).then(() => {
                     this.audioInitialized = true;
-debug('UI', '🔊 CommunicationHUD: All audio contexts initialized');
+                    debug('UI', '🔊 CommunicationHUD: All audio contexts initialized');
                 });
-                
+
                 // Remove event listeners after initialization
-                document.removeEventListener('click', initAudio);
-                document.removeEventListener('keydown', initAudio);
+                if (this._boundHandlers.audioInitClick) {
+                    document.removeEventListener('click', this._boundHandlers.audioInitClick);
+                    this._boundHandlers.audioInitClick = null;
+                }
+                if (this._boundHandlers.audioInitKeydown) {
+                    document.removeEventListener('keydown', this._boundHandlers.audioInitKeydown);
+                    this._boundHandlers.audioInitKeydown = null;
+                }
             }
         };
-        
+
+        // Store handlers for cleanup
+        this._boundHandlers.audioInitClick = initAudio;
+        this._boundHandlers.audioInitKeydown = initAudio;
+
         // Listen for any user interaction to initialize audio
         document.addEventListener('click', initAudio, { once: true });
         document.addEventListener('keydown', initAudio, { once: true });
@@ -587,13 +618,13 @@ debug('AI', `🔊 CommunicationHUD: audioElements available:`, Object.keys(this.
 debug('UI', `🔊 CommunicationHUD: audioInitialized:`, this.audioInitialized);
         
         if (!this.audioElements || !this.audioElements[audioType]) {
-            console.warn(`🔊 CommunicationHUD: Audio element for type "${audioType}" not available`);
+            debug('UTILITY', `🔊 CommunicationHUD: Audio element for type "${audioType}" not available`);
             return;
         }
         
         const audio = this.audioElements[audioType];
         if (!audio) {
-            console.warn(`🔊 CommunicationHUD: Audio element for "${audioType}" is null or undefined`);
+            debug('UTILITY', `🔊 CommunicationHUD: Audio element for "${audioType}" is null or undefined`);
             return;
         }
         
@@ -608,7 +639,7 @@ debug('UI', `🔊 CommunicationHUD: Playing ${audioType} audio`);
 debug('UI', `🔊 CommunicationHUD: Audio marked as initialized after successful play`);
             }
         }).catch(e => {
-            console.warn(`🔊 CommunicationHUD: ${audioType} audio play failed:`, e);
+            debug('UTILITY', `🔊 CommunicationHUD: ${audioType} audio play failed: ${e.message || 'unknown error'}`);
             if (!this.audioInitialized) {
 debug('UI', `🔊 CommunicationHUD: Setting up audio initialization for future user interaction`);
                 this.initializeAudioOnInteraction();
@@ -921,7 +952,7 @@ debug('UI', `🗣️ CommunicationHUD: ${this.isVisible ? 'Enabled' : 'Disabled'
             // Start video (always in video mode now)
             if (this.videoElement) {
                 this.videoElement.play().catch(e => {
-                    console.warn('🗣️ CommunicationHUD: Video play failed:', e);
+                    debug('UTILITY', `🗣️ CommunicationHUD: Video play failed: ${e.message || 'unknown error'}`);
                 });
             }
         } else {
@@ -1028,27 +1059,31 @@ debug('UI', 'CommunicationHUD: Starting test sequence');
         if (this.messageQueue.length === 0 || this.isProcessingMessage) {
             return;
         }
-        
+
         this.isProcessingMessage = true;
         const message = this.messageQueue.shift();
-        
+
         // Typewriter effect
         this.typewriterEffect(message, () => {
             this.isProcessingMessage = false;
-            
-            // Auto-advance after 3 seconds or manual advance
-            setTimeout(() => {
+
+            // Auto-advance after 3 seconds or manual advance - track timeout
+            const advanceTimeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(advanceTimeoutId);
                 if (this.isVisible && this.messageQueue.length > 0) {
                     this.processNextMessage();
                 } else if (this.messageQueue.length === 0) {
-                    // End of sequence - fade out after 2 seconds
-                    setTimeout(() => {
+                    // End of sequence - fade out after 2 seconds - track timeout
+                    const fadeTimeoutId = setTimeout(() => {
+                        this._pendingTimeouts.delete(fadeTimeoutId);
                         if (this.isVisible) {
                             this.dialogueText.textContent = 'Transmission ended.';
                         }
                     }, 2000);
+                    this._pendingTimeouts.add(fadeTimeoutId);
                 }
             }, 3000);
+            this._pendingTimeouts.add(advanceTimeoutId);
         });
     }
     
@@ -1133,7 +1168,7 @@ debug('UI', 'CommunicationHUD: Enabled');
         if (this.videoElement) {
             // Start video (looped)
             this.videoElement.play().catch(e => {
-                console.warn('🗣️ CommunicationHUD: Video play failed:', e);
+                debug('UTILITY', `🗣️ CommunicationHUD: Video play failed: ${e.message || 'unknown error'}`);
             });
             
             // Play appropriate audio based on type or delivery completion
@@ -1224,5 +1259,120 @@ debug('UI', 'CommunicationHUD: Playing command sound (user has interacted)');
 debug('UI', 'CommunicationHUD: Skipping command sound (no user interaction yet)');
             }
         }
+    }
+
+    /**
+     * Clean up all resources and event listeners
+     */
+    dispose() {
+        // Stop all animations and intervals
+        this.stopAnimations();
+        if (this.typingInterval) {
+            clearInterval(this.typingInterval);
+            this.typingInterval = null;
+        }
+        if (this.hideTimeout) {
+            clearTimeout(this.hideTimeout);
+            this.hideTimeout = null;
+        }
+
+        // Clear all pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            this._pendingTimeouts.clear();
+        }
+
+        // Remove audio initialization event listeners
+        if (this._boundHandlers) {
+            if (this._boundHandlers.audioInitClick) {
+                document.removeEventListener('click', this._boundHandlers.audioInitClick);
+            }
+            if (this._boundHandlers.audioInitKeydown) {
+                document.removeEventListener('keydown', this._boundHandlers.audioInitKeydown);
+            }
+
+            // Remove audio error handlers
+            if (this._boundHandlers.audioErrorHandlers) {
+                this._boundHandlers.audioErrorHandlers.forEach(({ audio, handler }) => {
+                    if (audio) {
+                        audio.removeEventListener('error', handler);
+                    }
+                });
+            }
+        }
+
+        // Stop and clean up video element
+        if (this.videoElement) {
+            this.videoElement.pause();
+            this.videoElement.src = '';
+            this.videoElement = null;
+        }
+
+        // Stop and clean up audio elements
+        if (this.audioElements) {
+            Object.values(this.audioElements).forEach(audio => {
+                if (audio) {
+                    audio.pause();
+                    audio.src = '';
+                }
+            });
+            this.audioElements = null;
+        }
+
+        // Remove style element from document.head
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Remove global references
+        if (this._globalHelpers) {
+            this._globalHelpers.forEach(helperName => {
+                if (window[helperName] === this) {
+                    delete window[helperName];
+                }
+            });
+        }
+
+        // Remove test methods from this instance
+        delete this.testMissionComm;
+        delete this.testHostileComm;
+        delete this.testNeutralComm;
+        delete this.testDirectText;
+        delete this.testDeliveryComplete;
+        delete this.testEffectsToggle;
+        delete this.initAudio;
+
+        // Remove DOM element
+        if (this.commContainer && this.commContainer.parentNode) {
+            this.commContainer.parentNode.removeChild(this.commContainer);
+        }
+
+        // Null out all references
+        this.commContainer = null;
+        this.contentArea = null;
+        this.avatarArea = null;
+        this.avatarSVG = null;
+        this.textArea = null;
+        this.dialogueText = null;
+        this.speakerNameArea = null;
+        this.animatedScanLine = null;
+        this.leftEye = null;
+        this.rightEye = null;
+        this.mouth = null;
+        this.starfieldManager = null;
+        this.container = null;
+        this._boundHandlers = null;
+        this._pendingTimeouts = null;
+        this.messageQueue = [];
+
+        debug('UI', 'CommunicationHUD: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }

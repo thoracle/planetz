@@ -12,6 +12,9 @@ export default class DiplomacyHUD {
         this.elements = {};
         this.updateInterval = null;
 
+        // Memory leak prevention: track style element
+        this._styleElement = null;
+
         // Define faction information - shared between methods
         this.factionInfo = {
             'terran_republic_alliance': {
@@ -537,7 +540,11 @@ export default class DiplomacyHUD {
     }
 
     addStyles() {
+        // Check if styles already exist (avoid duplicates)
+        if (this._styleElement) return;
+
         const style = document.createElement('style');
+        style.id = 'diplomacy-hud-styles';
         style.textContent = `
             .diplomacy-hud::-webkit-scrollbar {
                 width: 8px;
@@ -562,6 +569,7 @@ export default class DiplomacyHUD {
             .rep-at-war { color: #ff3333; font-weight: bold; }
         `;
         document.head.appendChild(style);
+        this._styleElement = style; // Track for cleanup
     }
 
     show() {
@@ -633,6 +641,40 @@ export default class DiplomacyHUD {
      */
     get visible() {
         return this.isVisible;
+    }
+
+    /**
+     * Clean up all resources
+     */
+    dispose() {
+        // Stop updates
+        this.stopUpdates();
+
+        // Remove style element from document.head
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Clear container content
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+
+        // Null out references
+        this.elements = {};
+        this.starfieldManager = null;
+        this.container = null;
+        this.factionInfo = null;
+
+        debug('UI', 'DiplomacyHUD: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }
 

@@ -21,7 +21,22 @@ export class StarChartsUI {
         this.viewManager = viewManager;
         this.starChartsManager = starChartsManager;
         this._isVisible = false;
-        
+
+        // Memory leak prevention: track event handlers for cleanup
+        this._boundKeydownHandler = null;
+        this._boundCloseHandler = null;
+        this._boundSvgClickHandler = null;
+        this._boundSvgMouseMoveHandler = null;
+        this._boundSvgMouseLeaveHandler = null;
+        this._boundMouseDownHandler = null;
+        this._boundDocMouseMoveHandler = null;
+        this._boundDocMouseUpHandler = null;
+        this._boundTouchStartHandler = null;
+        this._boundTouchMoveHandler = null;
+        this._boundTouchEndHandler = null;
+        this._boundPinchStartHandler = null;
+        this._boundPinchMoveHandler = null;
+
         // Zoom and navigation state
         this.currentZoomLevel = 1;
         this.maxZoomLevel = 8; // Increased from 3 to 8 for more detailed exploration
@@ -108,24 +123,25 @@ debug('UI', 'StarChartsUI: Interface created');
         this.tooltip.style.display = 'none';
         document.body.appendChild(this.tooltip);
         
-        console.log('✅ Star Charts tooltip element created:', this.tooltip);
-        console.log('🔧 TOOLTIP FIX VERSION LOADED - v2.0 with enhanced object data loading');
+        debug('UI', '✅ Star Charts tooltip element created');
+        debug('UI', '🔧 TOOLTIP FIX VERSION LOADED - v2.0 with enhanced object data loading');
         
         // Add to document
         document.body.appendChild(this.container);
     }
     
     setupEventListeners() {
-        // Setup event listeners for interaction
-        
+        // Setup event listeners for interaction (store handlers for cleanup)
+
         // Close button
-        this.closeButton.addEventListener('click', () => {
+        this._boundCloseHandler = () => {
             this.viewManager.restorePreviousView();
             this.hide(false);
-        });
-        
+        };
+        this.closeButton.addEventListener('click', this._boundCloseHandler);
+
         // Keyboard controls (C key for Star Charts)
-        document.addEventListener('keydown', (event) => {
+        this._boundKeydownHandler = (event) => {
             if (this.container.classList.contains('visible')) {
                 const key = event.key.toLowerCase();
                 if (key === 'c' || key === 'escape') {
@@ -143,26 +159,30 @@ debug('UI', 'StarChartsUI: Interface created');
                 }
                 // Removed B key behavior for new zoom model
             }
-        });
-        
+        };
+        document.addEventListener('keydown', this._boundKeydownHandler);
+
         // SVG click handling
-        this.svg.addEventListener('click', (event) => {
+        this._boundSvgClickHandler = (event) => {
             this.handleMapClick(event);
-        });
-        
+        };
+        this.svg.addEventListener('click', this._boundSvgClickHandler);
+
         // Double-click behavior removed for new zoom model
-        
+
         // Pan/drag functionality
         this.setupPanControls();
-        
+
         // Mouse move for tooltips
-        this.svg.addEventListener('mousemove', (event) => {
+        this._boundSvgMouseMoveHandler = (event) => {
             this.handleMouseMove(event);
-        });
-        
-        this.svg.addEventListener('mouseleave', () => {
+        };
+        this.svg.addEventListener('mousemove', this._boundSvgMouseMoveHandler);
+
+        this._boundSvgMouseLeaveHandler = () => {
             this.tooltip.style.display = 'none';
-        });
+        };
+        this.svg.addEventListener('mouseleave', this._boundSvgMouseLeaveHandler);
     }
     
     handleMapClick(event) {
@@ -300,8 +320,8 @@ debug('UI', 'StarChartsUI: Interface created');
     }
     
     setupPanControls() {
-        // Add pan/drag functionality for manual recentering
-        
+        // Add pan/drag functionality for manual recentering (store handlers for cleanup)
+
         // Pan state
         this.panState = {
             isDragging: false,
@@ -310,58 +330,55 @@ debug('UI', 'StarChartsUI: Interface created');
             lastTouchCenter: { x: 0, y: 0 },
             startCenter: { x: 0, y: 0 }
         };
-        
+
         // Mouse drag events
-        this.svg.addEventListener('mousedown', (event) => {
+        this._boundMouseDownHandler = (event) => {
             // Only start drag on primary button (left click)
             if (event.button === 0) {
                 this.startMouseDrag(event);
             }
-        });
-        
-        document.addEventListener('mousemove', (event) => {
+        };
+        this.svg.addEventListener('mousedown', this._boundMouseDownHandler);
+
+        this._boundDocMouseMoveHandler = (event) => {
             if (this.panState.isDragging) {
                 this.handleMouseDrag(event);
             }
-        });
-        
-        document.addEventListener('mouseup', (event) => {
+        };
+        document.addEventListener('mousemove', this._boundDocMouseMoveHandler);
+
+        this._boundDocMouseUpHandler = (event) => {
             if (this.panState.isDragging) {
                 this.endMouseDrag(event);
             }
-        });
-        
+        };
+        document.addEventListener('mouseup', this._boundDocMouseUpHandler);
+
         // Touch drag events (two-finger drag)
-        this.svg.addEventListener('touchstart', (event) => {
+        this._boundTouchStartHandler = (event) => {
             if (event.touches.length === 2) {
                 this.startTouchDrag(event);
+                event.preventDefault();
             }
-        });
-        
-        this.svg.addEventListener('touchmove', (event) => {
-            if (this.panState.isTouchDragging && event.touches.length === 2) {
-                this.handleTouchDrag(event);
+        };
+        this.svg.addEventListener('touchstart', this._boundTouchStartHandler, { passive: false });
+
+        this._boundTouchMoveHandler = (event) => {
+            if (event.touches.length === 2) {
+                if (this.panState.isTouchDragging) {
+                    this.handleTouchDrag(event);
+                }
+                event.preventDefault();
             }
-        });
-        
-        this.svg.addEventListener('touchend', (event) => {
+        };
+        this.svg.addEventListener('touchmove', this._boundTouchMoveHandler, { passive: false });
+
+        this._boundTouchEndHandler = (event) => {
             if (this.panState.isTouchDragging) {
                 this.endTouchDrag(event);
             }
-        });
-        
-        // Prevent default touch behaviors that might interfere
-        this.svg.addEventListener('touchstart', (event) => {
-            if (event.touches.length === 2) {
-                event.preventDefault();
-            }
-        }, { passive: false });
-        
-        this.svg.addEventListener('touchmove', (event) => {
-            if (event.touches.length === 2) {
-                event.preventDefault();
-            }
-        }, { passive: false });
+        };
+        this.svg.addEventListener('touchend', this._boundTouchEndHandler);
     }
     
     startMouseDrag(event) {
@@ -539,19 +556,19 @@ debug('UI', 'StarChartsUI: Interface created');
         // For undiscovered objects, ensure they're added to target computer first
         if (object._isUndiscovered) {
 
-            console.log(`🔍 DEBUG OBJECT: Object properties before adding:`, {
+            debug('STAR_CHARTS', `🔍 DEBUG OBJECT: Object properties before adding:`, {
                 name: object.name,
                 type: object.type,
                 _isUndiscovered: object._isUndiscovered,
                 id: object.id
             });
-            
+
             // Add the necessary properties directly to the object for undiscovered targeting
             object.discovered = false;
             object.diplomacy = 'unknown';
             object.faction = 'Unknown';
-            
-            console.log(`🔍 DEBUG PROPERTIES: Set properties on object:`, {
+
+            debug('STAR_CHARTS', `🔍 DEBUG PROPERTIES: Set properties on object:`, {
                 name: object.name,
                 discovered: object.discovered,
                 diplomacy: object.diplomacy,
@@ -858,7 +875,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         
         // Debug: Log available objects occasionally
         if (Math.random() < 0.01) { // Only log 1% of the time
-            console.log('🌟 Available objects for hover detection:', {
+            debug('STAR_CHARTS', '🌟 Available objects for hover detection:', {
                 count: allObjects.length,
                 objects: allObjects.map(obj => ({
                     id: obj.id,
@@ -959,7 +976,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     ensureObjectDataLoaded() {
         // Ensure object database is loaded before showing tooltips
         if (!this.starChartsManager.objectDatabase || !this.starChartsManager.isInitialized) {
-            console.log('🖱️ Object database not ready for tooltips yet');
+            debug('STAR_CHARTS', '🖱️ Object database not ready for tooltips yet');
             return false;
         }
         return true;
@@ -1026,10 +1043,10 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         // Ensure object has complete data including name
         const completeObject = this.ensureObjectHasName(object);
         if (!completeObject) {
-            console.log('⚠️ Could not get complete object data for tooltip');
+            debug('STAR_CHARTS', '⚠️ Could not get complete object data for tooltip');
             return;
         }
-        
+
         // For undiscovered objects, show "Unknown" instead of revealing the name
         // For ship, show "You are here"
         let tooltipText;
@@ -1046,7 +1063,7 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
 
         // Simple text tooltip like LRS (no HTML formatting)
         if (!this.tooltip) {
-            console.log('❌ Tooltip element not found!');
+            debug('P1', '❌ Tooltip element not found!');
             return;
         }
         
@@ -1768,7 +1785,7 @@ debug('UI', 'Star Charts: Interface hidden');
                 // });
             }
         } catch (e) {
-            console.error('❌ Error in beacon angle lookup:', e);
+            debug('P1', '❌ Error in beacon angle lookup:', e);
         }
         return null;
     }
@@ -1967,7 +1984,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         
         // Update StarChartsManager current sector to match reality
         if (this.starChartsManager.currentSector !== currentSector) {
-            console.log(`🗺️ StarChartsUI: Updating sector from ${this.starChartsManager.currentSector} to ${currentSector}`);
+            debug('STAR_CHARTS', `🗺️ StarChartsUI: Updating sector from ${this.starChartsManager.currentSector} to ${currentSector}`);
             this.starChartsManager.currentSector = currentSector;
         }
         
@@ -2924,7 +2941,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             // Update target display to show new target
             setTimeout(() => this.updateCurrentTargetDisplay(), 100);
         } else {
-            console.error('❌ Star Charts: Failed to target waypoint:', waypoint.name);
+            debug('P1', '❌ Star Charts: Failed to target waypoint:', waypoint.name);
         }
     }
 
@@ -2934,7 +2951,7 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
      */
     centerOnWaypoint(waypoint) {
         if (!waypoint.position || waypoint.position.length < 3) {
-            console.error('❌ Star Charts: Invalid waypoint position for centering:', waypoint.position);
+            debug('P1', '❌ Star Charts: Invalid waypoint position for centering:', waypoint.position);
             return;
         }
         
@@ -3230,10 +3247,111 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         }
         
         detailsHTML += '</div>';
-        
+
         const targetHTML = detailsHTML;
-        
+
         this.detailsPanel.innerHTML = targetHTML;
     }
-    
+
+    /**
+     * Clean up all resources and event listeners
+     */
+    dispose() {
+        debug('UI', '🧹 Disposing StarChartsUI...');
+
+        // Remove document-level event listeners
+        if (this._boundKeydownHandler) {
+            document.removeEventListener('keydown', this._boundKeydownHandler);
+            this._boundKeydownHandler = null;
+        }
+
+        if (this._boundDocMouseMoveHandler) {
+            document.removeEventListener('mousemove', this._boundDocMouseMoveHandler);
+            this._boundDocMouseMoveHandler = null;
+        }
+
+        if (this._boundDocMouseUpHandler) {
+            document.removeEventListener('mouseup', this._boundDocMouseUpHandler);
+            this._boundDocMouseUpHandler = null;
+        }
+
+        // Remove close button handler
+        if (this._boundCloseHandler && this.closeButton) {
+            this.closeButton.removeEventListener('click', this._boundCloseHandler);
+            this._boundCloseHandler = null;
+        }
+
+        // Remove SVG event handlers
+        if (this.svg) {
+            if (this._boundSvgClickHandler) {
+                this.svg.removeEventListener('click', this._boundSvgClickHandler);
+                this._boundSvgClickHandler = null;
+            }
+
+            if (this._boundSvgMouseMoveHandler) {
+                this.svg.removeEventListener('mousemove', this._boundSvgMouseMoveHandler);
+                this._boundSvgMouseMoveHandler = null;
+            }
+
+            if (this._boundSvgMouseLeaveHandler) {
+                this.svg.removeEventListener('mouseleave', this._boundSvgMouseLeaveHandler);
+                this._boundSvgMouseLeaveHandler = null;
+            }
+
+            if (this._boundMouseDownHandler) {
+                this.svg.removeEventListener('mousedown', this._boundMouseDownHandler);
+                this._boundMouseDownHandler = null;
+            }
+
+            if (this._boundTouchStartHandler) {
+                this.svg.removeEventListener('touchstart', this._boundTouchStartHandler);
+                this._boundTouchStartHandler = null;
+            }
+
+            if (this._boundTouchMoveHandler) {
+                this.svg.removeEventListener('touchmove', this._boundTouchMoveHandler);
+                this._boundTouchMoveHandler = null;
+            }
+
+            if (this._boundTouchEndHandler) {
+                this.svg.removeEventListener('touchend', this._boundTouchEndHandler);
+                this._boundTouchEndHandler = null;
+            }
+        }
+
+        // Remove container from DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+
+        // Remove tooltip from DOM
+        if (this.tooltip && this.tooltip.parentNode) {
+            this.tooltip.parentNode.removeChild(this.tooltip);
+        }
+
+        // Null out references
+        this.container = null;
+        this.closeButton = null;
+        this.title = null;
+        this.contentWrapper = null;
+        this.mapContainer = null;
+        this.svg = null;
+        this.detailsPanel = null;
+        this.statusBar = null;
+        this.tooltip = null;
+        this.viewManager = null;
+        this.starChartsManager = null;
+        this.panState = null;
+        this.displayModel = null;
+
+        debug('UI', '🧹 StarChartsUI disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
+    }
+
 }

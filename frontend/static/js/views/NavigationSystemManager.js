@@ -55,7 +55,12 @@ export class NavigationSystemManager {
             errorCount: 0,
             lastHealthCheck: 0
         };
-        
+
+        // Memory leak prevention: track resources for cleanup
+        this._healthCheckTimeout = null;
+        this._pendingTimeouts = new Set();
+        this._isDestroyed = false;
+
         // Initialize systems
         this.initializeSystems();
     }
@@ -82,7 +87,7 @@ debug('UTILITY', '✅ Long Range Scanner: Initialized successfully');
 debug('NAVIGATION', `🧭 NavigationSystemManager: Active system is ${this.activeSystem}`);
             
         } catch (error) {
-            console.error('❌ NavigationSystemManager: Initialization failed:', error);
+            debug('NAVIGATION', '❌ NavigationSystemManager: Initialization failed:', error);
             this.handleSystemFailure('star_charts', error);
         }
     }
@@ -113,7 +118,7 @@ debug('NAVIGATION', `🧭 NavigationSystemManager: Active system is ${this.activ
 debug('UTILITY', '✅ Star Charts: Initialized successfully');
             
         } catch (error) {
-            console.error('❌ Star Charts: Initialization failed:', error);
+            debug('NAVIGATION', '❌ Star Charts: Initialization failed:', error);
             this.systemHealth.starCharts = 'failed';
             
             if (this.config.starCharts.fallbackToLRS) {
@@ -135,19 +140,29 @@ debug('UTILITY', '✅ Star Charts: Initialized successfully');
 
 debug('TARGETING', 'Star Charts ↔ Target Computer Integration initialized');
         } catch (error) {
-            console.error('❌ Star Charts Integration initialization failed:', error);
+            debug('NAVIGATION', '❌ Star Charts Integration initialization failed:', error);
         }
     }
 
     startHealthMonitoring() {
         // Start periodic health monitoring
-        
+
         const healthCheck = () => {
+            if (this._isDestroyed) return; // Stop if destroyed
+
             this.performHealthCheck();
-            setTimeout(healthCheck, 30000); // Check every 30 seconds
+            this._healthCheckTimeout = setTimeout(healthCheck, 30000); // Check every 30 seconds
         };
-        
+
         healthCheck();
+    }
+
+    stopHealthMonitoring() {
+        // Stop health monitoring
+        if (this._healthCheckTimeout) {
+            clearTimeout(this._healthCheckTimeout);
+            this._healthCheckTimeout = null;
+        }
     }
     
     performHealthCheck() {
@@ -163,18 +178,18 @@ debug('TARGETING', 'Star Charts ↔ Target Computer Integration initialized');
                 
                 // Check for performance issues
                 if (metrics.averageDiscoveryCheckTime > 20) {
-                    console.warn('⚠️  Star Charts: Performance degradation detected');
+                    debug('NAVIGATION', '⚠️ Star Charts: Performance degradation detected');
                     this.systemHealth.starCharts = 'degraded';
                 } else if (metrics.averageDiscoveryCheckTime > 50) {
-                    console.error('❌ Star Charts: Severe performance issues');
+                    debug('NAVIGATION', '❌ Star Charts: Severe performance issues');
                     this.systemHealth.starCharts = 'critical';
                     this.handleSystemFailure('star_charts', new Error('Performance critical'));
                 } else {
                     this.systemHealth.starCharts = 'healthy';
                 }
-                
+
             } catch (error) {
-                console.error('❌ Star Charts: Health check failed:', error);
+                debug('NAVIGATION', '❌ Star Charts: Health check failed:', error);
                 this.systemHealth.starCharts = 'failed';
                 this.handleSystemFailure('star_charts', error);
             }
@@ -188,8 +203,8 @@ debug('UTILITY', `🏥 System Health: Star Charts: ${this.systemHealth.starChart
     
     handleSystemFailure(systemName, error) {
         // Handle system failure with fallback
-        
-        console.error(`❌ ${systemName} system failure:`, error);
+
+        debug('NAVIGATION', `❌ ${systemName} system failure:`, error);
         this.performanceMetrics.errorCount++;
         
         if (systemName === 'star_charts' && this.config.starCharts.fallbackToLRS) {
@@ -239,13 +254,15 @@ debug('UTILITY', '🔄 Activating fallback to Long Range Scanner');
         });
         
         document.body.appendChild(notification);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
+
+        // Remove after 5 seconds (track timeout for cleanup)
+        const removeTimeout = setTimeout(() => {
+            this._pendingTimeouts.delete(removeTimeout);
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
         }, 5000);
+        this._pendingTimeouts.add(removeTimeout);
     }
     
     // Public API for navigation
@@ -262,8 +279,8 @@ debug('UI', 'Showing Star Charts interface');
 debug('UI', 'Showing Long Range Scanner interface');
             }
         } catch (error) {
-            console.error('❌ Failed to show navigation interface:', error);
-            
+            debug('NAVIGATION', '❌ Failed to show navigation interface:', error);
+
             // Emergency fallback
             if (this.longRangeScanner) {
                 this.longRangeScanner.show();
@@ -284,7 +301,7 @@ debug('UTILITY', '🚨 Emergency fallback to Long Range Scanner');
                 this.longRangeScanner.hide();
             }
         } catch (error) {
-            console.error('❌ Failed to hide navigation interface:', error);
+            debug('NAVIGATION', '❌ Failed to hide navigation interface:', error);
         }
     }
     
@@ -295,7 +312,7 @@ debug('UTILITY', '🚨 Emergency fallback to Long Range Scanner');
             return (this.starChartsUI && this.starChartsUI.isVisible()) ||
                    (this.longRangeScanner && this.longRangeScanner.isVisible());
         } catch (error) {
-            console.error('❌ Failed to check navigation visibility:', error);
+            debug('NAVIGATION', '❌ Failed to check navigation visibility:', error);
             return false;
         }
     }
@@ -430,18 +447,63 @@ debug('NAVIGATION', '🚨 Emergency navigation system reset');
     }
     
     // Cleanup
-    
+
     destroy() {
         // Clean up navigation systems
-        
-debug('NAVIGATION', 'NavigationSystemManager: Cleaning up...');
-        
+
+        debug('NAVIGATION', '🧹 NavigationSystemManager: Cleaning up...');
+
+        // Mark as destroyed to stop health monitoring
+        this._isDestroyed = true;
+
+        // Stop health monitoring
+        this.stopHealthMonitoring();
+
+        // Clear all pending timeouts
+        for (const timeout of this._pendingTimeouts) {
+            clearTimeout(timeout);
+        }
+        this._pendingTimeouts.clear();
+
+        // Hide and clean up subsystems
         if (this.starChartsUI) {
             this.starChartsUI.hide();
+            if (this.starChartsUI.dispose) {
+                this.starChartsUI.dispose();
+            }
         }
-        
+
         if (this.longRangeScanner) {
             this.longRangeScanner.hide();
+            if (this.longRangeScanner.dispose) {
+                this.longRangeScanner.dispose();
+            }
         }
+
+        if (this.starChartsManager) {
+            if (this.starChartsManager.dispose) {
+                this.starChartsManager.dispose();
+            }
+        }
+
+        // Null out references
+        this.starChartsUI = null;
+        this.longRangeScanner = null;
+        this.starChartsManager = null;
+        this.starChartsIntegration = null;
+        this.viewManager = null;
+        this.scene = null;
+        this.camera = null;
+        this.solarSystemManager = null;
+        this.targetComputerManager = null;
+
+        debug('NAVIGATION', '🧹 NavigationSystemManager: Cleanup complete');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other components
+     */
+    dispose() {
+        this.destroy();
     }
 }

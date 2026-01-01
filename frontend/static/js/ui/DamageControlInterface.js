@@ -21,22 +21,26 @@ export default class DamageControlInterface {
         this.isDocked = false;
         this.selectedSystem = null;
         this.refreshInterval = null;
-        
+
         // Repair kits simulation (would be loaded from ship data)
         this.repairKits = {
             basic: { count: 5, repairAmount: 0.25, cost: 100 },
             advanced: { count: 2, repairAmount: 0.50, cost: 250 },
             emergency: { count: 1, repairAmount: 1.0, cost: 500 }
         };
-        
+
         // Damage log for notifications
         this.damageLog = [];
         this.maxLogEntries = 50;
-        
+
         // Bind event handlers to maintain proper 'this' context
         this.boundKeyHandler = this.handleKeyPress.bind(this);
-        
-debug('COMBAT', 'Damage Control Interface initialized');
+
+        // Memory leak prevention: track resources for cleanup
+        this._styleElement = null;
+        this._boundOverlayClick = null;
+
+        debug('COMBAT', 'Damage Control Interface initialized');
     }
     
     /**
@@ -642,15 +646,16 @@ debug('AI', `Repaired ${this.selectedSystem} with ${kitType} kit`);
     bindEvents() {
         // Keyboard events
         document.addEventListener('keydown', this.boundKeyHandler);
-        
-        // Click outside to close
+
+        // Click outside to close - store handler for cleanup
         const overlay = document.getElementById('damage-control-overlay');
         if (overlay) {
-            overlay.addEventListener('click', (e) => {
+            this._boundOverlayClick = (e) => {
                 if (e.target === overlay) {
                     this.hide();
                 }
-            });
+            };
+            overlay.addEventListener('click', this._boundOverlayClick);
         }
     }
     
@@ -689,35 +694,35 @@ debug('AI', `Repaired ${this.selectedSystem} with ${kitType} kit`);
      */
     activateGalacticChart() {
         if (!this.ship) {
-            console.warn('No ship available for galactic chart activation');
+            debug('COMBAT', '⚠️ No ship available for galactic chart activation');
             return;
         }
-        
+
         const chartSystem = this.ship.getSystem('galactic_chart');
         if (!chartSystem) {
-            console.warn('No galactic chart system found on ship');
+            debug('COMBAT', '⚠️ No galactic chart system found on ship');
             return;
         }
-        
+
         // Check if chart system can be activated
         if (!chartSystem.canActivate(this.ship)) {
             if (!chartSystem.isOperational()) {
-                console.warn('Cannot activate Galactic Chart: System damaged or offline');
+                debug('COMBAT', '⚠️ Cannot activate Galactic Chart: System damaged or offline');
             } else {
-                console.warn('Cannot activate Galactic Chart: Insufficient energy');
+                debug('COMBAT', '⚠️ Cannot activate Galactic Chart: Insufficient energy');
             }
             return;
         }
-        
+
         // Activate the chart system
         if (chartSystem.activateChart(this.ship)) {
             // Trigger the view change through ViewManager if available
             if (window.viewManager) {
                 window.viewManager.setView('GALACTIC');
             }
-debug('COMBAT', 'Galactic Chart activated from Damage Control');
+            debug('COMBAT', 'Galactic Chart activated from Damage Control');
         } else {
-            console.warn('Failed to activate Galactic Chart');
+            debug('COMBAT', '⚠️ Failed to activate Galactic Chart');
         }
     }
     
@@ -726,26 +731,26 @@ debug('COMBAT', 'Galactic Chart activated from Damage Control');
      */
     activateLongRangeScanner() {
         if (!this.ship) {
-            console.warn('No ship available for long range scanner activation');
+            debug('COMBAT', '⚠️ No ship available for long range scanner activation');
             return;
         }
-        
+
         const scannerSystem = this.ship.getSystem('long_range_scanner');
         if (!scannerSystem) {
-            console.warn('No long range scanner system found on ship');
+            debug('COMBAT', '⚠️ No long range scanner system found on ship');
             return;
         }
-        
+
         // Check if scanner system can be activated
         if (!scannerSystem.canActivate(this.ship)) {
             if (!scannerSystem.isOperational()) {
-                console.warn('Cannot activate Long Range Scanner: System damaged or offline');
+                debug('COMBAT', '⚠️ Cannot activate Long Range Scanner: System damaged or offline');
             } else {
-                console.warn('Cannot activate Long Range Scanner: Insufficient energy');
+                debug('COMBAT', '⚠️ Cannot activate Long Range Scanner: Insufficient energy');
             }
             return;
         }
-        
+
         // Start scanning operation
         const scanStarted = scannerSystem.startScan(this.ship);
         if (scanStarted) {
@@ -753,9 +758,9 @@ debug('COMBAT', 'Galactic Chart activated from Damage Control');
             if (window.viewManager) {
                 window.viewManager.setView('SCANNER');
             }
-debug('COMBAT', 'Long Range Scanner activated from Damage Control');
+            debug('COMBAT', 'Long Range Scanner activated from Damage Control');
         } else {
-            console.warn('Failed to start Long Range Scanner');
+            debug('COMBAT', '⚠️ Failed to start Long Range Scanner');
         }
     }
     
@@ -765,9 +770,14 @@ debug('COMBAT', 'Long Range Scanner activated from Damage Control');
     removeInterface() {
         const overlay = document.getElementById('damage-control-overlay');
         if (overlay) {
+            // Remove overlay click handler before removing element
+            if (this._boundOverlayClick) {
+                overlay.removeEventListener('click', this._boundOverlayClick);
+                this._boundOverlayClick = null;
+            }
             overlay.remove();
         }
-        
+
         // Remove event listeners
         document.removeEventListener('keydown', this.boundKeyHandler);
     }
@@ -777,9 +787,9 @@ debug('COMBAT', 'Long Range Scanner activated from Damage Control');
      * @param {string} message - Error message
      */
     showError(message) {
-        console.warn('Damage Control Interface:', message);
+        debug('COMBAT', `⚠️ Damage Control Interface: ${message}`);
         this.addLogEntry('error', message);
-        
+
         // Could also show a toast notification here
     }
     
@@ -829,10 +839,14 @@ debug('COMBAT', 'Long Range Scanner activated from Damage Control');
      * Add CSS styles for the interface
      */
     addCSS() {
-        if (document.getElementById('damage-control-styles')) return;
-        
+        if (document.getElementById('damage-control-styles')) {
+            this._styleElement = document.getElementById('damage-control-styles');
+            return;
+        }
+
         const style = document.createElement('style');
         style.id = 'damage-control-styles';
+        this._styleElement = style;
         style.textContent = `
             .damage-control-overlay {
                 position: fixed;
@@ -1280,7 +1294,49 @@ debug('COMBAT', 'Long Range Scanner activated from Damage Control');
                 }
             }
         `;
-        
+
         document.head.appendChild(style);
+    }
+
+    /**
+     * Dispose of all resources - call when destroying the instance
+     */
+    dispose() {
+        debug('COMBAT', '🧹 DamageControlInterface disposing...');
+
+        // Hide and clean up interface
+        this.hide();
+
+        // Stop refresh interval
+        this.stopRefresh();
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+        }
+        this._styleElement = null;
+
+        // Remove global reference if it points to this instance
+        if (window.damageControl === this) {
+            delete window.damageControl;
+        }
+
+        // Clear damage log
+        this.damageLog = [];
+
+        // Null out references
+        this.ship = null;
+        this.selectedSystem = null;
+        this.boundKeyHandler = null;
+        this._boundOverlayClick = null;
+
+        debug('COMBAT', '🧹 DamageControlInterface disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 } 

@@ -14,7 +14,13 @@ export class MissionCompletionUI {
         this.cardAnimator = new CardRewardAnimator();
         this.completionScreen = null;
         this.isShowing = false;
-        
+
+        // Memory leak prevention: track resources
+        this._styleElement = null;
+        this._pendingTimeouts = new Set();
+        this._buttonHandlers = null;
+        this._continueButton = null;
+
         // Performance rating system
         this.ratingSystem = {
             excellent: { stars: 5, threshold: 0.9, bonus: 0.5 },
@@ -39,8 +45,12 @@ debug('UI', '🎉 MissionCompletionUI: Initialized');
      * Setup CSS styles for completion screen
      */
     setupStyles() {
-        if (document.getElementById('mission-completion-styles')) return;
-        
+        if (document.getElementById('mission-completion-styles')) {
+            // Style already exists, just get reference
+            this._styleElement = document.getElementById('mission-completion-styles');
+            return;
+        }
+
         const style = document.createElement('style');
         style.id = 'mission-completion-styles';
         style.textContent = `
@@ -54,43 +64,44 @@ debug('UI', '🎉 MissionCompletionUI: Initialized');
                     transform: scale(1) translateY(0);
                 }
             }
-            
+
             @keyframes starShine {
                 0% { filter: brightness(1) saturate(1); }
                 50% { filter: brightness(1.5) saturate(1.5); }
                 100% { filter: brightness(1) saturate(1); }
             }
-            
+
             @keyframes creditCount {
                 0% { transform: scale(1); }
                 50% { transform: scale(1.2); }
                 100% { transform: scale(1); }
             }
-            
+
             @keyframes glowPulse {
                 0% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.3); }
                 50% { box-shadow: 0 0 40px rgba(0, 255, 65, 0.6); }
                 100% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.3); }
             }
-            
+
             .mission-complete-screen {
                 animation: missionCompleteEntry 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             }
-            
+
             .star-rating .star {
                 animation: starShine 0.5s ease-in-out;
             }
-            
+
             .credit-amount {
                 animation: creditCount 0.3s ease-in-out;
             }
-            
+
             .completion-panel {
                 animation: glowPulse 3s ease-in-out infinite;
             }
         `;
-        
+
         document.head.appendChild(style);
+        this._styleElement = style; // Track for cleanup
     }
     
     /**
@@ -98,7 +109,7 @@ debug('UI', '🎉 MissionCompletionUI: Initialized');
      */
     async showMissionComplete(missionId, completionData) {
         if (this.isShowing) {
-            console.warn('🎉 MissionCompletionUI: Already showing completion screen');
+            debug('UI', '🎉 MissionCompletionUI: Already showing completion screen');
             return;
         }
         
@@ -139,7 +150,7 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
             await this.hideCompletionScreen();
             
         } catch (error) {
-            console.error('🎉 MissionCompletionUI: Error showing completion:', error);
+            debug('P1', `🎉 MissionCompletionUI: Error showing completion: ${error.message || error}`);
             this.cleanup();
         } finally {
             this.resumeGame();
@@ -576,23 +587,29 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
             box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
         `;
         button.textContent = 'CONTINUE';
-        
-        button.addEventListener('mouseenter', () => {
-            button.style.background = '#44ff77';
-            button.style.transform = 'scale(1.05)';
-            button.style.boxShadow = '0 0 30px rgba(0, 255, 65, 0.5)';
-        });
-        
-        button.addEventListener('mouseleave', () => {
-            button.style.background = '#00ff41';
-            button.style.transform = 'scale(1)';
-            button.style.boxShadow = '0 0 20px rgba(0, 255, 65, 0.3)';
-        });
-        
-        button.addEventListener('click', () => {
-            this.continueClicked = true;
-        });
-        
+
+        // Create bound handlers for cleanup
+        this._buttonHandlers = {
+            mouseenter: () => {
+                button.style.background = '#44ff77';
+                button.style.transform = 'scale(1.05)';
+                button.style.boxShadow = '0 0 30px rgba(0, 255, 65, 0.5)';
+            },
+            mouseleave: () => {
+                button.style.background = '#00ff41';
+                button.style.transform = 'scale(1)';
+                button.style.boxShadow = '0 0 20px rgba(0, 255, 65, 0.3)';
+            },
+            click: () => {
+                this.continueClicked = true;
+            }
+        };
+
+        button.addEventListener('mouseenter', this._buttonHandlers.mouseenter);
+        button.addEventListener('mouseleave', this._buttonHandlers.mouseleave);
+        button.addEventListener('click', this._buttonHandlers.click);
+
+        this._continueButton = button; // Track for cleanup
         return button;
     }
     
@@ -694,24 +711,28 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
      * Animate reward display elements
      */
     async animateRewardDisplay(rewards, performance) {
-        // Animate star rating
+        // Animate star rating - track timeouts for cleanup
         const stars = this.completionScreen.querySelectorAll('.star');
         for (let i = 0; i < stars.length; i++) {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(timeoutId);
                 if (stars[i]) stars[i].style.animation = 'starShine 0.5s ease-in-out';
             }, i * 200);
+            this._pendingTimeouts.add(timeoutId);
         }
-        
-        // Animate credit counting
+
+        // Animate credit counting - track timeout for cleanup
         if (rewards.credits) {
-            setTimeout(() => {
-                const creditElement = this.completionScreen.querySelector('.credit-amount');
+            const creditTimeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(creditTimeoutId);
+                const creditElement = this.completionScreen?.querySelector('.credit-amount');
                 if (creditElement) {
                     creditElement.style.animation = 'creditCount 0.3s ease-in-out';
                 }
             }, 1000);
+            this._pendingTimeouts.add(creditTimeoutId);
         }
-        
+
         await this.delay(2000);
     }
     
@@ -741,6 +762,22 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
      * Cleanup DOM elements
      */
     cleanup() {
+        // Clear pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            this._pendingTimeouts.clear();
+        }
+
+        // Remove button event listeners
+        if (this._continueButton && this._buttonHandlers) {
+            this._continueButton.removeEventListener('mouseenter', this._buttonHandlers.mouseenter);
+            this._continueButton.removeEventListener('mouseleave', this._buttonHandlers.mouseleave);
+            this._continueButton.removeEventListener('click', this._buttonHandlers.click);
+        }
+        this._continueButton = null;
+        this._buttonHandlers = null;
+
+        // Remove completion screen
         if (this.completionScreen && this.completionScreen.parentNode) {
             this.completionScreen.parentNode.removeChild(this.completionScreen);
         }
@@ -845,5 +882,45 @@ debug('UI', `🎉 MissionCompletionUI: Showing completion for mission ${missionI
         };
         
         await this.showMissionComplete('test_mission', mockCompletionData);
+    }
+
+    /**
+     * Full cleanup for disposal
+     */
+    dispose() {
+        // Run standard cleanup first
+        this.cleanup();
+
+        // Remove style element from document.head
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Clean up card animator
+        if (this.cardAnimator && typeof this.cardAnimator.dispose === 'function') {
+            this.cardAnimator.dispose();
+        }
+        this.cardAnimator = null;
+
+        // Remove global reference
+        if (window.missionCompletionUI === this) {
+            delete window.missionCompletionUI;
+        }
+
+        // Null out references
+        this.starfieldManager = null;
+        this.missionManager = null;
+        this.ratingSystem = null;
+        this._pendingTimeouts = null;
+
+        debug('UI', '🎉 MissionCompletionUI: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
 }

@@ -12,7 +12,12 @@ export class CardRewardAnimator {
         this.currentCardIndex = 0;
         this.overlay = null;
         this.currentPrompt = null;
-        
+
+        // Memory leak prevention: track resources
+        this._styleElement = null;
+        this._pendingTimeouts = new Set();
+        this._inputListeners = null; // Track waitForUserInput listeners
+
         // Animation settings
         this.animationSettings = {
             dropDuration: 800,
@@ -71,8 +76,12 @@ debug('UI', '🎴 CardRewardAnimator: Initialized');
      * Setup CSS animations and styles
      */
     setupStyles() {
-        if (document.getElementById('card-reward-styles')) return;
-        
+        if (document.getElementById('card-reward-styles')) {
+            // Style already exists, just get reference
+            this._styleElement = document.getElementById('card-reward-styles');
+            return;
+        }
+
         const style = document.createElement('style');
         style.id = 'card-reward-styles';
         style.textContent = `
@@ -81,18 +90,18 @@ debug('UI', '🎴 CardRewardAnimator: Initialized');
                 50% { filter: drop-shadow(0 0 30px currentColor); }
                 100% { filter: drop-shadow(0 0 10px currentColor); }
             }
-            
+
             @keyframes pulse {
                 0% { opacity: 0.7; transform: scale(1); }
                 50% { opacity: 1; transform: scale(1.05); }
                 100% { opacity: 0.7; transform: scale(1); }
             }
-            
+
             @keyframes fadeIn {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
-            
+
             @keyframes particle {
                 0% {
                     transform: translate(0, 0) scale(1);
@@ -103,11 +112,11 @@ debug('UI', '🎴 CardRewardAnimator: Initialized');
                     opacity: 0;
                 }
             }
-            
+
             .card-reveal-overlay {
                 animation: fadeIn 0.5s ease-in-out;
             }
-            
+
             .card-particle {
                 position: absolute;
                 width: 4px;
@@ -117,8 +126,9 @@ debug('UI', '🎴 CardRewardAnimator: Initialized');
                 animation: particle 2s ease-out forwards;
             }
         `;
-        
+
         document.head.appendChild(style);
+        this._styleElement = style; // Track for cleanup
     }
     
     /**
@@ -126,7 +136,7 @@ debug('UI', '🎴 CardRewardAnimator: Initialized');
      */
     async animateCardRewards(cards) {
         if (this.isAnimating) {
-            console.warn('🎴 CardRewardAnimator: Animation already in progress');
+            debug('UI', '🎴 CardRewardAnimator: Animation already in progress');
             return;
         }
         
@@ -159,7 +169,7 @@ debug('UI', `🎴 CardRewardAnimator: Starting animation for ${cards.length} car
             await this.finishCardReveals();
             
         } catch (error) {
-            console.error('🎴 CardRewardAnimator: Animation error:', error);
+            debug('P1', `🎴 CardRewardAnimator: Animation error: ${error.message || error}`);
             this.cleanup();
         } finally {
             this.isAnimating = false;
@@ -463,13 +473,15 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
         `;
         
         container.appendChild(particle);
-        
-        // Remove particle after animation
-        setTimeout(() => {
+
+        // Remove particle after animation - track timeout for cleanup
+        const timeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(timeoutId);
             if (particle.parentNode) {
                 particle.parentNode.removeChild(particle);
             }
         }, this.animationSettings.particleDuration);
+        this._pendingTimeouts.add(timeoutId);
     }
     
     /**
@@ -494,12 +506,15 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
             animation: fadeIn 0.2s ease-out reverse;
         `;
         document.body.appendChild(flash);
-        
-        setTimeout(() => {
+
+        // Track timeout for cleanup
+        const flashTimeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(flashTimeoutId);
             if (flash.parentNode) {
                 flash.parentNode.removeChild(flash);
             }
         }, 200);
+        this._pendingTimeouts.add(flashTimeoutId);
     }
     
     /**
@@ -508,12 +523,14 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
     addEpicEffects(container) {
         // Purple glow
         container.style.filter = 'drop-shadow(0 0 30px #8800ff)';
-        
-        // Add sparkle effects
+
+        // Add sparkle effects - track timeouts for cleanup
         for (let i = 0; i < 20; i++) {
-            setTimeout(() => {
+            const sparkleTimeoutId = setTimeout(() => {
+                this._pendingTimeouts.delete(sparkleTimeoutId);
                 this.createSparkle(container, '#8800ff');
             }, i * 50);
+            this._pendingTimeouts.add(sparkleTimeoutId);
         }
     }
     
@@ -533,14 +550,17 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
             box-shadow: 0 0 6px ${color};
             animation: pulse 0.5s ease-in-out;
         `;
-        
+
         container.appendChild(sparkle);
-        
-        setTimeout(() => {
+
+        // Track timeout for cleanup
+        const sparkleRemoveTimeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(sparkleRemoveTimeoutId);
             if (sparkle.parentNode) {
                 sparkle.parentNode.removeChild(sparkle);
             }
         }, 500);
+        this._pendingTimeouts.add(sparkleRemoveTimeoutId);
     }
     
     /**
@@ -580,15 +600,28 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
         return new Promise(resolve => {
             const handleInput = (event) => {
                 if (event.type === 'click' || event.key === ' ' || event.key === 'Enter') {
-                    document.removeEventListener('click', handleInput);
-                    document.removeEventListener('keydown', handleInput);
+                    this._removeInputListeners();
                     resolve();
                 }
             };
-            
+
+            // Store reference for cleanup
+            this._inputListeners = handleInput;
+
             document.addEventListener('click', handleInput);
             document.addEventListener('keydown', handleInput);
         });
+    }
+
+    /**
+     * Remove input listeners if still attached
+     */
+    _removeInputListeners() {
+        if (this._inputListeners) {
+            document.removeEventListener('click', this._inputListeners);
+            document.removeEventListener('keydown', this._inputListeners);
+            this._inputListeners = null;
+        }
     }
     
     /**
@@ -619,13 +652,55 @@ debug('UI', `🎴 Revealing card ${index + 1}: ${cardData.name} (${cardData.rari
      * Clean up DOM elements
      */
     cleanup() {
+        // Clear pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            this._pendingTimeouts.clear();
+        }
+
+        // Remove any pending input listeners
+        this._removeInputListeners();
+
         if (this.overlay && this.overlay.parentNode) {
             this.overlay.parentNode.removeChild(this.overlay);
         }
         this.overlay = null;
         this.currentPrompt = null;
         this.cardQueue = [];
-debug('UI', '🎴 CardRewardAnimator: Cleaned up');
+        debug('UI', '🎴 CardRewardAnimator: Cleaned up');
+    }
+
+    /**
+     * Full disposal - clean up all resources
+     */
+    dispose() {
+        // Run standard cleanup first
+        this.cleanup();
+
+        // Remove style element from document.head
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Remove global reference
+        if (window.cardRewardAnimator === this) {
+            delete window.cardRewardAnimator;
+        }
+
+        // Null out references
+        this.animationSettings = null;
+        this.rarityConfig = null;
+        this._pendingTimeouts = null;
+
+        debug('UI', '🎴 CardRewardAnimator: Disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other UI components
+     */
+    destroy() {
+        this.dispose();
     }
     
     /**

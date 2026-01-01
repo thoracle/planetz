@@ -24,7 +24,20 @@ export class StationRepairInterface {
         this.dockedLocation = null;
         this.selectedSystems = new Set();
         this.repairInProgress = false;
-        
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            closeButtonClick: null,
+            closeButtonMouseEnter: null,
+            closeButtonMouseLeave: null
+        };
+
+        // Store close button reference for cleanup
+        this._closeButton = null;
+
+        // Track style element for cleanup
+        this._styleElement = null;
+
         // Repair pricing configuration
         this.repairPricing = {
             // Base costs per system type
@@ -1151,6 +1164,7 @@ debug('AI', `${repairType} repair in progress... (${duration}s)`);
         if (!document.head.querySelector('style[data-repair-interface]')) {
             style.setAttribute('data-repair-interface', 'true');
             document.head.appendChild(style);
+            this._styleElement = style;
         }
     }
     
@@ -1186,16 +1200,23 @@ debug('AI', `${repairType} repair in progress... (${duration}s)`);
         
         // Add close button functionality
         const closeButton = this.header.querySelector('.close-button');
-        closeButton.addEventListener('click', () => this.returnToDocking());
-        closeButton.addEventListener('mouseenter', () => {
+        this._closeButton = closeButton; // Store reference for cleanup
+
+        // Create bound handlers for cleanup
+        this._boundHandlers.closeButtonClick = () => this.returnToDocking();
+        this._boundHandlers.closeButtonMouseEnter = () => {
             closeButton.style.background = 'rgba(0, 255, 65, 0.15)';
             closeButton.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.4)';
-        });
-        closeButton.addEventListener('mouseleave', () => {
+        };
+        this._boundHandlers.closeButtonMouseLeave = () => {
             closeButton.style.background = 'rgba(0, 20, 0, 0.5)';
             closeButton.style.boxShadow = 'none';
-        });
-        
+        };
+
+        closeButton.addEventListener('click', this._boundHandlers.closeButtonClick);
+        closeButton.addEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+        closeButton.addEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+
         this.container.appendChild(this.header);
     }
     
@@ -1285,7 +1306,73 @@ debug('AI', `${repairType} repair in progress... (${duration}s)`);
             <div id="repair-summary"></div>
             <div id="repair-actions"></div>
         `;
-        
+
         this.contentWrapper.appendChild(panel);
+    }
+
+    /**
+     * Comprehensive cleanup of all resources
+     */
+    destroy() {
+        debug('AI', 'StationRepairInterface destroy() called - cleaning up all resources');
+
+        // Remove close button event listeners
+        if (this._closeButton) {
+            if (this._boundHandlers.closeButtonClick) {
+                this._closeButton.removeEventListener('click', this._boundHandlers.closeButtonClick);
+            }
+            if (this._boundHandlers.closeButtonMouseEnter) {
+                this._closeButton.removeEventListener('mouseenter', this._boundHandlers.closeButtonMouseEnter);
+            }
+            if (this._boundHandlers.closeButtonMouseLeave) {
+                this._closeButton.removeEventListener('mouseleave', this._boundHandlers.closeButtonMouseLeave);
+            }
+            this._closeButton = null;
+        }
+
+        // Clear bound handlers
+        this._boundHandlers.closeButtonClick = null;
+        this._boundHandlers.closeButtonMouseEnter = null;
+        this._boundHandlers.closeButtonMouseLeave = null;
+
+        // Remove style element
+        if (this._styleElement && this._styleElement.parentNode) {
+            this._styleElement.parentNode.removeChild(this._styleElement);
+            this._styleElement = null;
+        }
+
+        // Clean up global reference
+        if (window.stationRepairInterface === this) {
+            window.stationRepairInterface = null;
+        }
+
+        // Remove container from DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        this.container = null;
+
+        // Clear element references
+        this.header = null;
+        this.contentWrapper = null;
+
+        // Clear data
+        this.selectedSystems.clear();
+
+        // Clear references
+        this.starfieldManager = null;
+        this.ship = null;
+        this.dockedLocation = null;
+        this.isVisible = false;
+        this.repairInProgress = false;
+
+        debug('AI', 'StationRepairInterface cleanup complete');
+    }
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
     }
 } 

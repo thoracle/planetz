@@ -24,7 +24,7 @@ const VERSION_DATE = '2025-09-30T21:45:00Z';
 export class StarChartsManager {
     constructor(scene, camera, viewManager, solarSystemManager, targetComputerManager) {
         // VERSION LOGGING - Confirms latest code is running
-        console.log(`🚀 StarChartsManager v${STAR_CHARTS_VERSION}`);
+        debug('UTILITY', `🚀 StarChartsManager v${STAR_CHARTS_VERSION}`);
         
         this.scene = scene;
         this.camera = camera;
@@ -92,7 +92,21 @@ export class StarChartsManager {
             maxDiscoveriesPerFrame: 50, // Testing with higher limit to see if current limit is too restrictive
             performanceMonitoring: true
         };
-        
+
+        // Memory leak prevention: track resources for cleanup
+        this._animationFrameId = null;
+        this._pendingTimeouts = new Set();
+        this._globalDebugFunctions = [
+            'debugSpatialGrid',
+            'refreshSpatialGrid',
+            'debugStarChartsState',
+            'toggleHitBoxDebug',
+            'enableHitBoxDebug',
+            'disableHitBoxDebug',
+            'hitBoxDebugStatus',
+            'refreshStarCharts'
+        ];
+
         // Initialization state
         this.isInitialized = false;
         
@@ -168,7 +182,7 @@ debug('UTILITY', `   - Current sector: ${this.currentSector}`);
 debug('UTILITY', `   - Discovered objects: ${this.discoveredObjects.size}`);
             
         } catch (error) {
-            console.error('❌ StarChartsManager: Initialization failed:', error);
+            debug('P1', '❌ StarChartsManager: Initialization failed:', error);
             if (this.config.fallbackToLRS) {
 debug('UTILITY', '🔄 Falling back to Long Range Scanner');
                 this.config.enabled = false;
@@ -220,7 +234,7 @@ debug('UTILITY', '🔄 Falling back to Long Range Scanner');
             this.saveDiscoveryState();
 debug('UTILITY', `🧪 StarCharts TEST MODE: Discovered all objects in ${this.currentSector} (+${count})`);
         } catch (e) {
-            console.warn('🧪 StarCharts TEST MODE failed to discover all:', e);
+            debug('UTILITY', '🧪 StarCharts TEST MODE failed to discover all:', e);
         }
     }
 
@@ -251,7 +265,7 @@ debug('UI', `🔧 TEMP FIX: Triggering Star Charts UI refresh`);
                 }
             }
         } catch (e) {
-            console.warn('🔧 TEMP FIX: Failed to auto-discover beacons:', e);
+            debug('UTILITY', '🔧 TEMP FIX: Failed to auto-discover beacons:', e);
         }
     }
     
@@ -270,9 +284,9 @@ debug('UTILITY', `   - Universe seed: ${this.objectDatabase.metadata.universe_se
 debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_timestamp}`);
             
             return true;
-            
+
         } catch (error) {
-            console.error('❌ Failed to load object database:', error);
+            debug('P1', '❌ Failed to load object database:', error);
             throw error;
         }
     }
@@ -650,15 +664,23 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     
     startDiscoveryLoop() {
         //Start the discovery checking loop
-        
+
         const discoveryLoop = () => {
             if (this.config.enabled) {
                 this.checkDiscoveryRadius();
             }
-            requestAnimationFrame(discoveryLoop);
+            this._animationFrameId = requestAnimationFrame(discoveryLoop);
         };
-        
+
         discoveryLoop();
+    }
+
+    stopDiscoveryLoop() {
+        //Stop the discovery checking loop
+        if (this._animationFrameId) {
+            cancelAnimationFrame(this._animationFrameId);
+            this._animationFrameId = null;
+        }
     }
     
     /**
@@ -737,7 +759,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             this.lastDiscoveryCheck = now;
             
         } catch (error) {
-            console.error('❌ Discovery check failed:', error);
+            debug('P1', '❌ Discovery check failed:', error);
         }
         
         // Performance monitoring
@@ -746,7 +768,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         
         // Alert if performance degrades
         if (checkTime > 16) { // 16ms = 60fps budget
-            console.warn(`⚠️  Discovery check exceeding frame budget: ${checkTime.toFixed(2)}ms`);
+            debug('PERFORMANCE', `⚠️  Discovery check exceeding frame budget: ${checkTime.toFixed(2)}ms`);
         }
         
         // Keep metrics array manageable
@@ -1106,7 +1128,6 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
 
         // Fallback: Default to (0,0,0) if no ship position found
         debug('STAR_CHARTS', `⚠️ No player ship position found, defaulting to [0, 0, 0]`);
-        console.log('🚀 DEBUG: getPlayerPosition() returning:', [0, 0, 0]); // New log
         return [0, 0, 0];
     }
     
@@ -1323,7 +1344,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             try {
                 callback(objectId, discoveryData);
             } catch (error) {
-                console.error('❌ Discovery callback error:', error);
+                debug('P1', '❌ Discovery callback error:', error);
             }
         });
     }
@@ -1334,7 +1355,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
             try {
                 callback(objectId);
             } catch (error) {
-                console.error('❌ Target selection callback error:', error);
+                debug('P1', '❌ Target selection callback error:', error);
             }
         });
     }
@@ -1594,7 +1615,7 @@ debug('TARGETING', 'Star Charts: Activating Target Computer for selection');
             if (!success) {
                 const errorMsg = `❌ CRITICAL: Failed to set target for ${objectData.name} (${normalizedId}) - target lookup failed`;
                 debug('TARGETING', `🎯 TARGET_SWITCH: setTargetById FAILED for ${normalizedId}`);
-                console.error(errorMsg);
+                debug('P1', errorMsg);
                 throw new Error(errorMsg); // Crash in dev to find bugs
             }
 
@@ -1605,20 +1626,20 @@ debug('TARGETING', `🎯 TARGET_SWITCH: setTargetById SUCCEEDED for ${normalized
             this.triggerTargetSelectionCallbacks(normalizedId);
             return true;
         }
-        
-        console.warn('⚠️  Target Computer integration not available');
+
+        debug('TARGETING', '⚠️  Target Computer integration not available');
         return false;
     }
 
     setVirtualTarget(waypointId) {
         // Set virtual waypoint as target
-        
+
         const waypoint = this.virtualWaypoints.get(waypointId);
         if (!waypoint) {
-            console.error(`❌ Waypoint not found: ${waypointId}`);
+            debug('P1', `❌ Waypoint not found: ${waypointId}`);
             return false;
         }
-        
+
         // Lazy-acquire TargetComputerManager if not provided at construction
         if (!this.targetComputerManager && this.viewManager?.starfieldManager?.targetComputerManager) {
             this.targetComputerManager = this.viewManager.starfieldManager.targetComputerManager;
@@ -1627,8 +1648,8 @@ debug('TARGETING', `🎯 TARGET_SWITCH: setTargetById SUCCEEDED for ${normalized
         if (this.targetComputerManager && this.targetComputerManager.setVirtualTarget) {
             return this.targetComputerManager.setVirtualTarget(waypoint);
         }
-        
-        console.warn('⚠️  Virtual target integration not available');
+
+        debug('TARGETING', '⚠️  Virtual target integration not available');
         return false;
     }
     
@@ -1847,7 +1868,7 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
     updateAchievementProgress() {
         try {
             const discoveryCount = this.discoveredObjects.size;
-            
+
             // Import achievement system dynamically to avoid circular dependencies
             if (window.achievementSystem) {
                 window.achievementSystem.updateDiscoveryProgress(discoveryCount);
@@ -1858,30 +1879,98 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
                     const discoveryCount = this.discoveredObjects.size;
                     achievementSystem.updateDiscoveryProgress(discoveryCount);
                 }).catch(error => {
-                    console.warn('Failed to load achievement system:', error);
+                    debug('ACHIEVEMENTS', 'Failed to load achievement system:', error);
                 });
             }
         } catch (error) {
-            console.warn('Failed to update achievement progress:', error);
+            debug('ACHIEVEMENTS', 'Failed to update achievement progress:', error);
         }
+    }
+
+
+    /**
+     * Clean up all resources and event listeners
+     */
+    dispose() {
+        debug('UTILITY', '🧹 Disposing StarChartsManager...');
+
+        // Stop discovery loop
+        this.stopDiscoveryLoop();
+
+        // Clear pending timeouts
+        for (const timeout of this._pendingTimeouts) {
+            clearTimeout(timeout);
+        }
+        this._pendingTimeouts.clear();
+
+        // Remove global debug functions
+        if (typeof window !== 'undefined') {
+            for (const funcName of this._globalDebugFunctions) {
+                if (window[funcName]) {
+                    delete window[funcName];
+                }
+            }
+        }
+
+        // Remove style element if we created it
+        if (StarChartsManager._styleElement && StarChartsManager._styleElement.parentNode) {
+            StarChartsManager._styleElement.parentNode.removeChild(StarChartsManager._styleElement);
+            StarChartsManager._styleElement = null;
+        }
+
+        // Clear data structures
+        this.discoveredObjects.clear();
+        this.discoveryMetadata.clear();
+        this.spatialGrid.clear();
+        this.virtualWaypoints.clear();
+        this.loadedSectors.clear();
+        this.discoveryCallbacks = [];
+        this.targetSelectionCallbacks = [];
+
+        // Null out references
+        this.scene = null;
+        this.camera = null;
+        this.viewManager = null;
+        this.solarSystemManager = null;
+        this.targetComputerManager = null;
+        this.objectDatabase = null;
+        this.allObjects = null;
+
+        this.isInitialized = false;
+
+        debug('UTILITY', '🧹 StarChartsManager disposed');
+    }
+
+    /**
+     * Alias for dispose() for consistency with other components
+     */
+    destroy() {
+        this.dispose();
     }
 }
 
-// Add CSS animations for notifications
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes fadeInOut {
-        0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-        20% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        80% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-    }
-    
-    @keyframes slideInOut {
-        0% { opacity: 0; transform: translateX(20px); }
-        20% { opacity: 1; transform: translateX(0); }
-        80% { opacity: 1; transform: translateX(0); }
-        100% { opacity: 0; transform: translateX(20px); }
-    }
-`;
-document.head.appendChild(style);
+// Static style element reference for cleanup
+StarChartsManager._styleElement = null;
+
+// Add CSS animations for notifications (only once per page load)
+if (!StarChartsManager._styleElement) {
+    const style = document.createElement('style');
+    style.id = 'star-charts-manager-styles';
+    style.textContent = `
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+
+        @keyframes slideInOut {
+            0% { opacity: 0; transform: translateX(20px); }
+            20% { opacity: 1; transform: translateX(0); }
+            80% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(20px); }
+        }
+    `;
+    document.head.appendChild(style);
+    StarChartsManager._styleElement = style;
+}

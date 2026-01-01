@@ -28,7 +28,25 @@ export default class DockingModal {
         
         // Docking state tracking
         this.dockingInitiated = false; // Prevents modal reappearing during docking initiation
-        
+
+        // Track timeouts for cleanup
+        this.autoHideTimeout = null;
+
+        // Store style element reference for cleanup
+        this.styleElement = null;
+
+        // Bound event handlers for proper cleanup
+        this._boundHandlers = {
+            dockButtonClick: null,
+            cancelButtonClick: null,
+            modalBackdropClick: null,
+            documentKeydown: null,
+            dockButtonMouseEnter: null,
+            dockButtonMouseLeave: null,
+            cancelButtonMouseEnter: null,
+            cancelButtonMouseLeave: null
+        };
+
         // Debug state tracking to prevent spam - separated by message type
         this.lastDebugState = {
             nearbyCount: 0,
@@ -168,32 +186,9 @@ export default class DockingModal {
             letter-spacing: 1px;
         `;
         this.cancelButton.textContent = 'CANCEL';
-        
-        // Add hover effects
-        this.dockButton.addEventListener('mouseenter', () => {
-            this.dockButton.style.filter = 'brightness(1.2)';
-            this.dockButton.style.transform = 'scale(1.05)';
-            this.dockButton.style.boxShadow = '0 0 20px rgba(0, 170, 65, 0.6)';
-        });
-        
-        this.dockButton.addEventListener('mouseleave', () => {
-            this.dockButton.style.filter = 'brightness(1)';
-            this.dockButton.style.transform = 'scale(1)';
-            this.dockButton.style.boxShadow = '0 0 15px rgba(0, 170, 65, 0.4)';
-        });
-        
-        this.cancelButton.addEventListener('mouseenter', () => {
-            this.cancelButton.style.background = '#ff4444';
-            this.cancelButton.style.color = '#000';
-            this.cancelButton.style.transform = 'scale(1.05)';
-        });
-        
-        this.cancelButton.addEventListener('mouseleave', () => {
-            this.cancelButton.style.background = 'transparent';
-            this.cancelButton.style.color = '#ff4444';
-            this.cancelButton.style.transform = 'scale(1)';
-        });
-        
+
+        // Hover effects are now attached in bindEvents() for proper cleanup
+
         // Assemble modal
         buttonContainer.appendChild(this.dockButton);
         buttonContainer.appendChild(this.cancelButton);
@@ -206,9 +201,9 @@ export default class DockingModal {
         this.modal.appendChild(content);
         document.body.appendChild(this.modal);
         
-        // Add CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
+        // Add CSS animation (store reference for cleanup)
+        this.styleElement = document.createElement('style');
+        this.styleElement.textContent = `
             @keyframes dockingModalFadeIn {
                 from {
                     opacity: 0;
@@ -220,91 +215,94 @@ export default class DockingModal {
                 }
             }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(this.styleElement);
     }
     
     bindEvents() {
-        // Dock button click
-        this.dockButton.addEventListener('click', () => {
-debug('UI', '🖱️ DOCK BUTTON CLICKED');
-debug('TARGETING', '🖱️ Event listener this.currentTarget:', this.currentTarget);
-debug('TARGETING', '🖱️ Event listener starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
-debug('UI', '🖱️ Modal isVisible:', this.isVisible);
+        // Create bound handlers that can be removed later
+        this._boundHandlers.dockButtonClick = () => {
+            debug('UI', '🖱️ DOCK BUTTON CLICKED');
+            debug('TARGETING', '🖱️ Event listener this.currentTarget:', this.currentTarget);
+            debug('TARGETING', '🖱️ Event listener starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
+            debug('UI', '🖱️ Modal isVisible:', this.isVisible);
             this.handleDock();
-        });
-        
-        // Cancel button click
-        this.cancelButton.addEventListener('click', () => {
-debug('UI', '🖱️ CANCEL BUTTON CLICKED');
-debug('TARGETING', '🖱️ Cancel - this.currentTarget:', this.currentTarget);
-debug('TARGETING', '🖱️ Cancel - starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
-            
-            // NEW: Record this target as cancelled to prevent immediate re-triggering
-            const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
-            if (targetToRecord) {
-                // Try to get target name from multiple sources
-                const targetName = targetToRecord.name || 
-                                 this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToRecord)?.name ||
-                                 targetToRecord.userData?.name ||
-                                 'unknown_target';
-                
-                const now = Date.now();
-                this.cancelledTargets.set(targetName, now);
-debug('TARGETING', `⏰ Added cooldown for target "${targetName}" - will not show modal again for ${this.cooldownDuration/1000} seconds`);
-                
-                // Also log for debugging - what kind of target object we have
-debug('TARGETING', 'Target object keys:', Object.keys(targetToRecord));
-debug('TARGETING', 'Target object:', targetToRecord);
-            } else {
-                console.warn('⚠️ No target to record for cooldown');
-            }
-            
+        };
+
+        this._boundHandlers.cancelButtonClick = () => {
+            debug('UI', '🖱️ CANCEL BUTTON CLICKED');
+            debug('TARGETING', '🖱️ Cancel - this.currentTarget:', this.currentTarget);
+            debug('TARGETING', '🖱️ Cancel - starfieldManager.currentTarget:', this.starfieldManager.currentTarget);
+            this._recordCancelledTarget();
             this.hide();
-        });
-        
-        // Close on backdrop click
-        this.modal.addEventListener('click', (e) => {
+        };
+
+        this._boundHandlers.modalBackdropClick = (e) => {
             if (e.target === this.modal) {
-debug('UI', '🖱️ BACKDROP CLICKED');
-                
-                // Add cooldown for backdrop click cancellation
-                const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
-                if (targetToRecord) {
-                    const targetName = targetToRecord.name || 
-                                     this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToRecord)?.name ||
-                                     targetToRecord.userData?.name ||
-                                     'unknown_target';
-                    
-                    const now = Date.now();
-                    this.cancelledTargets.set(targetName, now);
-debug('TARGETING', `⏰ Added cooldown for target "${targetName}" (backdrop click) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
-                }
-                
+                debug('UI', '🖱️ BACKDROP CLICKED');
+                this._recordCancelledTarget();
                 this.hide();
             }
-        });
-        
-        // Close on Escape key
-        document.addEventListener('keydown', (e) => {
+        };
+
+        this._boundHandlers.documentKeydown = (e) => {
             if (e.key === 'Escape' && this.isVisible) {
-debug('UI', 'ESCAPE KEY PRESSED');
-                
-                // Add cooldown for escape key cancellation
-                const targetToRecord = this.currentTarget || this.starfieldManager.currentTarget;
-                if (targetToRecord) {
-                    const targetName = targetToRecord.name || 
-                                     this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToRecord)?.name ||
-                                     targetToRecord.userData?.name ||
-                                     'unknown_target';
-                    
-                    const now = Date.now();
-                    this.cancelledTargets.set(targetName, now);
-debug('TARGETING', `⏰ Added cooldown for target "${targetName}" (escape key) - will not show modal again for ${this.cooldownDuration/1000} seconds`);
-                }
-                
+                debug('UI', 'ESCAPE KEY PRESSED');
+                this._recordCancelledTarget();
                 this.hide();
             }
-        });
+        };
+
+        this._boundHandlers.dockButtonMouseEnter = () => {
+            this.dockButton.style.filter = 'brightness(1.2)';
+            this.dockButton.style.transform = 'scale(1.05)';
+            this.dockButton.style.boxShadow = '0 0 20px rgba(0, 170, 65, 0.6)';
+        };
+
+        this._boundHandlers.dockButtonMouseLeave = () => {
+            this.dockButton.style.filter = 'brightness(1)';
+            this.dockButton.style.transform = 'scale(1)';
+            this.dockButton.style.boxShadow = '0 0 15px rgba(0, 170, 65, 0.4)';
+        };
+
+        this._boundHandlers.cancelButtonMouseEnter = () => {
+            this.cancelButton.style.background = '#ff4444';
+            this.cancelButton.style.color = '#000';
+            this.cancelButton.style.transform = 'scale(1.05)';
+        };
+
+        this._boundHandlers.cancelButtonMouseLeave = () => {
+            this.cancelButton.style.background = 'transparent';
+            this.cancelButton.style.color = '#ff4444';
+            this.cancelButton.style.transform = 'scale(1)';
+        };
+
+        // Attach all event listeners
+        this.dockButton.addEventListener('click', this._boundHandlers.dockButtonClick);
+        this.cancelButton.addEventListener('click', this._boundHandlers.cancelButtonClick);
+        this.modal.addEventListener('click', this._boundHandlers.modalBackdropClick);
+        document.addEventListener('keydown', this._boundHandlers.documentKeydown);
+        this.dockButton.addEventListener('mouseenter', this._boundHandlers.dockButtonMouseEnter);
+        this.dockButton.addEventListener('mouseleave', this._boundHandlers.dockButtonMouseLeave);
+        this.cancelButton.addEventListener('mouseenter', this._boundHandlers.cancelButtonMouseEnter);
+        this.cancelButton.addEventListener('mouseleave', this._boundHandlers.cancelButtonMouseLeave);
+    }
+
+    /**
+     * Helper to record a cancelled target for cooldown (reduces duplication)
+     */
+    _recordCancelledTarget() {
+        const targetToRecord = this.currentTarget || this.starfieldManager?.currentTarget;
+        if (targetToRecord) {
+            const targetName = targetToRecord.name ||
+                this.starfieldManager?.solarSystemManager?.getCelestialBodyInfo(targetToRecord)?.name ||
+                targetToRecord.userData?.name ||
+                'unknown_target';
+
+            this.cancelledTargets.set(targetName, Date.now());
+            debug('TARGETING', `⏰ Added cooldown for target "${targetName}" - will not show modal again for ${this.cooldownDuration / 1000} seconds`);
+        } else {
+            debug('UI', '⚠️ No target to record for cooldown');
+        }
     }
     
     startDockingCheck() {
@@ -509,7 +507,7 @@ debug('TARGETING', `✅ Cooldown expired for target "${targetName}" - modal can 
             
             // Calculate distance (with safety check)
             if (!body.position) {
-                console.warn(`🚀 DockingModal: Skipping ${bodyId} - missing position`);
+                debug('UI', `⚠️ DockingModal: Skipping ${bodyId} - missing position`);
                 return;
             }
             const distance = this.starfieldManager.calculateDistance(playerPosition, body.position);
@@ -702,19 +700,14 @@ debug('UI', '✅ Modal displayed successfully');
 
             if (!modalTargetValid && !sfmTargetValid) {
                 consecutiveNullChecks++;
-                
+
                 // Only warn after multiple consecutive null checks to avoid false alarms
                 if (consecutiveNullChecks >= maxNullChecks) {
-                    console.warn('🚨 TARGET LOST! (Consecutive null checks: ' + consecutiveNullChecks + ')', {
-                        modalTarget: modalTarget?.name || 'null',
-                        sfmTarget: sfmTarget?.name || 'null',
-                        modalTargetValid,
-                        sfmTargetValid
-                    });
-                    
+                    debug('TARGETING', `🚨 TARGET LOST! (Consecutive null checks: ${consecutiveNullChecks})`);
+
                     // Try to restore target before giving up
                     if (this.restoreTargetReference()) {
-debug('TARGETING', '✅ Target restored from backup');
+                        debug('TARGETING', '✅ Target restored from backup');
                         consecutiveNullChecks = 0; // Reset counter after successful restore
                     } else {
                         // If we can't restore after max attempts, show error and close modal
@@ -760,9 +753,15 @@ debug('TARGETING', '🚫 Modal hidden, all target references cleared');
                 Modal will close automatically or press CANCEL to close now
             </div>
         `;
-        
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
+
+        // Clear any existing auto-hide timeout
+        if (this.autoHideTimeout) {
+            clearTimeout(this.autoHideTimeout);
+        }
+
+        // Auto-hide after 3 seconds (tracked for cleanup)
+        this.autoHideTimeout = setTimeout(() => {
+            this.autoHideTimeout = null;
             if (this.isVisible) {
                 this.hide();
             }
@@ -907,13 +906,13 @@ debug('P1', 'Modal target verification failed, trying backup restoration');
             
             // Try to restore from backup
             if (this.restoreTargetReference()) {
-debug('TARGETING', '✅ Target restored from backup');
+                debug('TARGETING', '✅ Target restored from backup');
                 targetToUse = this.currentTarget;
             } else {
-                console.warn('❌ Failed to restore target from backup');
+                debug('UI', '❌ Failed to restore target from backup');
             }
         } else {
-            console.warn('❌ No currentTarget in modal, trying alternative methods');
+            debug('UI', '❌ No currentTarget in modal, trying alternative methods');
             
             // Try to restore from backup first
             if (this.restoreTargetReference()) {
@@ -928,27 +927,19 @@ debug('TARGETING', '✅ Using StarfieldManager current target');
         
         // Final validation - ensure we have a valid target
         if (!targetToUse) {
-            console.error('❌ CRITICAL: No target available for docking');
-            console.error('❌ Modal target:', this.currentTarget);
-            console.error('❌ StarfieldManager target:', this.starfieldManager.currentTarget);
-            console.error('❌ Backup target:', this.backupTarget);
+            debug('UI', '❌ CRITICAL: No target available for docking');
             this.updateStatusWithError('No target available for docking - please reopen modal');
             return;
         }
-        
+
         // Additional validation - check target has required properties
         if (!targetToUse.position) {
-            console.error('❌ Target missing position property:', targetToUse);
+            debug('UI', `❌ Target missing position property: ${targetToUse?.name || 'unknown'}`);
             this.updateStatusWithError('Invalid target data - please reopen modal');
             return;
         }
-        
-        console.log('🎯 Using target for docking:', {
-            name: targetToUse.name,
-            position: targetToUse.position,
-            hasPosition: !!targetToUse.position,
-            verificationId: targetToUse._dockingModalId
-        });
+
+        debug('TARGETING', `🎯 Using target for docking: ${targetToUse.name}`);
         
         // UNIFIED: Use single docking path for all object types (planets, moons, stations)
 debug('TARGETING', 'DockingModal: Using unified docking system for all targets');
@@ -979,33 +970,27 @@ debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
                 // Clear the flag after successful docking
                 this.dockingInitiated = false;
             } catch (error) {
-                console.error('🚀 Docking failed, clearing dockingInitiated flag:', error);
+                debug('UI', `🚀 Docking failed, clearing dockingInitiated flag: ${error.message}`);
                 this.dockingInitiated = false;
                 throw error; // Re-throw to maintain error handling
             }
         } else {
-            console.warn('❌ Docking validation failed');
-            
+            debug('UI', '❌ Docking validation failed');
+
             // CRITICAL FIX: Get target info to avoid undefined variable error
             const targetInfo = this.starfieldManager.solarSystemManager?.getCelestialBodyInfo(targetToUse);
-            
+
             const distance = this.starfieldManager.calculateDistance(
                 this.starfieldManager.camera.position,
                 targetToUse.position
             );
             const dockingRange = targetToUse?.userData?.dockingRange || (targetInfo?.type === 'planet' ? 4.0 : 1.5);
-            console.log('📊 Docking failure details:', {
-                distance: distance.toFixed(2),
-                maxRange: dockingRange,
-                currentSpeed: this.starfieldManager.currentSpeed,
-                targetType: targetInfo?.type
-            });
+            debug('UI', `📊 Docking failure: distance=${distance.toFixed(2)}km, maxRange=${dockingRange}km, speed=${this.starfieldManager.currentSpeed}`);
+
             if (distance > dockingRange) {
                 this.updateStatusWithError(`Docking failed: Distance ${distance.toFixed(1)}km > ${dockingRange}km range`);
-                console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             } else {
                 this.updateStatusWithError(`Docking failed: Speed too high (current: ${this.starfieldManager.currentSpeed})`);
-                console.warn(`Docking failed - Distance: ${distance.toFixed(2)}km (max: ${dockingRange}km), Speed: ${this.starfieldManager.currentSpeed}`);
             }
             const failedTargetName = targetInfo?.name || targetToUse?.userData?.name || 'unknown_target';
             this.failureCooldowns.set(failedTargetName, Date.now());
@@ -1014,42 +999,92 @@ debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
     }
     
     destroy() {
+        // Clear all intervals
         if (this.checkInterval) {
             clearInterval(this.checkInterval);
             this.checkInterval = null;
         }
-        
+
         if (this.targetMonitorInterval) {
             clearInterval(this.targetMonitorInterval);
             this.targetMonitorInterval = null;
         }
-        
-        // NEW: Clear cooldown cleanup interval
+
         if (this.cooldownCleanupInterval) {
             clearInterval(this.cooldownCleanupInterval);
             this.cooldownCleanupInterval = null;
         }
-        
-        // NEW: Clear cancelled targets map
+
+        // Clear auto-hide timeout
+        if (this.autoHideTimeout) {
+            clearTimeout(this.autoHideTimeout);
+            this.autoHideTimeout = null;
+        }
+
+        // Remove all event listeners using stored bound handlers
+        if (this._boundHandlers) {
+            if (this.dockButton) {
+                this.dockButton.removeEventListener('click', this._boundHandlers.dockButtonClick);
+                this.dockButton.removeEventListener('mouseenter', this._boundHandlers.dockButtonMouseEnter);
+                this.dockButton.removeEventListener('mouseleave', this._boundHandlers.dockButtonMouseLeave);
+            }
+            if (this.cancelButton) {
+                this.cancelButton.removeEventListener('click', this._boundHandlers.cancelButtonClick);
+                this.cancelButton.removeEventListener('mouseenter', this._boundHandlers.cancelButtonMouseEnter);
+                this.cancelButton.removeEventListener('mouseleave', this._boundHandlers.cancelButtonMouseLeave);
+            }
+            if (this.modal) {
+                this.modal.removeEventListener('click', this._boundHandlers.modalBackdropClick);
+            }
+            // Critical: remove document-level listener to prevent memory leak
+            document.removeEventListener('keydown', this._boundHandlers.documentKeydown);
+
+            this._boundHandlers = null;
+        }
+
+        // Remove style element from document head
+        if (this.styleElement && this.styleElement.parentNode) {
+            this.styleElement.parentNode.removeChild(this.styleElement);
+            this.styleElement = null;
+        }
+
+        // Clear Maps
         if (this.cancelledTargets) {
             this.cancelledTargets.clear();
             this.cancelledTargets = null;
         }
-        
+        if (this.failureCooldowns) {
+            this.failureCooldowns.clear();
+            this.failureCooldowns = null;
+        }
+
+        // Remove modal from DOM
         if (this.modal && this.modal.parentNode) {
             this.modal.parentNode.removeChild(this.modal);
         }
-        
+
+        // Null out all references
         this.modal = null;
+        this.dockButton = null;
+        this.cancelButton = null;
+        this.targetInfo = null;
+        this.statusInfo = null;
         this.currentTarget = null;
         this.backupTarget = null;
-        this.originalStarfieldTarget = null; // Clean up new backup reference
+        this.originalStarfieldTarget = null;
         this.targetVerificationId = null;
         this.starfieldManager = null;
-        
-        // Removed debug log - was causing spam
+
+        debug('UI', '🧹 DockingModal destroyed - all resources cleaned up');
     }
-    
+
+    /**
+     * Alias for destroy() for consistency with other UI components
+     */
+    dispose() {
+        this.destroy();
+    }
+
     preserveTargetReference() {
         // Store multiple backup references to prevent loss during the docking check loop
         if (this.currentTarget) {
@@ -1087,8 +1122,8 @@ debug('UTILITY', 'Set dockingInitiated=true to prevent modal reappearing');
                 // Removed debug log - was causing spam
                 return true;
             }
-            
-            console.warn('❌ Failed to restore target reference - all backup methods failed');
+
+            debug('UI', '❌ Failed to restore target reference - all backup methods failed');
             return false;
         }
         
