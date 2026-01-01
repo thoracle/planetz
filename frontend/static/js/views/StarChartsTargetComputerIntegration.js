@@ -27,6 +27,7 @@ export class StarChartsTargetComputerIntegration {
         this.syncInterval = 1000; // Sync every 1 second for responsive updates
         this.syncIntervalId = null;
         this.pauseSync = false; // Flag to pause sync during manual target selection
+        this._pendingTimeouts = new Set(); // Track timeouts for cleanup
 
         // Enhanced target data
         this.enhancedTargets = new Map(); // targetId -> enhanced data from Star Charts
@@ -125,7 +126,7 @@ debug('UTILITY', `🗺️  Discovery event: ${objectId}`, discoveryData);
             try {
                 callback(objectId, discoveryData);
             } catch (error) {
-                console.error('❌ Discovery callback error:', error);
+                debug('P1', `❌ Discovery callback error: ${error}`);
             }
         });
     }
@@ -147,16 +148,18 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Starting from Star Charts to ${objectId}
         const success = this.setTargetWithEnhancedData(objectId, enhancedData);
 
         // Resume synchronization after a delay to allow target to settle
-        setTimeout(() => {
+        const resumeTimeoutId = setTimeout(() => {
+            this._pendingTimeouts.delete(resumeTimeoutId);
             this.pauseSync = false;
         }, 2000);
+        this._pendingTimeouts.add(resumeTimeoutId);
 
         // Trigger target selection callbacks
         this.targetSelectionCallbacks.forEach(callback => {
             try {
                 callback(objectId);
             } catch (error) {
-                console.error('❌ Target selection callback error:', error);
+                debug('P1', `❌ Target selection callback error: ${error}`);
             }
         });
 
@@ -191,7 +194,7 @@ debug('TARGETING', `🔄 Syncing targets: ${discoveredObjects.length} discovered
             this.lastSyncTime = Date.now();
 
         } catch (error) {
-            console.error('❌ Target data sync error:', error);
+            debug('P1', `❌ Target data sync error: ${error}`);
         }
     }
 
@@ -394,20 +397,7 @@ debug('TARGETING', `🎯 Refreshed Target Computer display`);
 
         // Debug logging for beacons
         if (targetData.type === 'navigation_beacon') {
-            console.log(`🔍 DEBUG ADD: Adding beacon to target computer:`, {
-                originalData: {
-                    name: targetData.name,
-                    type: targetData.type,
-                    _isUndiscovered: targetData._isUndiscovered
-                },
-                processedData: {
-                    name: targetDataForTC.name,
-                    type: targetDataForTC.type,
-                    discovered: targetDataForTC.discovered,
-                    diplomacy: targetDataForTC.diplomacy,
-                    faction: targetDataForTC.faction
-                }
-            });
+            debug('TARGETING', `🔍 DEBUG ADD: Adding beacon to target computer: ${targetData.name} (discovered: ${targetDataForTC.discovered}, diplomacy: ${targetDataForTC.diplomacy})`);
         }
 
         // Attach actual Three.js object for first-class targets when available
@@ -653,12 +643,14 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating displa
             
             if (enhancedData) {
                 // Apply enhanced data after successful targeting
-                setTimeout(() => {
+                const enhancedTimeoutId = setTimeout(() => {
+                    this._pendingTimeouts.delete(enhancedTimeoutId);
                     this.applyEnhancedDataToTarget(objectId, enhancedData);
                 }, 100);
+                this._pendingTimeouts.add(enhancedTimeoutId);
             }
         } else {
-            console.warn(`🎯 Failed to set target: ${objectId}`);
+            debug('P1', `🎯 Failed to set target: ${objectId}`);
             debug('P1', `❌ CRITICAL: Failed to set target for ${objectData?.name || 'Unknown'} (${objectId}) - target lookup failed`);
             debug('TARGETING', `🎯 TARGET_SWITCH: Target lookup failed, attempting cleanup and fallback`);
 
@@ -747,12 +739,14 @@ debug('TARGETING', `🎯 TARGET_SWITCH: Target set successfully, updating displa
                 }
                 
                 // Force display update to recreate wireframe with correct colors
-                setTimeout(() => {
+                const displayTimeoutId = setTimeout(() => {
+                    this._pendingTimeouts.delete(displayTimeoutId);
                     if (this.targetComputer.updateTargetDisplay) {
                         this.targetComputer.updateTargetDisplay();
                         debug('TARGETING', `🎨 Forced display update for discovered current target: ${objectData.name}`);
                     }
                 }, 10);
+                this._pendingTimeouts.add(displayTimeoutId);
             }
         }
 
@@ -819,7 +813,40 @@ debug('UTILITY', '🔄 Forced synchronization completed');
         this.deactivate();
         this.enhancedTargets.clear();
         this.discoveryCallbacks.length = 0;
-debug('TARGETING', '🧹 Star Charts ↔ Target Computer Integration cleaned up');
+        debug('TARGETING', '🧹 Star Charts ↔ Target Computer Integration cleaned up');
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    dispose() {
+        debug('TARGETING', '🧹 StarChartsTargetComputerIntegration: Disposing...');
+
+        // Clear pending timeouts
+        for (const timeoutId of this._pendingTimeouts) {
+            clearTimeout(timeoutId);
+        }
+        this._pendingTimeouts.clear();
+
+        // Call cleanup to deactivate and clear data
+        this.cleanup();
+
+        // Clear callback arrays
+        this.targetSelectionCallbacks.length = 0;
+
+        // Null out references
+        this.starCharts = null;
+        this.targetComputer = null;
+        this.solarSystem = null;
+
+        debug('TARGETING', '🧹 StarChartsTargetComputerIntegration: Disposed');
+    }
+
+    /**
+     * Alias for dispose()
+     */
+    destroy() {
+        this.dispose();
     }
 
     /**
@@ -847,10 +874,7 @@ export function createStarChartsTargetComputerIntegration(starChartsManager, tar
         integration.activate();
 debug('TARGETING', '✅ Star Charts ↔ Target Computer Integration auto-activated');
     } else {
-        console.warn('⚠️ Star Charts Integration: Missing components - not activated');
-        console.warn('   Star Charts:', !!starChartsManager);
-        console.warn('   Target Computer:', !!targetComputerManager);
-        console.warn('   Solar System:', !!solarSystemManager);
+        debug('P1', `⚠️ Star Charts Integration: Missing components - not activated (StarCharts: ${!!starChartsManager}, TargetComputer: ${!!targetComputerManager}, SolarSystem: ${!!solarSystemManager})`);
     }
 
     return integration;

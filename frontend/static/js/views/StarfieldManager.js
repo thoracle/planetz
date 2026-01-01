@@ -46,7 +46,7 @@ const STARFIELD_BUILD_DATE = '2025-09-30T20:30:00Z';
 
 export class StarfieldManager {
     constructor(scene, camera, viewManager, threeModule = null) {
-        console.log(`🌌 StarfieldManager v${STARFIELD_VERSION}`);
+        debug('UTILITY', `🌌 StarfieldManager v${STARFIELD_VERSION}`);
         this.scene = scene;
         this.camera = camera;
         this.viewManager = viewManager;
@@ -54,17 +54,11 @@ export class StarfieldManager {
         // Handle THREE.js - use passed module or fall back to global
         this.THREE = threeModule || window.THREE;
         if (!this.THREE) {
-            console.error('THREE.js not available. Checking available options:', {
-                threeModule: !!threeModule,
-                windowTHREE: !!window.THREE,
-                globalTHREE: typeof THREE !== 'undefined' ? !!THREE : false,
-                documentReadyState: document.readyState,
-                timestamp: new Date().toISOString()
-            });
+            debug('P1', `THREE.js not available. threeModule: ${!!threeModule}, windowTHREE: ${!!window.THREE}, documentReadyState: ${document.readyState}`);
             
             // Try to wait a bit and retry if document is still loading
             if (document.readyState === 'loading') {
-                console.warn('Document still loading, THREE.js might not be available yet');
+                debug('P1', 'Document still loading, THREE.js might not be available yet');
             }
             
             throw new Error('THREE.js not available. Please ensure THREE.js is loaded either as a module or globally.');
@@ -208,7 +202,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             this.helpInterface = new HelpInterface(this);
             debug('UI', 'HelpInterface created successfully');
         } catch (error) {
-            console.error('❌ Failed to create HelpInterface:', error);
+            debug('P1', `❌ Failed to create HelpInterface: ${error}`);
             this.helpInterface = null;
         }
         
@@ -259,7 +253,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Audio setup - using new StarfieldAudioManager
         this.listener = new this.THREE.AudioListener();
         if (!this.camera) {
-            console.error('No camera available for audio listener');
+            debug('P1', 'No camera available for audio listener');
             return;
         }
         this.camera.add(this.listener);
@@ -383,7 +377,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 debug('UTILITY', 'Enemy AI system ready');
             }
         } catch (error) {
-            console.error('❌ Failed to initialize AI manager:', error);
+            debug('P1', `❌ Failed to initialize AI manager: ${error}`);
         }
     }
     
@@ -399,10 +393,10 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             
             // Check if THREE.js is available
             if (!this.THREE) {
-                console.warn(`WeaponEffectsManager initialization attempt ${this.weaponEffectsRetryCount + 1}/${this.maxWeaponEffectsRetries}: THREE.js not available yet`);
+                debug('P1', `WeaponEffectsManager initialization attempt ${this.weaponEffectsRetryCount + 1}/${this.maxWeaponEffectsRetries}: THREE.js not available yet`);
                 this.weaponEffectsRetryCount++;
                 if (this.weaponEffectsRetryCount >= this.maxWeaponEffectsRetries) {
-                    console.error('WeaponEffectsManager initialization failed: THREE.js not available after maximum retries');
+                    debug('P1', 'WeaponEffectsManager initialization failed: THREE.js not available after maximum retries');
                     this.weaponEffectsInitFailed = true;
                 }
                 return false;
@@ -415,7 +409,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             
             // Import WeaponEffectsManager if not already available
             if (typeof WeaponEffectsManager === 'undefined') {
-                console.warn('WeaponEffectsManager class not available, deferring initialization');
+                debug('P1', 'WeaponEffectsManager class not available, deferring initialization');
                 this.weaponEffectsRetryCount++;
                 return false;
             }
@@ -441,7 +435,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
                 
                 debug('UTILITY', 'WeaponEffectsManager connected to ship');
             } else {
-                console.warn('Ship not available, WeaponEffectsManager connection deferred');
+                debug('P1', 'Ship not available, WeaponEffectsManager connection deferred');
             }
             
             this.weaponEffectsInitialized = true;
@@ -450,11 +444,11 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             return true;
             
         } catch (error) {
-            console.error(`WeaponEffectsManager initialization failed (attempt ${this.weaponEffectsRetryCount + 1}):`, error);
+            debug('P1', `WeaponEffectsManager initialization failed (attempt ${this.weaponEffectsRetryCount + 1}): ${error}`);
             this.weaponEffectsRetryCount++;
             
             if (this.weaponEffectsRetryCount >= this.maxWeaponEffectsRetries) {
-                console.error('WeaponEffectsManager initialization permanently failed after maximum retries');
+                debug('P1', 'WeaponEffectsManager initialization permanently failed after maximum retries');
                 this.weaponEffectsInitFailed = true;
             }
             
@@ -1621,7 +1615,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
             // ESC key - toggle help screen (handle before commandKey conversion)
             if (event.key === 'Escape') {
-                console.log('🎯 ESC key detected in StarfieldManager!');
+                debug('UI', '🎯 ESC key detected in StarfieldManager!');
                 event.preventDefault();
                 this.playCommandSound();
                 this.toggleHelp();
@@ -4529,14 +4523,14 @@ debug('UTILITY', 'Launch procedures initiated - no energy cost');
             this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
             
             // Initialize all ship systems for the current ship (whatever ship we're launching in)
-            console.log('🚀 LAUNCH: About to initialize ship systems - this should appear during launch');
+            debug('UTILITY', '🚀 LAUNCH: About to initialize ship systems - this should appear during launch');
 debug('COMBAT', '🚀 Starting ship systems initialization during launch...');
             this.initializeShipSystems().then(() => {
-                console.log('🚀 LAUNCH: Ship systems initialized, about to restore weapon HUD');
+                debug('UTILITY', '🚀 LAUNCH: Ship systems initialized, about to restore weapon HUD');
 debug('COMBAT', '🚀 Ship systems initialization completed, restoring weapon HUD...');
                 
                 // Restore weapon HUD AFTER systems are fully initialized
-                console.log('🔫 LAUNCH: Checking weapon HUD existence:', {
+                debug('COMBAT', '🔫 LAUNCH: Checking weapon HUD existence:', {
                     weaponHUD: !!this.weaponHUD,
                     weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay,
                     weaponHUDConnected: this.weaponHUDConnected
@@ -4570,14 +4564,14 @@ debug('COMBAT', '🔫 Weapon HUD restoration completed');
 debug('COMBAT', `🔫 POST-LAUNCH CHECK: weaponHUD in DOM=${weaponHUDInDOM}, display=${computedStyle?.display}, visibility=${computedStyle?.visibility}`);
                     }, 1000);
                 } else {
-                    console.log('🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
+                    debug('COMBAT', '🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
                         weaponHUD: !!this.weaponHUD,
                         weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay
                     });
 debug('COMBAT', `🔫 Cannot restore weapon HUD: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
                 }
             }).catch(error => {
-                console.error('Failed to initialize ship systems during launch:', error);
+                debug('P1', `Failed to initialize ship systems during launch: ${error}`);
 debug('COMBAT', '🔫 Ship systems initialization failed - weapon HUD not restored');
             });
             
