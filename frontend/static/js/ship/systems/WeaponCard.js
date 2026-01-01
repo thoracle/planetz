@@ -407,16 +407,16 @@ debug('COMBAT', `🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weapo
                     weaponHUD.showUnifiedMessage('MISS', 1500, 2, '#ff4444', '#cc3333', 'rgba(40, 0, 0, 0.9)');
                 }
             } else {
-                console.log(`🎯 MISS FEEDBACK: No weaponHUD found - checking paths:
+                debug('COMBAT', `MISS FEEDBACK: No weaponHUD found - checking paths:
                   starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
                   ship.weaponSystem.weaponHUD: ${!!window.ship?.weaponSystem?.weaponHUD}
                   starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
-debug('P1', 'Failed to show miss feedback:', error.message);
+            debug('P1', 'Failed to show miss feedback:', error.message);
         }
     }
-    
+
     /**
      * Show target destruction feedback through HUD system
      * @param {Object} targetShip The destroyed target ship
@@ -425,8 +425,8 @@ debug('P1', 'Failed to show miss feedback:', error.message);
         try {
             const targetName = targetShip.shipName || 'ENEMY SHIP';
             const message = `${targetName.toUpperCase()} DESTROYED`;
-            
-debug('TARGETING', `🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
+
+            debug('TARGETING', `TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -709,7 +709,7 @@ debug('PHYSICS', `🔧 ${this.name}: PhysicsManager not ready, initializing...`)
                         window.physicsManager.initialize();
                     }
                 } catch (initError) {
-                    console.error(`❌ ${this.name}: Failed to initialize physics:`, initError);
+                    debug('P1', `${this.name}: Failed to initialize physics:`, initError);
                 }
             }
             
@@ -740,7 +740,7 @@ debug('PHYSICS', `✅ ${this.name}: Physics projectile created successfully`);
                     }
                     
                 } catch (physicsError) {
-                    console.error(`❌ ${this.name}: Failed to create physics projectile:`, physicsError);
+                    debug('P1', `${this.name}: Failed to create physics projectile:`, physicsError);
                     
                     // Send HUD message about physics failure
                     if (window.starfieldManager?.weaponHUD) {
@@ -785,7 +785,7 @@ debug('UTILITY', `${this.name}: Using fallback projectile system (reduced accura
                 throw new Error('Projectile class not available');
             }
         } catch (fallbackError) {
-            console.error(`❌ ${this.name}: Complete projectile creation failure:`, fallbackError);
+            debug('P1', `${this.name}: Complete projectile creation failure:`, fallbackError);
             
             // Send HUD error message
             if (window.starfieldManager?.weaponHUD) {
@@ -939,16 +939,16 @@ debug('COMBAT', `🎯 MISS FEEDBACK: Calling showWeaponFeedback('miss') on weapo
                     weaponHUD.showUnifiedMessage('MISS', 1500, 2, '#ff4444', '#cc3333', 'rgba(40, 0, 0, 0.9)');
                 }
             } else {
-                console.log(`🎯 MISS FEEDBACK: No weaponHUD found - checking paths:
+                debug('COMBAT', `MISS FEEDBACK: No weaponHUD found - checking paths:
                   starfieldManager.viewManager.ship.weaponSystem.weaponHUD: ${!!window.starfieldManager?.viewManager?.ship?.weaponSystem?.weaponHUD}
                   ship.weaponSystem.weaponHUD: ${!!window.ship?.weaponSystem?.weaponHUD}
                   starfieldManager.weaponHUD: ${!!window.starfieldManager?.weaponHUD}`);
             }
         } catch (error) {
-debug('P1', 'Failed to show miss feedback:', error.message);
+            debug('P1', 'Failed to show miss feedback:', error.message);
         }
     }
-    
+
     /**
      * Show target destruction feedback through HUD system
      * @param {Object} targetShip The destroyed target ship
@@ -957,8 +957,8 @@ debug('P1', 'Failed to show miss feedback:', error.message);
         try {
             const targetName = targetShip.shipName || 'ENEMY SHIP';
             const message = `${targetName.toUpperCase()} DESTROYED`;
-            
-debug('TARGETING', `🎯 TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
+
+            debug('TARGETING', `TARGET DESTRUCTION FEEDBACK: ${this.name} destroyed ${targetName}`);
             
             // Try to get weapon HUD reference through various paths
             let weaponHUD = null;
@@ -1342,7 +1342,7 @@ debug('PHYSICS', 'PhysicsManager not ready - falling back to simple projectile')
         
         const THREE = window.THREE;
         if (!THREE) {
-            console.error('THREE.js not available for projectile visualization');
+            debug('P1', 'THREE.js not available for projectile visualization');
             return;
         }
         
@@ -1384,7 +1384,7 @@ debug('COMBAT', `🎯 ${this.weaponName}: Visual missile mesh created and added 
                     this.scene = fallbackScene; // Store for cleanup
 debug('COMBAT', `🎯 ${this.weaponName}: Visual missile mesh added using fallback scene reference`);
                 } else {
-                    console.warn(`⚠️ ${this.weaponName}: No scene available for visual mesh - starfieldManager: ${!!window.starfieldManager}, window.scene: ${!!window.scene}`);
+                    debug('COMBAT', `${this.weaponName}: No scene available for visual mesh - starfieldManager: ${!!window.starfieldManager}, window.scene: ${!!window.scene}`);
                 }
             }
             
@@ -1473,9 +1473,9 @@ debug('COMBAT', `🚀 ${this.weaponName}: Using weapon-specific speed: ${project
                 );
                 this.rigidBody.setLinearVelocity(physicsVelocity);
                 
-                                console.log(`🚀 ${this.weaponName}: Set velocity to ${projectileSpeed} units/s in direction:`, {
-                    x: direction.x.toFixed(3), 
-                    y: direction.y.toFixed(3), 
+                debug('COMBAT', `${this.weaponName}: Set velocity to ${projectileSpeed} units/s in direction:`, {
+                    x: direction.x.toFixed(3),
+                    y: direction.y.toFixed(3),
                     z: direction.z.toFixed(3)
                 });
                 
@@ -1504,7 +1504,7 @@ debug('COMBAT', `🔍 COLLISION TRACKING: ${this.weaponName} will accept collisi
             }
             
         } catch (error) {
-            console.error('Failed to initialize physics body for projectile:', error);
+            debug('P1', 'Failed to initialize physics body for projectile:', error);
         }
     }
 
@@ -1625,9 +1625,9 @@ debug('TARGETING', `🛑 COLLISION: ${this.weaponName} hit target - starting cle
         if (this.rigidBody && this.physicsManager) {
             try {
                 this.physicsManager.removeRigidBody(this.threeObject);
-debug('COMBAT', `🧹 REMOVED: ${this.weaponName} from physics world`);
+debug('COMBAT', `REMOVED: ${this.weaponName} from physics world`);
             } catch (error) {
-                console.error('Error removing projectile from physics:', error);
+                debug('P1', 'Error removing projectile from physics:', error);
             }
         }
         
@@ -1745,13 +1745,13 @@ debug('COMBAT', `🎯 ${this.weaponName}: Distance traveled: ${distanceTraveled.
                     z: clonedPos.z
                 };
             } else {
-                console.warn(`⚠️ ${this.weaponName}: Projectile position corrupted (0,0,0), skipping visualization`);
+                debug('COMBAT', `${this.weaponName}: Projectile position corrupted (0,0,0), skipping visualization`);
             }
         }
-        
+
         // If we still don't have a valid position, skip visualization but continue with cleanup
         if (!detonationPos) {
-            console.warn(`⚠️ ${this.weaponName}: No valid detonation position available, skipping damage and visualization`);
+            debug('COMBAT', `${this.weaponName}: No valid detonation position available, skipping damage and visualization`);
             this.hasDetonated = true;
             this.cleanup();
             return;
@@ -1814,8 +1814,8 @@ debug('TARGETING', `🎯 ${this.weaponName}: Collision target is ship object:`, 
         }
         
         if (!targetShip) {
-debug('TARGETING', `⚠️ ${this.weaponName}: Could not find ship object for collision target`);
-            console.log(`🔍 Collision target structure:`, {
+            debug('TARGETING', `${this.weaponName}: Could not find ship object for collision target`);
+            debug('TARGETING', `Collision target structure:`, {
                 hasShip: !!this.collisionTarget.ship,
                 hasApplyDamage: typeof this.collisionTarget.applyDamage === 'function',
                 hasThreeObject: !!this.collisionTarget.threeObject,
@@ -1954,8 +1954,8 @@ debug('COMBAT', `💥 ${this.weaponName}: Entity is direct ship object: ${shipNa
                     
                     // Final fallback: If spatial query entity doesn't have ship reference, log for debugging
                     if (!targetShip) {
-debug('COMBAT', `${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
-                        console.log(`🔍 Entity structure:`, {
+                        debug('COMBAT', `${this.weaponName}: Spatial query found entity at ${distance.toFixed(1)}m but no ship reference found. Entity type: ${entity.type}, ID: ${entity.id}`);
+                        debug('COMBAT', `Entity structure:`, {
                             hasShip: !!entity.ship,
                             hasApplyDamage: typeof entity.applyDamage === 'function',
                             hasThreeObject: !!entity.threeObject,
@@ -1963,7 +1963,7 @@ debug('COMBAT', `${this.weaponName}: Spatial query found entity at ${distance.to
                             hasUserDataShip: !!entity.threeObject?.userData?.ship,
                             entityKeys: Object.keys(entity)
                         });
-                        
+
                         // Skip applying damage if we can't find the ship - this is better than hitting wrong targets
                         return;
                     }
@@ -2025,10 +2025,10 @@ debug('P1', 'Error during splash damage target removal:', error.message);
             });
             
         } catch (error) {
-            console.error('Failed to apply physics splash damage:', error);
+            debug('P1', 'Failed to apply physics splash damage:', error);
         }
     }
-    
+
     /**
      * Calculate damage at specific distance from blast center using inverse-square law
      * @param {number} distance Distance from blast center in meters
@@ -2185,10 +2185,10 @@ debug('COMBAT', `🧹 CLEANUP: Removed rigid body for ${this.weaponName}`);
 debug('COMBAT', `🧹 CLEANUP: Removed visual mesh for ${this.weaponName}`);
             }
             
-debug('COMBAT', `✅ CLEANUP: Completed cleanup for ${this.weaponName}`);
-            
+debug('COMBAT', `CLEANUP: Completed cleanup for ${this.weaponName}`);
+
         } catch (error) {
-            console.error(`❌ CLEANUP ERROR: Failed to clean up ${this.weaponName}:`, error);
+            debug('P1', `CLEANUP ERROR: Failed to clean up ${this.weaponName}:`, error);
         }
     }
 
@@ -2230,9 +2230,9 @@ debug('COMBAT', `🧹 EXPIRE: Cleared range check interval for ${this.weaponName
         if (this.rigidBody && this.physicsManager) {
             try {
                 this.physicsManager.removeRigidBody(this.threeObject);
-debug('COMBAT', `🧹 REMOVED: ${this.weaponName} from physics world (expired)`);
+debug('COMBAT', `REMOVED: ${this.weaponName} from physics world (expired)`);
             } catch (error) {
-                console.error('Error removing expired projectile from physics:', error);
+                debug('P1', 'Error removing expired projectile from physics:', error);
             }
         }
         

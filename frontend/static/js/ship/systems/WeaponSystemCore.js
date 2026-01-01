@@ -28,7 +28,10 @@ export class WeaponSystemCore {
         
         // Weapon HUD reference
         this.weaponHUD = null;
-        
+
+        // Timer tracking for cleanup
+        this._pendingTimers = [];
+
         // WeaponSystem initialized (reduced logging for cleaner console)
     }
     
@@ -102,45 +105,43 @@ export class WeaponSystemCore {
      * @returns {boolean} True if weapon was changed
      */
     selectWeaponSlot(slotIndex) {
-        console.log(`🎯 WEAPON CORE: selectWeaponSlot(${slotIndex}) called`);
-        
+        debug('COMBAT', `selectWeaponSlot(${slotIndex}) called`);
+
         // Validate slot index
         if (slotIndex < 0 || slotIndex >= this.maxWeaponSlots) {
-            console.log(`🎯 WEAPON CORE: Invalid slot index: ${slotIndex}`);
             debug('COMBAT', `Invalid weapon slot index: ${slotIndex}`);
             return false;
         }
-        
-        console.log(`🎯 WEAPON CORE: Slot ${slotIndex} isEmpty:`, this.weaponSlots[slotIndex].isEmpty);
-        
+
+        debug('COMBAT', `Slot ${slotIndex} isEmpty: ${this.weaponSlots[slotIndex].isEmpty}`);
+
         // Check if slot has a weapon equipped
         if (this.weaponSlots[slotIndex].isEmpty) {
-            console.log(`🎯 WEAPON CORE: Slot ${slotIndex} is empty`);
+            debug('COMBAT', `Slot ${slotIndex} is empty`);
             this.showMessage("No weapon equipped in this slot");
             return false;
         }
-        
-        console.log(`🎯 WEAPON CORE: Current active slot: ${this.activeSlotIndex}, target slot: ${slotIndex}`);
-        
+
+        debug('COMBAT', `Current active slot: ${this.activeSlotIndex}, target slot: ${slotIndex}`);
+
         // Check if already active
         if (this.activeSlotIndex === slotIndex) {
-            console.log(`🎯 WEAPON CORE: Slot ${slotIndex} is already active`);
+            debug('COMBAT', `Slot ${slotIndex} is already active`);
             // Already active, no change needed
             return false;
         }
-        
-        console.log(`🎯 WEAPON CORE: Switching to weapon slot ${slotIndex}`);
-        
+
+        debug('COMBAT', `Switching to weapon slot ${slotIndex}`);
+
         // Switch to the selected weapon
         this.activeSlotIndex = slotIndex;
         this.updateActiveWeaponHighlight();
         this.showWeaponSelectFeedback();
-        
+
         // Update crosshair display to reflect new active weapon range
         this.updateCrosshairForActiveWeapon();
-        
-        console.log(`🎯 WEAPON CORE: Successfully selected weapon slot ${slotIndex + 1}`);
-        debug('COMBAT', `Selected weapon slot ${slotIndex + 1} via click`);
+
+        debug('COMBAT', `Successfully selected weapon slot ${slotIndex + 1}`);
         return true;
     }
     
@@ -482,12 +483,12 @@ debug('TARGETING', `✅ Homing missile target validation passed: ${this.lockedTa
      */
     equipWeapon(slotIndex, weaponCard) {
         if (slotIndex < 0 || slotIndex >= this.weaponSlots.length) {
-            console.error(`Invalid weapon slot index: ${slotIndex}`);
+            debug('P1', `Invalid weapon slot index: ${slotIndex}`);
             return false;
         }
-        
+
         if (!(weaponCard instanceof WeaponCard)) {
-            console.error('Invalid weapon card provided');
+            debug('P1', 'Invalid weapon card provided');
             return false;
         }
         
@@ -514,7 +515,7 @@ debug('COMBAT', `Equipped ${weaponCard.name} to weapon slot ${slotIndex}`);
      */
     unequipWeapon(slotIndex) {
         if (slotIndex < 0 || slotIndex >= this.weaponSlots.length) {
-            console.error(`Invalid weapon slot index: ${slotIndex}`);
+            debug('P1', `Invalid weapon slot index: ${slotIndex}`);
             return false;
         }
         
@@ -672,7 +673,7 @@ debug('UTILITY', `🎯 ${message}`);
 debug('COMBAT', `🎯 Message sent to connected WeaponHUD unified display`);
         } else {
             // Fallback: try to find WeaponHUD directly in DOM or via StarfieldManager
-            console.warn(`🎯 WeaponHUD not connected, trying alternative paths`);
+            debug('COMBAT', 'WeaponHUD not connected, trying alternative paths');
             
             // Try to get WeaponHUD via StarfieldManager
             const starfieldWeaponHUD = window.starfieldManager?.weaponHUD;
@@ -701,16 +702,18 @@ debug('COMBAT', `🎯 Message sent via StarfieldManager WeaponHUD`);
             messageDisplay.style.display = 'block';
             messageDisplay.style.opacity = '1';
             
-debug('UI', `🎯 Fallback: Message displayed via DOM - "${message}"`);
-            
+debug('UI', `Fallback: Message displayed via DOM - "${message}"`);
+
             // Hide after duration
-            setTimeout(() => {
+            const timerId = setTimeout(() => {
                 messageDisplay.style.display = 'none';
                 messageDisplay.style.opacity = '0';
+                this._removeTimer(timerId);
             }, duration);
+            this._pendingTimers.push(timerId);
         } else {
             // Last resort: show as a temporary overlay
-            console.warn(`🎯 WeaponHUD message display not found, creating temporary overlay`);
+            debug('COMBAT', 'WeaponHUD message display not found, creating temporary overlay');
             this.showTemporaryOverlay(message, duration);
         }
     }
@@ -740,14 +743,16 @@ debug('UI', `🎯 Fallback: Message displayed via DOM - "${message}"`);
         overlay.textContent = message;
         
         document.body.appendChild(overlay);
-debug('UTILITY', `🎯 Temporary overlay created: "${message}"`);
-        
+        debug('UTILITY', `Temporary overlay created: "${message}"`);
+
         // Remove after duration
-        setTimeout(() => {
+        const timerId = setTimeout(() => {
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
             }
+            this._removeTimer(timerId);
         }, duration);
+        this._pendingTimers.push(timerId);
     }
     
     /**
@@ -805,5 +810,45 @@ debug('UTILITY', `🎯 Temporary overlay created: "${message}"`);
                 cooldownPercentage: slot.getCooldownPercentage()
             }))
         };
+    }
+
+    /**
+     * Remove a timer from the pending timers list
+     * @param {number} timerId Timer ID to remove
+     */
+    _removeTimer(timerId) {
+        const index = this._pendingTimers.indexOf(timerId);
+        if (index > -1) {
+            this._pendingTimers.splice(index, 1);
+        }
+    }
+
+    /**
+     * Clean up weapon system resources
+     * Call this when the weapon system is no longer needed
+     */
+    dispose() {
+        // Clear all pending timers
+        if (this._pendingTimers) {
+            this._pendingTimers.forEach(timerId => clearTimeout(timerId));
+            this._pendingTimers = [];
+        }
+
+        // Dispose all weapon slots
+        if (this.weaponSlots) {
+            this.weaponSlots.forEach(slot => {
+                if (slot && typeof slot.dispose === 'function') {
+                    slot.dispose();
+                }
+            });
+            this.weaponSlots = [];
+        }
+
+        // Clear references
+        this.ship = null;
+        this.weaponHUD = null;
+        this.lockedTarget = null;
+
+        debug('COMBAT', 'WeaponSystemCore disposed');
     }
 } 

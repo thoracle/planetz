@@ -100,7 +100,7 @@ debug('UTILITY', `Star Charts System created (Level ${this.level}) - Discovery R
     // Get current discovery range based on level and damage
     getCurrentDiscoveryRange() {
         if (!this.levelStats || !this.levelStats[this.level]) {
-            console.warn(`StarCharts: levelStats not initialized for level ${this.level}`);
+            debug('STAR_CHARTS', `StarCharts: levelStats not initialized for level ${this.level}`);
             return this.baseDiscoveryRange || 50;
         }
         const baseRange = this.levelStats[this.level].discoveryRange || this.baseDiscoveryRange;
@@ -111,7 +111,7 @@ debug('UTILITY', `Star Charts System created (Level ${this.level}) - Discovery R
     // Get current accuracy based on level and damage
     getCurrentAccuracy() {
         if (!this.levelStats || !this.levelStats[this.level]) {
-            console.warn(`StarCharts: levelStats not initialized for level ${this.level}`);
+            debug('STAR_CHARTS', `StarCharts: levelStats not initialized for level ${this.level}`);
             return this.baseAccuracy || 95;
         }
         const baseAccuracy = this.levelStats[this.level].accuracy || this.baseAccuracy;
@@ -124,7 +124,7 @@ debug('UTILITY', `Star Charts System created (Level ${this.level}) - Discovery R
         const now = Date.now();
         const canActivateBase = super.canActivate();
 
-        console.log(`🗺️ Star Charts canActivate called: isActive=${this.isActive}, lastActivationTime=${this.lastActivationTime}, cooldown=${this.activationCooldown}`);
+        debug('STAR_CHARTS', `Star Charts canActivate called: isActive=${this.isActive}, lastActivationTime=${this.lastActivationTime}, cooldown=${this.activationCooldown}`);
 
         if (!canActivateBase) {
 debug('UTILITY', 'Star Charts: Cannot activate - system not operational');
@@ -133,13 +133,13 @@ debug('UTILITY', 'Star Charts: Cannot activate - system not operational');
 
         // If system is already active, allow deactivation (no cooldown check needed)
         if (this.isActive) {
-            console.log('🗺️ Star Charts: System is active, allowing toggle operation');
+            debug('STAR_CHARTS', 'Star Charts: System is active, allowing toggle operation');
             return true;
         }
 
         // Check cooldown only when trying to activate (not deactivate)
         const cooldownPassed = (now - this.lastActivationTime) >= this.activationCooldown;
-        console.log(`🗺️ Star Charts: Cooldown check - now=${now}, last=${this.lastActivationTime}, diff=${now - this.lastActivationTime}, required=${this.activationCooldown}, passed=${cooldownPassed}`);
+        debug('STAR_CHARTS', `Star Charts: Cooldown check - now=${now}, last=${this.lastActivationTime}, diff=${now - this.lastActivationTime}, required=${this.activationCooldown}, passed=${cooldownPassed}`);
 
         if (!cooldownPassed) {
 debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
@@ -151,9 +151,9 @@ debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
 
     // Activate star charts system
     activate() {
-        console.log(`🗺️ Star Charts activate called: isActive=${this.isActive}`);
+        debug('STAR_CHARTS', `Star Charts activate called: isActive=${this.isActive}`);
         if (!this.canActivate()) {
-            console.log('🗺️ Star Charts activate: canActivate returned false');
+            debug('STAR_CHARTS', 'Star Charts activate: canActivate returned false');
             return false;
         }
 
@@ -162,7 +162,7 @@ debug('UTILITY', 'Star Charts: Cannot activate - cooldown active');
         try {
             const ship = this.getShip();
             if (!ship) {
-                console.warn('Cannot activate Star Charts: No ship reference available');
+                debug('STAR_CHARTS', 'Cannot activate Star Charts: No ship reference available');
                 return false;
             }
 
@@ -176,12 +176,12 @@ debug('UI', `🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards)
                 }
             }
         } catch (error) {
-            console.error('Error checking Star Charts cards:', error);
+            debug('P1', 'Error checking Star Charts cards:', error);
             return false;
         }
 
         if (!hasStarChartsCards) {
-            console.warn('Cannot activate Star Charts: No star charts cards installed');
+            debug('STAR_CHARTS', 'Cannot activate Star Charts: No star charts cards installed');
             return false;
         }
 
@@ -189,17 +189,17 @@ debug('UI', `🗺️ StarCharts: Card check (sync) result:`, hasStarChartsCards)
         this.isActive = true;
         this.lastActivationTime = Date.now();
 
-        console.log(`🗺️ Star Charts activated successfully: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}, lastActivationTime=${this.lastActivationTime}`);
+        debug('STAR_CHARTS', `Star Charts activated successfully: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}, lastActivationTime=${this.lastActivationTime}`);
 debug('UTILITY', `🗺️ Star Charts activated - Discovery Range: ${this.getCurrentDiscoveryRange()}km, Accuracy: ${this.getCurrentAccuracy()}%`);
         return true;
     }
 
     // Deactivate star charts system
     deactivate() {
-        console.log(`🗺️ Star Charts deactivate called: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
+        debug('STAR_CHARTS', `Star Charts deactivate called: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
         this.isChartsActive = false;
         this.isActive = false;
-        console.log(`🗺️ Star Charts deactivated: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
+        debug('STAR_CHARTS', `Star Charts deactivated: isActive=${this.isActive}, isChartsActive=${this.isChartsActive}`);
 debug('UTILITY', 'Star Charts deactivated');
     }
 
@@ -233,11 +233,20 @@ debug('UI', `Ship reference set on ${this.displayName}`);
     // Update method called by ship systems
     update(deltaTime) {
         super.update(deltaTime);
-        
+
         // Additional star charts specific updates can go here
         if (this.isChartsActive) {
             // Consume energy while active
             // Energy consumption is handled by the base System class
         }
+    }
+
+    /**
+     * Clean up system resources
+     */
+    dispose() {
+        this.deactivate();
+        this.ship = null;
+        debug('STAR_CHARTS', 'StarChartsSystem disposed');
     }
 }

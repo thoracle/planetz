@@ -39,7 +39,10 @@ export class WeaponSlot {
         
         // Remove warning throttling - weapons have cooldowns already
         // Warning messages will show every time without throttling
-        
+
+        // Timer tracking for cleanup
+        this._debugSphereTimer = null;
+
         // WeaponSlot initialized (reduced logging for cleaner console)
     }
     
@@ -527,7 +530,7 @@ debug('AI', 'PhysicsManager not available - falling back to distance-based detec
                 }
                 // fall through to miss handling below
             } catch (e) {
-                console.warn('HitScanService.castLaserRay failed or unavailable:', e?.message || e);
+                debug('COMBAT', `HitScanService.castLaserRay failed or unavailable: ${e?.message || e}`);
             }
         }
 
@@ -868,9 +871,14 @@ debug('AI', 'DEBUG: No scene available to add debug sphere');
         }
         
         // Keep visible longer when in debug mode - 5 seconds instead of 2
-        setTimeout(() => {
-debug('INSPECTION', '🐛 DEBUG: Auto-cleaning up debug sphere after 5 seconds');
+        // Clear any existing timer before creating a new one
+        if (this._debugSphereTimer) {
+            clearTimeout(this._debugSphereTimer);
+        }
+        this._debugSphereTimer = setTimeout(() => {
+            debug('INSPECTION', 'DEBUG: Auto-cleaning up debug sphere after 5 seconds');
             this.cleanupDebugHitSphere();
+            this._debugSphereTimer = null;
         }, 5000);
     }
     
@@ -1154,10 +1162,10 @@ debug('P1', 'Error during laser hit target removal:', error.message);
                     
 debug('PHYSICS', `💥 Physics laser beam hit confirmed with explosion radius ${explosionRadiusMeters}m`);
                 } else {
-debug('COMBAT', 'Hit entity does not have a ship with applyDamage method:', hitEntity);
+                    debug('COMBAT', `Hit entity does not have a ship with applyDamage method: ${JSON.stringify(hitEntity?.type || 'unknown')}`);
                 }
                 } catch (err) {
-                    console.warn('Failed to apply laser damage/effects:', err?.message || err);
+                    debug('P1', `Failed to apply laser damage/effects: ${err?.message || err}`);
                 }
             } else {
                 // No hit - draw a single pair of beams to the aim point (visual only) once
@@ -1184,13 +1192,9 @@ debug('PHYSICS', 'No physics result - laser missed');
 debug('COMBAT', `Projectile launched: ${weapon.name} (effects will be handled by projectile)`);
         }
         } catch (e) {
-            try {
-                console.error('❌ triggerWeaponEffects error:', e?.message || e);
-                if (e && e.stack) {
-                    console.error(e.stack);
-                }
-            } catch (_) {
-                // swallow secondary logging errors
+            debug('P1', `triggerWeaponEffects error: ${e?.message || e}`);
+            if (e && e.stack) {
+                debug('P1', e.stack);
             }
         }
     }
@@ -1295,7 +1299,31 @@ debug('COMBAT', `🎯 LASER FEEDBACK: ${weaponName} showing miss feedback`);
 debug('COMBAT', `🎯 LASER FEEDBACK: No weaponHUD found for ${weaponName} miss`);
             }
         } catch (error) {
-debug('P1', 'Failed to show miss feedback:', error.message);
+            debug('P1', `Failed to show miss feedback: ${error.message}`);
         }
+    }
+
+    /**
+     * Clean up weapon slot resources
+     * Call this when the weapon slot is no longer needed
+     */
+    dispose() {
+        // Clear any pending debug sphere timer
+        if (this._debugSphereTimer) {
+            clearTimeout(this._debugSphereTimer);
+            this._debugSphereTimer = null;
+        }
+
+        // Clean up debug hit sphere
+        this.cleanupDebugHitSphere();
+
+        // Clear references
+        this.ship = null;
+        this.starfieldManager = null;
+        this.weaponSystem = null;
+        this.equippedWeapon = null;
+        this.effectsManager = null;
+
+        debug('COMBAT', `WeaponSlot ${this.slotIndex} disposed`);
     }
 } 

@@ -79,7 +79,7 @@ debug('COMBAT', `🚀 ${this.weaponName}: No hit - traveling to max range`);
                 }
             }
         } else {
-            console.warn(`⚠️ ${this.weaponName}: HitScanService not available`);
+            debug('COMBAT', `${this.weaponName}: HitScanService not available`);
             // Fallback: travel in direction for max range
             const originVec = new THREE.Vector3(origin.x, origin.y, origin.z);
             const dirVec = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
@@ -224,7 +224,7 @@ debug('TARGETING', `🎉 ${this.weaponName}: Playing target destruction success 
                     if (window.starfieldManager && window.starfieldManager.removeDestroyedTarget) {
                         window.starfieldManager.removeDestroyedTarget(targetShip);
                     } else {
-                        console.warn(`⚠️ ${this.weaponName}: StarfieldManager.removeDestroyedTarget not available`);
+                        debug('COMBAT', `${this.weaponName}: StarfieldManager.removeDestroyedTarget not available`);
                     }
                 }
             } else if (targetShip.takeDamage) {
@@ -359,8 +359,24 @@ debug('COMBAT', `⚠️ ${this.weaponName}: Could not create explosion effect:`,
      * Clean up projectile resources
      */
     cleanup() {
-        if (this.mesh && this.scene) {
-            this.scene.remove(this.mesh);
+        if (this.mesh) {
+            // Dispose of geometry and materials to prevent memory leaks
+            if (this.mesh.geometry) {
+                this.mesh.geometry.dispose();
+            }
+            if (this.mesh.material) {
+                this.mesh.material.dispose();
+            }
+            // Dispose of glow mesh if present (added as child)
+            if (this.mesh.children && this.mesh.children.length > 0) {
+                this.mesh.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+            }
+            if (this.scene) {
+                this.scene.remove(this.mesh);
+            }
             this.mesh = null;
         }
     }
@@ -413,6 +429,14 @@ debug('COMBAT', `🎯 ProjectileManager: Added ${projectile.weaponName}, ${this.
     clear() {
         this.activeProjectiles.forEach(projectile => projectile.cleanup());
         this.activeProjectiles = [];
+    }
+
+    /**
+     * Dispose of the manager and all projectiles
+     */
+    dispose() {
+        this.clear();
+        debug('COMBAT', 'SimpleProjectileManager disposed');
     }
 }
 

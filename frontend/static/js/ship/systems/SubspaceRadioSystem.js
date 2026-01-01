@@ -269,7 +269,7 @@ debug('UTILITY', 'Subspace Radio deactivated');
         
         // If radio becomes heavily damaged while active, deactivate it
         if (this.isRadioActive && this.getEffectiveness() < 0.2) {
-            console.warn('Subspace Radio system critically damaged - shutting down');
+            debug('P1', 'Subspace Radio system critically damaged - shutting down');
             this.deactivateRadio();
         }
     }
@@ -285,9 +285,17 @@ debug('UTILITY', 'Subspace Radio deactivated');
             
             // Auto-deactivate if energy runs out
             if (ship.currentEnergy <= 0) {
-                console.warn('Insufficient energy - Subspace Radio shutting down');
+                debug('UTILITY', 'Insufficient energy - Subspace Radio shutting down');
                 this.deactivateRadio();
             }
         }
+    }
+
+    /**
+     * Clean up subspace radio resources
+     */
+    dispose() {
+        this.deactivateRadio();
+        debug('UTILITY', 'Subspace Radio disposed');
     }
 } 

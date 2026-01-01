@@ -171,10 +171,10 @@ export default class System {
      */
     activate(ship) {
         if (!this.isOperational()) {
-            console.warn(`Cannot activate ${this.displayName}: system not operational`);
+            debug('UTILITY', `Cannot activate ${this.displayName}: system not operational`);
             return false;
         }
-        
+
         this.isActive = true;
 debug('UI', `${this.displayName} activated`);
         return true;
@@ -347,10 +347,10 @@ debug('UI', `${this.displayName} is completely disabled!`);
      */
     upgrade() {
         if (this.level >= this.maxLevel) {
-            console.warn(`${this.displayName} is already at maximum level (${this.maxLevel})`);
+            debug('UTILITY', `${this.displayName} is already at maximum level (${this.maxLevel})`);
             return false;
         }
-        
+
         this.level++;
         
         // Update energy consumption rate based on new level

@@ -119,7 +119,7 @@ debug('COMBAT', `Shields created (Level ${level}) - Max Strength: ${this.maxShie
      */
     toggleShields() {
         if (!this.isOperational()) {
-            console.warn('Cannot toggle shields: system not operational');
+            debug('COMBAT', 'Cannot toggle shields: system not operational');
             return false;
         }
         
@@ -140,7 +140,7 @@ debug('COMBAT', `Shields created (Level ${level}) - Max Strength: ${this.maxShie
      */
     activateShields() {
         if (!this.isOperational()) {
-            console.warn('Cannot activate shields: system not operational');
+            debug('COMBAT', 'Cannot activate shields: system not operational');
             return false;
         }
         
@@ -180,7 +180,7 @@ debug('COMBAT', 'Shields down - defensive screens deactivated');
      * @returns {boolean} - True if shields can be activated
      */
     canActivate(ship) {
-        console.log(`🛡️ Shields.canActivate() called:`, {
+        debug('COMBAT', `Shields.canActivate() called:`, {
             isOperational: this.isOperational(),
             hasShip: !!ship,
             shipEnergy: ship?.currentEnergy

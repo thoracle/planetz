@@ -89,13 +89,13 @@ export default class Ship {
 
 debug('UI', `Ship ${this.shipType} fully initialized with card-based systems`);
         }).catch(error => {
-            console.error('Failed to initialize card data or create systems:', error);
+            debug('P1', 'Failed to initialize card data or create systems:', error);
             // Fallback: initialize default systems anyway
             this.initializeDefaultSystems();
         });
 
         // Validate system integrity after initialization is complete
-        setTimeout(() => {
+        this._systemIntegrityTimeoutId = setTimeout(() => {
             this.validateSystemIntegrity();
         }, 1000); // Small delay to ensure all async operations complete
 
@@ -263,7 +263,7 @@ debug('UTILITY', `Initialized ${this.systems.size} default systems for ${this.sh
             this.autoRepairSystem = new AutoRepairSystem(this);
             
         } catch (error) {
-            console.error('Error initializing default systems:', error);
+            debug('P1', 'Error initializing default systems:', error);
         }
     }
     
@@ -438,7 +438,7 @@ debug('COMBAT', `System damage: No operational systems available for random dama
     applySubTargetDamage(systemName, damage, damageType = 'kinetic') {
         const system = this.systems.get(systemName);
         if (!system) {
-            console.warn(`Cannot apply sub-target damage: system ${systemName} not found`);
+            debug('P1', `Cannot apply sub-target damage: system ${systemName} not found`);
             return false;
         }
         
@@ -750,7 +750,7 @@ debug('UI', 'Installing starter cards for new player...');
 debug('UI', `Installed starter card: ${card.name} (Level ${card.level}) to slot ${slotId}`);
                     
                 } catch (error) {
-                    console.error(`Failed to install starter card ${cardData.cardType}:`, error);
+                    debug('P1', `Failed to install starter card ${cardData.cardType}:`, error);
                 }
             }
             
@@ -762,7 +762,7 @@ debug('UI', `Installed starter card: ${card.name} (Level ${card.level}) to slot 
 debug('UI', 'Starter cards installation complete');
             
         } catch (error) {
-            console.error('Failed to install starter cards:', error);
+            debug('P1', 'Failed to install starter cards:', error);
         }
     }
 
@@ -785,7 +785,7 @@ debug('UI', 'Starter cards installation complete');
             try {
                 return await this.cardSystemIntegration.hasSystemCards(systemName);
             } catch (error) {
-                console.error(`Error checking system cards for ${systemName}:`, error);
+                debug('P1', `Error checking system cards for ${systemName}:`, error);
             }
         }
         
@@ -960,14 +960,14 @@ debug('COMBAT', '🔫 Ship: Weapon system initialized successfully using WeaponS
 debug('COMBAT', '🔫 Ship: Calling onWeaponSystemReady callback...');
                 this.starfieldManager.onWeaponSystemReady();
             } else {
-                console.warn('🔫 Ship: StarfieldManager callback not available:', {
+                debug('UTILITY', '🔫 Ship: StarfieldManager callback not available:', {
                     hasStarfieldManager: !!this.starfieldManager,
                     hasCallback: !!(this.starfieldManager && typeof this.starfieldManager.onWeaponSystemReady === 'function')
                 });
             }
-            
+
         } catch (error) {
-            console.error('🔫 Ship: Failed to initialize weapon system:', error);
+            debug('P1', '🔫 Ship: Failed to initialize weapon system:', error);
         }
     }
     
@@ -1036,8 +1036,69 @@ debug('UTILITY', 'StarfieldManager reference set for ship and all systems');
             const result = this.cardSystemIntegration.hasSystemCardsSync(systemName);
             return result && result.hasCards;
         } catch (error) {
-            console.warn(`Error checking system cards for ${systemName}:`, error);
+            debug('P1', `Error checking system cards for ${systemName}:`, error);
             return false;
         }
+    }
+
+    /**
+     * Dispose of ship resources and clean up timers
+     * Call this when the ship is being removed from the game
+     */
+    dispose() {
+        debug('UTILITY', `Disposing ship: ${this.shipType}`);
+
+        // Clear the system integrity validation timeout
+        if (this._systemIntegrityTimeoutId) {
+            clearTimeout(this._systemIntegrityTimeoutId);
+            this._systemIntegrityTimeoutId = null;
+        }
+
+        // Dispose all systems
+        for (const [systemName, system] of this.systems) {
+            if (system && typeof system.dispose === 'function') {
+                system.dispose();
+            }
+        }
+        this.systems.clear();
+
+        // Dispose weapon system
+        if (this.weaponSystem && typeof this.weaponSystem.dispose === 'function') {
+            this.weaponSystem.dispose();
+        }
+        this.weaponSystem = null;
+
+        // Dispose weapon sync manager
+        if (this.weaponSyncManager && typeof this.weaponSyncManager.dispose === 'function') {
+            this.weaponSyncManager.dispose();
+        }
+        this.weaponSyncManager = null;
+
+        // Dispose auto-repair system
+        if (this.autoRepairSystem && typeof this.autoRepairSystem.dispose === 'function') {
+            this.autoRepairSystem.dispose();
+        }
+        this.autoRepairSystem = null;
+
+        // Dispose card system integration
+        if (this.cardSystemIntegration && typeof this.cardSystemIntegration.dispose === 'function') {
+            this.cardSystemIntegration.dispose();
+        }
+        this.cardSystemIntegration = null;
+
+        // Clear cargo hold manager
+        if (this.cargoHoldManager && typeof this.cargoHoldManager.dispose === 'function') {
+            this.cargoHoldManager.dispose();
+        }
+        this.cargoHoldManager = null;
+
+        // Clear upgrades map
+        this.upgrades.clear();
+
+        // Clear references
+        this.starfieldManager = null;
+        this.position = null;
+
+        debug('UTILITY', `Ship ${this.shipType} disposed successfully`);
     }
 } 

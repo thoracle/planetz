@@ -130,7 +130,7 @@ debug('TARGETING', `Target Computer upgraded to Level ${this.level} - ${levelSta
         
         // Ensure level stats exist before calculating
         if (!levelStats) {
-            console.warn('Level stats not available for target computer');
+            debug('TARGETING', 'Level stats not available for target computer');
             this.currentTargetingRange = this.targetingRange;
             this.currentTargetingAccuracy = this.targetingAccuracy;
             this.currentMaxTargets = this.maxTargets;
@@ -213,7 +213,7 @@ debug('TARGETING', `Target Computer upgraded to Level ${this.level} - ${levelSta
      */
     activate(ship) {
         if (!this.canActivate(ship)) {
-            console.warn('Cannot activate Target Computer: system requirements not met');
+            debug('TARGETING', 'Cannot activate Target Computer: system requirements not met');
             return false;
         }
         
@@ -264,7 +264,7 @@ debug('TARGETING', 'Target Computer deactivated');
      */
     setTarget(target) {
         if (!this.isOperational() || !this.isActive) {
-            console.warn('Cannot set target: Target Computer not active');
+            debug('TARGETING', 'Cannot set target: Target Computer not active');
             return false;
         }
         
@@ -808,7 +808,7 @@ debug('TARGETING', 'Target Computer disabled - no targeting capability!');
             const energyRequired = this.getEnergyConsumptionRate();
             const energyAvailable = Math.round(ship.currentEnergy);
             
-            console.warn('Target Computer deactivated due to insufficient energy');
+            debug('TARGETING', 'Target Computer deactivated due to insufficient energy');
             this.deactivate();
             
             // Provide detailed feedback via HUD error

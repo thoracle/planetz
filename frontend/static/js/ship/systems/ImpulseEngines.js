@@ -126,7 +126,7 @@ debug('UTILITY', `Impulse Engines created (Level ${level}) - Max Speed: Impulse 
         const clampedSpeed = Math.max(0, Math.min(speed, maxSpeed));
         
         if (clampedSpeed !== speed) {
-            console.warn(`Impulse speed clamped to ${clampedSpeed} (max for level ${this.level}: ${maxSpeed})`);
+            debug('UTILITY', `Impulse speed clamped to ${clampedSpeed} (max for level ${this.level}: ${maxSpeed})`);
         }
         
         this.currentImpulseSpeed = clampedSpeed;

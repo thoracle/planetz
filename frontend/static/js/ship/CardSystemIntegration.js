@@ -91,7 +91,7 @@ export default class CardSystemIntegration {
         try {
             await this.loadCards();
         } catch (error) {
-            console.error('Error initializing card data:', error);
+            debug('P1', 'Error initializing card data:', error);
         }
     }
 
@@ -149,7 +149,7 @@ debug('UI', `Loaded ${loadedCount} cards for ${this.ship.shipName}`);
                     }
                 }
             } catch (error) {
-                console.error('Error loading cards from PlayerData:', error);
+                debug('P1', 'Error loading cards from PlayerData:', error);
             }
         }
         
@@ -689,7 +689,7 @@ debug('P1', `❌ SYSTEM CREATION FAILED: ${cardType} → Unknown system type`);
                 }
                 
             } catch (error) {
-                console.error(`❌ SYSTEM ERROR: ${cardType} →`, error.message);
+                debug('P1', `SYSTEM ERROR: ${cardType} →`, error.message);
             }
         }
         
@@ -913,7 +913,7 @@ debug('COMBAT', '🔫 No weapon cards installed - skipping weapon system initial
 debug('COMBAT', `🔧 Weapon systems refresh complete: removed ${removedCount + (removedCount > 0 ? 1 : 0)} old systems`);
             
         } catch (error) {
-            console.error('🔧 Failed to refresh weapon systems:', error);
+            debug('P1', 'Failed to refresh weapon systems:', error);
         }
     }
 

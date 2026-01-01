@@ -49,7 +49,8 @@ export default class Weapons extends System {
         // Visual effect state
         this.isFiring = false;
         this.muzzleFlashActive = false;
-        
+        this._muzzleFlashTimer = null;
+
         // Weapons don't consume continuous power, so they should not be marked as "active"
         // in the power management sense. They're always "ready" when operational.
         this.isActive = false;
@@ -278,7 +279,7 @@ debug('COMBAT', `Weapons upgraded to Level ${this.level} - ${levelStats.weaponTy
      */
     fire(ship, target = null) {
         if (!this.canFire()) {
-            console.warn('Cannot fire: weapon on cooldown or not operational');
+            debug('COMBAT', 'Cannot fire: weapon on cooldown or not operational');
             return null;
         }
         
@@ -286,7 +287,7 @@ debug('COMBAT', `Weapons upgraded to Level ${this.level} - ${levelStats.weaponTy
         
         // Check if ship has enough energy
         if (!ship.hasEnergy(energyCost)) {
-            console.warn('Cannot fire: insufficient energy');
+            debug('COMBAT', 'Cannot fire: insufficient energy');
             return null;
         }
         
@@ -362,11 +363,17 @@ debug('COMBAT', `Weapons upgraded to Level ${this.level} - ${levelStats.weaponTy
     triggerMuzzleFlash() {
         this.muzzleFlashActive = true;
         this.isFiring = true;
-        
+
+        // Clear any existing timer before creating a new one
+        if (this._muzzleFlashTimer) {
+            clearTimeout(this._muzzleFlashTimer);
+        }
+
         // Reset visual effects after brief delay
-        setTimeout(() => {
+        this._muzzleFlashTimer = setTimeout(() => {
             this.muzzleFlashActive = false;
             this.isFiring = false;
+            this._muzzleFlashTimer = null;
         }, 100);
     }
     
@@ -473,7 +480,7 @@ debug('COMBAT', 'Weapon systems disabled - no firing capability!');
      */
     activate(ship) {
         if (!this.isOperational()) {
-            console.warn(`Cannot activate ${this.name}: system not operational`);
+            debug('COMBAT', `Cannot activate ${this.name}: system not operational`);
             return false;
         }
         
@@ -539,9 +546,17 @@ debug('COMBAT', `${this.name} deactivation requested (weapons don't consume cont
      * Clean up weapon effects when system is destroyed
      */
     dispose() {
+        // Clear muzzle flash timer
+        if (this._muzzleFlashTimer) {
+            clearTimeout(this._muzzleFlashTimer);
+            this._muzzleFlashTimer = null;
+        }
+
         // Clean up any visual effects or timers
         this.muzzleFlashActive = false;
         this.isFiring = false;
         this.isCharging = false;
+
+        debug('COMBAT', `${this.name} disposed`);
     }
 } 

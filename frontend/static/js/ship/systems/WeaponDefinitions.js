@@ -4,6 +4,7 @@
  * Defines all available weapon cards with their properties
  */
 
+import { debug } from '../../debug.js';
 import { ScanHitWeapon, SplashDamageWeapon } from './WeaponCard.js';
 
 export class WeaponDefinitions {
@@ -192,7 +193,7 @@ export class WeaponDefinitions {
         const weaponDef = definitions[weaponId];
         
         if (!weaponDef) {
-            console.error(`Unknown weapon ID: ${weaponId}`);
+            debug('P1', `Unknown weapon ID: ${weaponId}`);
             return null;
         }
         
@@ -212,7 +213,7 @@ export class WeaponDefinitions {
             return new SplashDamageWeapon(weaponDefWithMeters);
         }
         
-        console.error(`Unknown weapon type: ${weaponDef.weaponType}`);
+        debug('P1', `Unknown weapon type: ${weaponDef.weaponType}`);
         return null;
     }
     

@@ -61,7 +61,10 @@ export default class EnemyShip {
         this.ai = null;              // Will be set by EnemyAIManager
         this.position = null;        // 3D position (set by physics/mesh)
         this.mesh = null;            // Reference to 3D mesh object
-        
+
+        // Timer tracking for cleanup
+        this._pendingTimeouts = [];
+
         // Initialize enemy systems
         this.initializationPromise = this.initializeEnemySystemInstances();
         
@@ -162,7 +165,7 @@ debug('UTILITY', `Enemy ship health: Hull=${this.currentHull}/${this.maxHull}, E
 debug('UTILITY', 'Enemy ship systems:', Array.from(this.systems.keys()));
             
         } catch (error) {
-            console.error('Failed to initialize enemy ship systems:', error);
+            debug('P1', 'Failed to initialize enemy ship systems:', error);
             this.isInitialized = false;
         }
     }
@@ -256,7 +259,8 @@ debug('UTILITY', `✅ Enemy ship fully initialized: ${this.shipName} - Hull: ${t
                     resolve();
                 } else {
 debug('AI', `⏳ Waiting for enemy ship initialization: ${this.shipName} - Hull: ${this.currentHull}/${this.maxHull}, Systems: ${this.systems.size}`);
-                    setTimeout(checkInitialization, 10);
+                    const timeoutId = setTimeout(checkInitialization, 10);
+                    this._pendingTimeouts.push(timeoutId);
                 }
             };
             checkInitialization();
@@ -353,7 +357,7 @@ debug('UTILITY', `🎉 Playing sub-system destruction success sound (50% duratio
                 // No hull damage or spillover damage when sub-targeting
                 return result;
             } else {
-                console.warn(`❌ Target system '${targetSystem}' not found, applying to hull instead`);
+                debug('P1', `Target system '${targetSystem}' not found, applying to hull instead`);
                 // Fall through to normal hull damage
             }
         }
@@ -459,7 +463,7 @@ debug('UTILITY', `🎉 Playing random subsystem destruction sound (30% duration)
     applySubTargetDamage(systemName, damage, damageType = 'kinetic') {
         const system = this.systems.get(systemName);
         if (!system) {
-            console.warn(`Cannot apply sub-target damage: system ${systemName} not found on ${this.shipName}`);
+            debug('P1', `Cannot apply sub-target damage: system ${systemName} not found on ${this.shipName}`);
             return false;
         }
         
@@ -549,5 +553,42 @@ debug('COMBAT', `🎯 LUCKY HIT: No weaponHUD found for lucky hit feedback`);
         } catch (error) {
 debug('P1', 'Failed to show lucky hit feedback:', error.message);
         }
+    }
+
+    /**
+     * Dispose of enemy ship resources and clean up timers
+     * Call this when the enemy ship is being removed from the game
+     */
+    dispose() {
+        debug('UTILITY', `Disposing enemy ship: ${this.shipName}`);
+
+        // Clear all pending timeouts
+        if (this._pendingTimeouts) {
+            for (const timeoutId of this._pendingTimeouts) {
+                clearTimeout(timeoutId);
+            }
+            this._pendingTimeouts = [];
+        }
+
+        // Dispose all systems
+        for (const [systemName, system] of this.systems) {
+            if (system && typeof system.dispose === 'function') {
+                system.dispose();
+            }
+        }
+        this.systems.clear();
+        this.systemRegistry.clear();
+        this.systemStates.clear();
+
+        // Clear AI reference
+        this.ai = null;
+
+        // Clear mesh reference
+        this.mesh = null;
+
+        // Clear position
+        this.position = null;
+
+        debug('UTILITY', `Enemy ship ${this.shipName} disposed successfully`);
     }
 } 

@@ -105,12 +105,7 @@ debug('NAVIGATION', `Galactic Chart upgraded to Level ${this.level} - Enhanced N
 
     // Check if chart can be activated
     canActivate(ship) {
-        console.log(`🗺️ GalacticChart.canActivate() called:`, {
-            isOperational: super.isOperational(), // Use super to check basic operability
-            hasShip: !!ship,
-            shipEnergy: ship?.currentEnergy,
-            cooldownRemaining: Math.max(0, this.activationCooldown - (Date.now() - this.lastActivationTime))
-        });
+        debug('UTILITY', `GalacticChart.canActivate() called: isOperational=${super.isOperational()}, hasShip=${!!ship}, shipEnergy=${ship?.currentEnergy}, cooldownRemaining=${Math.max(0, this.activationCooldown - (Date.now() - this.lastActivationTime))}`);
         
         if (!super.isOperational()) {
 debug('UTILITY', `🗺️ GalacticChart: Cannot activate - system not operational`);
@@ -133,7 +128,7 @@ debug('AI', `🗺️ GalacticChart: Cannot activate - cooldown remaining: ${this
 debug('UI', `🗺️ GalacticChart: Card check result:`, hasCards);
                     
                     if (!hasCards) {
-                        console.warn('🗺️ GalacticChart: Cannot activate - No galactic chart card installed');
+                        debug('UTILITY', 'GalacticChart: Cannot activate - No galactic chart card installed');
                         return false;
                     }
 debug('UI', `🗺️ GalacticChart: Card check PASSED`);
@@ -142,13 +137,13 @@ debug('UI', `🗺️ GalacticChart: Card check PASSED`);
 debug('AI', `🗺️ GalacticChart: No card system integration - assuming system available`);
                 }
             } catch (error) {
-                console.warn('🗺️ GalacticChart: Card check error:', error.message || error);
+                debug('P1', 'GalacticChart: Card check error:', error.message || error);
                 // If card check fails due to error, don't allow activation
-                console.warn('🗺️ GalacticChart: Cannot activate - card validation failed');
+                debug('UTILITY', 'GalacticChart: Cannot activate - card validation failed');
                 return false;
             }
         } else {
-            console.warn('🗺️ GalacticChart: Cannot activate - no ship provided');
+            debug('UTILITY', 'GalacticChart: Cannot activate - no ship provided');
             return false;
         }
         
@@ -279,7 +274,7 @@ debug('UTILITY', 'Galactic Chart deactivated');
         
         // If chart becomes heavily damaged while active, deactivate it
         if (this.isChartActive && this.getEffectiveness() < 0.3) {
-            console.warn('Galactic Chart system critically damaged - shutting down');
+            debug('P1', 'Galactic Chart system critically damaged - shutting down');
             this.deactivateChart();
         }
     }
@@ -295,9 +290,17 @@ debug('UTILITY', 'Galactic Chart deactivated');
             
             // Auto-deactivate if energy runs out
             if (ship.currentEnergy <= 0) {
-                console.warn('Insufficient energy - Galactic Chart shutting down');
+                debug('P1', 'Insufficient energy - Galactic Chart shutting down');
                 this.deactivateChart();
             }
         }
+    }
+
+    /**
+     * Clean up system resources
+     */
+    dispose() {
+        this.deactivateChart();
+        debug('UTILITY', 'GalacticChartSystem disposed');
     }
 } 

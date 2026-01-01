@@ -45,6 +45,9 @@ export default class WarpDrive extends System {
         this.onWarpStart = null;
         this.onWarpEnd = null;
         this.onEnergyUpdate = null;
+
+        // Timer tracking for cleanup
+        this.pendingTimers = [];
         
         // Acceleration curve for smooth transitions (optional - only if Three.js is available)
         this.accelerationCurve = null;
@@ -57,7 +60,7 @@ export default class WarpDrive extends System {
                     new window.THREE.Vector3(1, 1, 0)
                 );
             } catch (error) {
-                console.warn('Three.js not available for warp drive acceleration curve');
+                debug('UTILITY', 'Three.js not available for warp drive acceleration curve');
             }
         }
         
@@ -206,7 +209,7 @@ debug('UTILITY', `Warp Drive created (Level ${level}) - Max Warp Factor: ${this.
         const maxFactor = this.getMaxWarpFactor();
         
         if (factor < 1.0 || factor > maxFactor) {
-            console.warn(`Invalid warp factor: ${factor}. Must be between 1.0 and ${maxFactor} for current system level/health`);
+            debug('UTILITY', `Invalid warp factor: ${factor}. Must be between 1.0 and ${maxFactor} for current system level/health`);
             return false;
         }
         
@@ -265,7 +268,7 @@ debug('UTILITY', `Warp Drive created (Level ${level}) - Max Warp Factor: ${this.
         this.totalEnergyCost = this.calculateWarpEnergyCost(baseCost);
         this.energyConsumed = 0;
         
-        console.log('Warp initiated:', {
+        debug('UTILITY', 'Warp initiated:', {
             cost: this.totalEnergyCost,
             from: this.sectorNavigation.currentSector,
             to: this.sectorNavigation.targetSector,
@@ -315,11 +318,18 @@ debug('UTILITY', `Warp deactivated - Cooldown: ${this.cooldownTime}ms`);
         
         // Hide feedback after cooldown (if not damaged)
         if (this.isOperational()) {
-            setTimeout(() => {
+            const timerId = setTimeout(() => {
                 if (this.feedback) {
                     this.feedback.hideAll();
                 }
+                // Remove timer from tracking
+                const index = this.pendingTimers.indexOf(timerId);
+                if (index > -1) {
+                    this.pendingTimers.splice(index, 1);
+                }
             }, this.cooldownTime);
+            // Track the timer for cleanup
+            this.pendingTimers.push(timerId);
         }
     }
     
@@ -469,7 +479,7 @@ debug('AI', 'Warp drive completely destroyed - requires repair before use');
                 this.energyConsumed += energyConsumption;
             } else {
                 // Not enough energy - emergency warp termination
-                console.warn('Insufficient energy during warp - emergency termination');
+                debug('P1', 'Insufficient energy during warp - emergency termination');
                 this.deactivateWarp();
                 
                 if (this.feedback) {
@@ -520,7 +530,7 @@ debug('AI', 'Warp drive completely destroyed - requires repair before use');
         // Log if cooldown time reduction is unusually large
         const timeReduced = previousCooldownTime - this.cooldownTime;
         if (timeReduced > timeSinceLastUpdate * 1.5) {
-            console.warn('Large cooldown time reduction:', {
+            debug('UTILITY', 'Large cooldown time reduction:', {
                 timeReduced,
                 timeSinceLastUpdate,
                 previousCooldownTime,
@@ -584,5 +594,34 @@ debug('AI', 'Warp drive completely destroyed - requires repair before use');
         this.onWarpStart = onWarpStart;
         this.onWarpEnd = onWarpEnd;
         this.onEnergyUpdate = onEnergyUpdate;
+    }
+
+    /**
+     * Clean up warp drive resources
+     * Clears all pending timers and callbacks
+     */
+    dispose() {
+        // Clear all pending timers
+        for (const timerId of this.pendingTimers) {
+            clearTimeout(timerId);
+        }
+        this.pendingTimers = [];
+
+        // Clear callbacks
+        this.onWarpStart = null;
+        this.onWarpEnd = null;
+        this.onEnergyUpdate = null;
+
+        // Clear dependencies
+        this.sectorNavigation = null;
+        this.feedback = null;
+
+        // Deactivate warp if active
+        if (this.isWarping) {
+            this.isWarping = false;
+            this.isActive = false;
+        }
+
+        debug('UTILITY', 'Warp Drive disposed');
     }
 } 

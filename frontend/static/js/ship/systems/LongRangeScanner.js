@@ -159,7 +159,7 @@ debug('UTILITY', `Long Range Scanner upgraded to Level ${this.level} - ${levelSt
      */
     startScan(ship) {
         if (!this.isOperational()) {
-            console.warn('Cannot scan: Long Range Scanner not operational');
+            debug('UTILITY', 'Cannot scan: Long Range Scanner not operational');
             return false;
         }
         
@@ -171,7 +171,7 @@ debug('UTILITY', 'Scan already in progress');
         // Check energy availability for sustained scanning
         const energyRequired = this.getEnergyConsumptionRate();
         if (!ship.hasEnergy(energyRequired)) {
-            console.warn('Cannot scan: Insufficient energy for scanner operation');
+            debug('UTILITY', 'Cannot scan: Insufficient energy for scanner operation');
             return false;
         }
         
@@ -205,9 +205,9 @@ debug('UTILITY', 'Long Range Scanner deactivated');
         // Check if required cards are installed
         if (ship && ship.hasSystemCards && typeof ship.hasSystemCards === 'function') {
             const hasCards = ship.hasSystemCards('long_range_scanner');
-            
+
             if (!hasCards) {
-                console.warn('Cannot activate Long Range Scanner: No scanner card installed');
+                debug('UTILITY', 'Cannot activate Long Range Scanner: No scanner card installed');
                 return false;
             }
         }
@@ -297,7 +297,7 @@ debug('UTILITY', 'Long Range Scanner disabled - no scanning capability!');
         
         // If scanner is active but ship has insufficient energy, stop scanning
         if (this.isActive && !ship.hasEnergy(this.getEnergyConsumptionRate() * deltaTime / 1000)) {
-            console.warn('Long Range Scanner deactivated due to insufficient energy');
+            debug('UTILITY', 'Long Range Scanner deactivated due to insufficient energy');
             this.stopScan();
         }
     }

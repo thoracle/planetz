@@ -306,7 +306,7 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
         // Use stored ship reference or parameter
         const targetShip = this.ship || ship;
         if (!this.canActivate(targetShip)) {
-            console.warn('Cannot activate radar: system not operational or insufficient energy');
+            debug('UTILITY', 'Cannot activate radar: system not operational or insufficient energy');
             return false;
         }
 
@@ -329,7 +329,7 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
      */
     toggleRadar() {
         if (!(typeof this.isOperational === 'function' ? this.isOperational() : this.isOperational)) {
-            console.warn('Cannot toggle radar: system not operational');
+            debug('UTILITY', 'Cannot toggle radar: system not operational');
             return false;
         }
         
@@ -347,5 +347,14 @@ debug('AI', `🎯 RadarSystem repaired: ${Math.round(this.healthPercentage * 100
      */
     isOperational() {
         return this.healthPercentage > 0 && this.isOperational !== false;
+    }
+
+    /**
+     * Clean up radar system resources
+     */
+    dispose() {
+        this.deactivate();
+        this.ship = null;
+        debug('UTILITY', 'Radar system disposed');
     }
 }

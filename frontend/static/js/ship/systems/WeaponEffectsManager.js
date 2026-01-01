@@ -17,7 +17,7 @@ export class WeaponEffectsManager {
         // Checking THREE.js availability
         
         if (!this.THREE) {
-            console.error('THREE.js not available for WeaponEffectsManager');
+            debug('P1', 'THREE.js not available for WeaponEffectsManager');
             
             // Try to get THREE from scene if available
             if (scene && scene.constructor && scene.constructor.name === 'Scene') {
@@ -56,7 +56,7 @@ debug('COMBAT', '🎆 WeaponEffectsManager: Initialized successfully');
         this.audioInitialized = false;
         this.effectConfig = {};
         
-        console.warn('WeaponEffectsManager running in fallback mode - visual effects disabled');
+        debug('COMBAT', 'WeaponEffectsManager running in fallback mode - visual effects disabled');
     }
     
     /**
@@ -165,8 +165,11 @@ debug('COMBAT', 'WeaponEffectsManager: User interaction detected - weapon audio 
             };
             
             // Track various user interactions
-            ['click', 'touchstart', 'keydown'].forEach(event => {
-                document.addEventListener(event, trackInteraction, { once: false });
+            // Track event listeners for cleanup
+            this.userInteractionHandler = trackInteraction;
+            this.userInteractionEvents = ['click', 'touchstart', 'keydown'];
+            this.userInteractionEvents.forEach(event => {
+                document.addEventListener(event, this.userInteractionHandler, { once: false });
             });
         }
     }
@@ -179,7 +182,7 @@ debug('COMBAT', '🎵 WeaponEffectsManager: Starting audio initialization...');
         
         try {
             if (!this.audioContext) {
-                console.warn('WeaponEffectsManager: No audio context available for weapon sounds');
+                debug('COMBAT', 'WeaponEffectsManager: No audio context available for weapon sounds');
                 this.useFallbackAudio = true;
                 this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
                 return;
@@ -212,8 +215,8 @@ debug('COMBAT', `Weapon audio ready (${this.audioBuffers.size} effects)`);
             this.audioInitialized = true;
             
         } catch (error) {
-            console.error('WeaponEffectsManager: Failed to initialize audio:', error);
-debug('AI', '🎵 Falling back to HTML5 audio due to initialization failure...');
+            debug('P1', 'WeaponEffectsManager: Failed to initialize audio:', error);
+            debug('COMBAT', 'Falling back to HTML5 audio due to initialization failure...');
             this.useFallbackAudio = true;
             this.audioInitialized = true; // Mark as initialized to allow HTML5 fallback
         }
@@ -226,9 +229,9 @@ debug('AI', '🎵 Falling back to HTML5 audio due to initialization failure...')
         if (this.audioContext && this.audioContext.state === 'suspended') {
             try {
                 await this.audioContext.resume();
-debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
+                debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
             } catch (error) {
-                console.warn('WeaponEffectsManager: Failed to resume audio context:', error);
+                debug('COMBAT', 'WeaponEffectsManager: Failed to resume audio context:', error);
             }
         }
     }
@@ -248,7 +251,7 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
                 this.audioBuffers.set(type, audioBuffer);
             }
         } catch (error) {
-            console.warn(`Failed to load weapon audio: ${file}`, error);
+            debug('COMBAT', `Failed to load weapon audio: ${file}`, error);
         }
     }
     
@@ -343,7 +346,7 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
             // Removed audio playback log to prevent console spam
             
         } catch (error) {
-            console.warn(`Failed to play sound ${soundType}, falling back to HTML5:`, error);
+            debug('COMBAT', `Failed to play sound ${soundType}, falling back to HTML5:`, error);
             this.useFallbackAudio = true;
             this.playHTML5Sound(soundType, volume);
         }
@@ -374,15 +377,15 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
                 audio.play().catch(error => {
                     // Only log error if this is the first failure
                     if (!this.html5AudioWarningShown) {
-                        console.warn('HTML5 audio play failed (autoplay policy):', error.message);
+                        debug('COMBAT', 'HTML5 audio play failed (autoplay policy):', error.message);
                         this.html5AudioWarningShown = true;
                     }
                 });
             } else {
-                console.warn(`HTML5: No audio mapping found for sound type: ${soundType}`);
+                debug('COMBAT', `HTML5: No audio mapping found for sound type: ${soundType}`);
             }
         } catch (error) {
-            console.warn(`HTML5 audio fallback failed for ${soundType}:`, error);
+            debug('COMBAT', `HTML5 audio fallback failed for ${soundType}:`, error);
         }
     }
     
@@ -395,7 +398,7 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
      */
     createMuzzleFlash(position, direction, weaponType = 'laser', soundDuration = null) {
         if (this.fallbackMode) {
-            console.warn('WeaponEffectsManager: createMuzzleFlash called in fallback mode');
+            debug('COMBAT', 'WeaponEffectsManager: createMuzzleFlash called in fallback mode');
             return;
         }
         
@@ -451,7 +454,7 @@ debug('COMBAT', 'WeaponEffectsManager: Audio context resumed');
      */
     createLaserBeam(startPos, endPos, weaponType = 'laser') {
         if (this.fallbackMode) {
-            console.warn('WeaponEffectsManager: createLaserBeam called in fallback mode');
+            debug('COMBAT', 'WeaponEffectsManager: createLaserBeam called in fallback mode');
             return;
         }
         
@@ -501,7 +504,7 @@ debug('COMBAT', `Created laser beam for ${weaponType}, distance: ${distance.toFi
      */
     createExplosion(position, radius = 50, explosionType = 'damage', targetCenter = null) {
         if (this.fallbackMode) {
-            console.warn('WeaponEffectsManager: createExplosion called in fallback mode');
+            debug('COMBAT', 'WeaponEffectsManager: createExplosion called in fallback mode');
             return;
         }
         
@@ -1061,7 +1064,7 @@ debug('UTILITY', '🎉 Playing full success sound for enemy destruction');
         
         // Limit active effects for performance
         if (this.activeEffects.size > this.maxEffectsPerType * 3) {
-            console.warn(`High effect count: ${this.activeEffects.size}, consider reducing effect duration`);
+            debug('COMBAT', `High effect count: ${this.activeEffects.size}, consider reducing effect duration`);
         }
     }
     
@@ -1120,26 +1123,72 @@ debug('UTILITY', `Updated ${effectType} configuration:`, config);
             }
         });
         this.audioSources = [];
-        
+
         // Clean up interaction check interval
         if (this.interactionCheckInterval) {
             clearInterval(this.interactionCheckInterval);
             this.interactionCheckInterval = null;
         }
-        
+
+        // Clean up user interaction event listeners
+        if (this.userInteractionHandler && this.userInteractionEvents) {
+            this.userInteractionEvents.forEach(event => {
+                document.removeEventListener(event, this.userInteractionHandler);
+            });
+            this.userInteractionHandler = null;
+            this.userInteractionEvents = null;
+        }
+
         // Remove all effects from scene
         this.activeEffects.forEach(effect => {
             this.scene.remove(effect);
         });
-        
+
         // Clear all effect arrays
         this.muzzleFlashes = [];
         this.laserBeams = [];
         this.projectiles = [];
         this.explosions = [];
         this.activeEffects.clear();
-        
-debug('COMBAT', 'WeaponEffectsManager cleaned up');
+
+        debug('COMBAT', 'WeaponEffectsManager cleaned up');
+    }
+
+    /**
+     * Dispose of all resources - alias for cleanup with additional disposal
+     */
+    dispose() {
+        this.cleanup();
+
+        // Dispose of pooled geometries and materials
+        for (const [poolName, pool] of Object.entries(this.objectPools)) {
+            pool.forEach(mesh => {
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) mesh.material.dispose();
+            });
+            this.objectPools[poolName] = [];
+        }
+
+        // Clear static trails
+        if (this.staticTrails) {
+            this.staticTrails.forEach(trail => {
+                if (trail.system && this.scene) {
+                    this.scene.remove(trail.system);
+                }
+                if (trail.spheres) {
+                    trail.spheres.forEach(sphere => {
+                        if (sphere.geometry) sphere.geometry.dispose();
+                        if (sphere.material) sphere.material.dispose();
+                    });
+                }
+            });
+            this.staticTrails = [];
+        }
+
+        // Clear audio buffers
+        this.audioBuffers.clear();
+
+        debug('COMBAT', 'WeaponEffectsManager disposed');
     }
     
     /**

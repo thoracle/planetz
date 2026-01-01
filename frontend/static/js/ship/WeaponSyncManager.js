@@ -49,7 +49,7 @@ debug('COMBAT', `🔫 WeaponSyncManager: Initialized ${unifiedWeapons.length} we
             return this.weaponSystem;
             
         } catch (error) {
-            console.error('🔫 WeaponSyncManager: Failed to initialize weapons:', error);
+            debug('P1', 'WeaponSyncManager: Failed to initialize weapons:', error);
             throw error;
         }
     }
@@ -198,9 +198,9 @@ debug('COMBAT', `🔫 Using current configuration with ${currentConfigWeapons.le
                 this.weaponSystem.setLockedTarget(targetComputer.currentTarget);
             }
             
-debug('COMBAT', `🔫 Created WeaponSystemCore with ${slotCount} slots`);
+debug('COMBAT', `Created WeaponSystemCore with ${slotCount} slots`);
         } catch (error) {
-            console.error('🔫 Failed to create weapon system:', error);
+            debug('P1', 'Failed to create weapon system:', error);
             throw error;
         }
     }
@@ -216,7 +216,7 @@ debug('COMBAT', `🔫 Created WeaponSystemCore with ${slotCount} slots`);
             let slotIndex = 0;
             for (const weaponConfig of weapons) {
                 if (slotIndex >= this.weaponSystem.maxWeaponSlots) {
-                    console.warn(`🔫 Cannot equip ${weaponConfig.type}: No more weapon slots available`);
+                    debug('COMBAT', `Cannot equip ${weaponConfig.type}: No more weapon slots available`);
                     break;
                 }
                 
@@ -234,16 +234,16 @@ debug('COMBAT', `🔫 Equipped ${weaponCard.name} (Level ${weaponCard.level}) to
                         
                         slotIndex++;
                     } else {
-                        console.error(`🔫 Failed to equip ${weaponCard.name} to slot ${slotIndex}`);
+                        debug('P1', `Failed to equip ${weaponCard.name} to slot ${slotIndex}`);
                     }
                 } else {
-                    console.error(`🔫 Could not create weapon card for ${weaponConfig.type}`);
+                    debug('P1', `Could not create weapon card for ${weaponConfig.type}`);
                 }
             }
             
-debug('COMBAT', `🔫 Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} weapons successfully`);
+debug('COMBAT', `Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} weapons successfully`);
         } catch (error) {
-            console.error('🔫 Failed to equip weapons:', error);
+            debug('P1', 'Failed to equip weapons:', error);
             throw error;
         }
     }
@@ -296,7 +296,7 @@ debug('COMBAT', `🔫 Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} 
      */
     async syncWithCardInventory() {
         if (!this.cardInventoryUI || !this.weaponSystem) {
-            console.warn('🔫 Cannot sync: Missing card inventory UI or weapon system');
+            debug('COMBAT', 'Cannot sync: Missing card inventory UI or weapon system');
             return;
         }
         

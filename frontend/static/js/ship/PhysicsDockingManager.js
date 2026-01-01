@@ -27,6 +27,7 @@ export class PhysicsDockingManager {
         this.dockingCooldownTime = 3000; // 3 seconds
         this.lastDockingTime = 0;
         this.lastLaunchTime = 0;
+        this.cooldownTimeoutId = null;
         
         // Launch positioning
         this.launchDistance = 5.0; // Distance to position ship when launching (km)
@@ -45,7 +46,7 @@ debug('PHYSICS', 'PhysicsDockingManager initialized');
      */
     setupCollisionCallbacks() {
         if (!this.physicsManager) {
-            console.warn('🚀 Physics manager not available for docking collision setup');
+            debug('UTILITY', 'Physics manager not available for docking collision setup');
             return;
         }
 
@@ -333,7 +334,7 @@ debug('UTILITY', `🚀 Successfully docked with ${stationData.name}`);
                 return false;
             }
         } catch (error) {
-            console.error('🚀 Docking failed:', error);
+            debug('P1', 'Docking failed:', error);
             this.dockingInProgress = false;
             this.currentDockingTarget = null;
             return false;
@@ -397,7 +398,7 @@ debug('UTILITY', 'Not currently docked');
             return true;
 
         } catch (error) {
-            console.error('🚀 Launch failed:', error);
+            debug('P1', 'Launch failed:', error);
             this.launchInProgress = false;
             return false;
         }
@@ -463,13 +464,19 @@ debug('UTILITY', 'Not currently docked');
         this.dockingCooldown = true;
         this.lastLaunchTime = Date.now();
 
+        // Clear any existing cooldown timeout
+        if (this.cooldownTimeoutId) {
+            clearTimeout(this.cooldownTimeoutId);
+        }
+
         // Clear cooldown after timeout
-        setTimeout(() => {
+        this.cooldownTimeoutId = setTimeout(() => {
             this.dockingCooldown = false;
-debug('UTILITY', 'Docking cooldown ended');
+            this.cooldownTimeoutId = null;
+            debug('UTILITY', 'Docking cooldown ended');
         }, this.dockingCooldownTime);
 
-debug('UTILITY', `🚀 Docking cooldown started for ${this.dockingCooldownTime / 1000} seconds`);
+        debug('UTILITY', `Docking cooldown started for ${this.dockingCooldownTime / 1000} seconds`);
     }
 
     /**
@@ -509,10 +516,17 @@ debug('UTILITY', 'Left docking zone');
             this.dockingZoneCheckInterval = null;
         }
 
+        // Clear the cooldown timeout
+        if (this.cooldownTimeoutId) {
+            clearTimeout(this.cooldownTimeoutId);
+            this.cooldownTimeoutId = null;
+        }
+
         // Clear docking state
         this.inDockingZone = false;
         this.currentDockingZone = null;
-        
-debug('PHYSICS', 'PhysicsDockingManager disposed');
+        this.dockingCooldown = false;
+
+        debug('PHYSICS', 'PhysicsDockingManager disposed');
     }
 }
