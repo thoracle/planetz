@@ -12,6 +12,7 @@ import { TargetReticleManager } from '../ui/TargetReticleManager.js';
 import { SubSystemPanelManager } from '../ui/SubSystemPanelManager.js';
 import { WireframeRenderer } from '../ui/WireframeRenderer.js';
 import { TargetingFeedbackManager } from '../ui/TargetingFeedbackManager.js';
+import { TargetOutlineManager } from '../ui/TargetOutlineManager.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -83,12 +84,12 @@ export class TargetComputerManager {
         this.subTargetIndicators = [];
         this.targetableAreas = [];
         
-        // Outline system
-        this.outlineEnabled = true;
-        this.lastOutlineUpdate = 0;
-        this.targetOutline = null;
-        this.outlineGeometry = null;
-        this.outlineMaterial = null;
+        // Outline system (delegated to TargetOutlineManager)
+        // this.outlineEnabled - now in targetOutlineManager
+        // this.lastOutlineUpdate - now in targetOutlineManager
+        // this.targetOutline - now in targetOutlineManager
+        // this.outlineGeometry - now in targetOutlineManager
+        // this.outlineMaterial - now in targetOutlineManager
         
         // Sorting state
         this.lastSortTime = 0;
@@ -137,6 +138,9 @@ export class TargetComputerManager {
 
         // Initialize TargetingFeedbackManager
         this.targetingFeedbackManager = new TargetingFeedbackManager(this);
+
+        // Initialize TargetOutlineManager
+        this.targetOutlineManager = new TargetOutlineManager(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -3186,125 +3190,34 @@ debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targ
 
     /**
      * Create 3D target outline in the world
+     * Delegates to TargetOutlineManager
      */
     createTargetOutline(targetObject, outlineColor = '#00ff41', targetData = null) {
-        // Clear any existing outline first
-        this.clearTargetOutline();
-        
-        if (!targetObject || !targetObject.geometry) {
-            return;
-        }
-
-        const currentTargetData = targetData || this.getCurrentTargetData();
-        if (!currentTargetData) {
-            return;
-        }
-
-        try {
-            // Create outline geometry
-            this.outlineGeometry = targetObject.geometry.clone();
-            
-            // Create outline material
-            this.outlineMaterial = new this.THREE.MeshBasicMaterial({
-                color: outlineColor,
-                side: this.THREE.BackSide,
-                transparent: true,
-                opacity: 0.5,
-                wireframe: true
-            });
-
-            // Create outline mesh
-            this.targetOutline = new this.THREE.Mesh(this.outlineGeometry, this.outlineMaterial);
-            
-            // Position outline at target location
-            this.targetOutline.position.copy(targetObject.position);
-            this.targetOutline.rotation.copy(targetObject.rotation);
-            this.targetOutline.scale.copy(targetObject.scale).multiplyScalar(1.1);
-            
-            // Add to scene
-            this.scene.add(this.targetOutline);
-            
-        } catch (error) {
-            debug('P1', `Error creating target outline: ${error}`);
-        }
+        this.targetOutlineManager.createTargetOutline(targetObject, outlineColor, targetData);
     }
 
     /**
      * Update 3D target outline
+     * Delegates to TargetOutlineManager
      */
     updateTargetOutline(targetObject, deltaTime) {
-        if (!this.targetObjects || this.targetObjects.length === 0) {
-            this.clearTargetOutline();
-            return;
-        }
-
-        if (!this.targetComputerEnabled) {
-            this.clearTargetOutline();
-            return;
-        }
-
-        if (!this.currentTarget) {
-            this.clearTargetOutline();
-            return;
-        }
-
-        const targetData = this.getCurrentTargetData();
-        if (!targetData) {
-            this.clearTargetOutline();
-            return;
-        }
-
-        if (!targetObject || targetObject !== this.currentTarget) {
-            this.clearTargetOutline();
-            return;
-        }
-
-        // Get outline color based on target type
-        let outlineColor = this.getOutlineColorForTarget(targetData);
-        
-        // Create or update outline
-        this.createTargetOutline(targetObject, outlineColor, targetData);
+        this.targetOutlineManager.updateTargetOutline(targetObject, deltaTime);
     }
 
     /**
      * Clear 3D target outline
+     * Delegates to TargetOutlineManager
      */
     clearTargetOutline() {
-        if (this.targetOutline) {
-            this.scene.remove(this.targetOutline);
-            
-            if (this.outlineGeometry) {
-                this.outlineGeometry.dispose();
-                this.outlineGeometry = null;
-            }
-            
-            if (this.outlineMaterial) {
-                this.outlineMaterial.dispose();
-                this.outlineMaterial = null;
-            }
-            
-            this.targetOutline = null;
-        }
+        this.targetOutlineManager.clearTargetOutline();
     }
 
     /**
      * Get outline color for target based on diplomacy
+     * Delegates to TargetOutlineManager
      */
     getOutlineColorForTarget(targetData) {
-        if (targetData?.isShip) {
-            return '#ff3333'; // Enemy ships are red
-        }
-        
-        const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        if (info?.diplomacy?.toLowerCase() === 'enemy') {
-            return '#ff3333';
-        } else if (info?.diplomacy?.toLowerCase() === 'friendly') {
-            return '#00ff41';
-        } else if (info?.diplomacy?.toLowerCase() === 'neutral') {
-            return '#ffff00';
-        }
-        
-        return '#00ff41'; // Default green
+        return this.targetOutlineManager.getOutlineColorForTarget(targetData);
     }
 
     /**
@@ -4091,6 +4004,11 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
         // Clean up TargetingFeedbackManager (handles timers and audio)
         if (this.targetingFeedbackManager) {
             this.targetingFeedbackManager.dispose();
+        }
+
+        // Clean up TargetOutlineManager
+        if (this.targetOutlineManager) {
+            this.targetOutlineManager.dispose();
         }
 
         // Clean up wireframe renderer
