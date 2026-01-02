@@ -21,6 +21,7 @@ import { TargetSelectionManager } from '../ui/TargetSelectionManager.js';
 import { TargetDataProcessor } from '../ui/TargetDataProcessor.js';
 import { TargetPositionManager } from '../ui/TargetPositionManager.js';
 import { TargetDiplomacyManager } from '../ui/TargetDiplomacyManager.js';
+import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -173,6 +174,9 @@ export class TargetComputerManager {
 
         // Initialize TargetDiplomacyManager
         this.targetDiplomacyManager = new TargetDiplomacyManager(this);
+
+        // Initialize StarChartsNotifier
+        this.starChartsNotifier = new StarChartsNotifier(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -875,58 +879,10 @@ export class TargetComputerManager {
 
     /**
      * Notify Star Charts that the target has changed (for real-time blinking updates)
+     * Delegates to StarChartsNotifier
      */
     notifyStarChartsOfTargetChange() {
-        debug('TARGETING', `🎯 notifyStarChartsOfTargetChange() called`);
-        
-        // Check if Star Charts is open and available
-        // The UI is stored as starChartsUI in NavigationSystemManager, not as starChartsManager.ui
-        const starChartsUI = this.viewManager?.navigationSystemManager?.starChartsUI;
-        
-        debug('TARGETING', `🎯 starChartsUI exists: ${!!starChartsUI}`);
-        debug('TARGETING', `🎯 starChartsUI.isVisible: ${starChartsUI?.isVisible}`);
-        
-        if (starChartsUI && starChartsUI.isVisible) {
-            debug('TARGETING', `🎯 BEFORE Star Charts render - current target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
-            
-            // Use requestAnimationFrame to ensure render happens on next frame
-            requestAnimationFrame(() => {
-                debug('TARGETING', `🎯 FRAME render - current target: ${this.currentTarget?.name || 'none'} (ID: ${this.currentTarget?.id || 'none'})`);
-                
-                // Center on the new target (like clicking on it would do)
-                if (this.currentTarget && this.currentTarget.name) {
-                    // Try to find the target object for centering
-                    let targetObject = null;
-                    
-                    // First try to get it from Star Charts database
-                    if (this.currentTarget.id) {
-                        targetObject = starChartsUI.starChartsManager.getObjectData(this.currentTarget.id);
-                    }
-                    
-                    // If not found, try to find by name
-                    if (!targetObject && this.currentTarget.name) {
-                        targetObject = starChartsUI.findObjectByName(this.currentTarget.name);
-                    }
-                    
-                    // If we found the target object, center on it
-                    if (targetObject) {
-                        starChartsUI.centerOnTarget(targetObject);
-                        debug('TARGETING', `🎯 TAB: Centered Star Charts on new target: ${this.currentTarget.name}`);
-                    } else {
-                        // Just render without centering if target not found in Star Charts
-                        starChartsUI.render();
-                        debug('TARGETING', `🎯 TAB: Target ${this.currentTarget.name} not found in Star Charts, rendered without centering`);
-                    }
-                } else {
-                    // No target, just render
-                    starChartsUI.render();
-                }
-                
-                debug('TARGETING', `🎯 AFTER frame Star Charts render - notified of target change`);
-            });
-        } else {
-            debug('TARGETING', `🎯 Star Charts not available for notification - not visible or not initialized`);
-        }
+        this.starChartsNotifier.notifyStarChartsOfTargetChange();
     }
 
     /**
@@ -2757,28 +2713,6 @@ debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation sele
         return this.waypointTargetManager.clearInterruptedWaypoint();
     }
 
-
-    /**
-     * Notify Star Charts of target change for real-time updates
-     */
-    notifyStarChartsOfTargetChange() {
-        // Use requestAnimationFrame for smooth UI updates
-        requestAnimationFrame(() => {
-            debug('TARGETING', '🎯 notifyStarChartsOfTargetChange() ENTRY');
-            
-            // Access Star Charts UI directly
-            const starChartsUI = this.viewManager?.navigationSystemManager?.starChartsUI;
-            
-            debug('TARGETING', `🎯 starChartsUI exists: ${starChartsUI ? 'true' : 'false'}`);
-            debug('TARGETING', `🎯 starChartsUI.isVisible: ${starChartsUI?.isVisible}`);
-            
-            if (starChartsUI && starChartsUI.isVisible) {
-                debug('TARGETING', '🎯 Calling Star Charts render for target change');
-                starChartsUI.render();
-                debug('TARGETING', '🎯 AFTER frame Star Charts render');
-            }
-        });
-    }
 
     // ========== WAYPOINT INTEGRATION METHODS ==========
 
