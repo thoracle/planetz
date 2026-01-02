@@ -113,21 +113,33 @@ def star_charts_page(page_with_game):
         page.evaluate("""() => {
             // Create minimal Star Charts SVG if it doesn't exist
             if (!document.querySelector('.starcharts-svg')) {
-                const container = document.querySelector('#star-charts-container') || document.body;
+                // Find or create a visible container
+                let container = document.querySelector('#star-charts-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'star-charts-container';
+                    container.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000011;';
+                    document.body.appendChild(container);
+                }
+                container.style.display = 'block';
+
                 const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.className = 'starcharts-svg';
+                // IMPORTANT: SVG elements require setAttribute for class, not className
+                svg.setAttribute('class', 'starcharts-svg');
                 svg.setAttribute('width', '800');
                 svg.setAttribute('height', '600');
                 svg.setAttribute('viewBox', '0 0 800 600');
+                svg.style.cssText = 'background: #000011; display: block; width: 100%; height: 100%;';
                 container.appendChild(svg);
-                
+
                 // Add a test object
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', '400');
                 circle.setAttribute('cy', '300');
                 circle.setAttribute('r', '5');
                 circle.setAttribute('fill', '#ffff00');
-                circle.className = 'object test-object';
+                // SVG elements require setAttribute for class
+                circle.setAttribute('class', 'object test-object');
                 circle.setAttribute('data-object-id', 'test-star');
                 svg.appendChild(circle);
             }
@@ -249,31 +261,41 @@ def mock_star_charts_environment(page: Page):
     page.evaluate("""() => {
         // Create Star Charts container if it doesn't exist
         if (!document.querySelector('.starcharts-svg')) {
-            const container = document.querySelector('#star-charts-container') || document.body;
-            
+            // Find or create a visible container
+            let container = document.querySelector('#star-charts-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'star-charts-container';
+                container.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000011;';
+                document.body.appendChild(container);
+            }
+            container.style.display = 'block';
+
             // Create SVG
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.className = 'starcharts-svg';
+            // IMPORTANT: SVG elements require setAttribute for class, not className
+            svg.setAttribute('class', 'starcharts-svg');
             svg.setAttribute('width', '800');
             svg.setAttribute('height', '600');
             svg.setAttribute('viewBox', '0 0 800 600');
-            svg.style.background = '#000011';
+            svg.style.cssText = 'background: #000011; display: block; width: 100%; height: 100%;';
             container.appendChild(svg);
-            
+
             // Add test objects with proper data attributes
             const testObjects = [
                 { id: 'test-star', name: 'Test Star', x: 400, y: 300, r: 8, color: '#ffff00', type: 'star' },
                 { id: 'test-planet', name: 'Test Planet', x: 500, y: 350, r: 4, color: '#00ff00', type: 'planet' },
                 { id: 'test-station', name: 'Test Station', x: 300, y: 250, r: 3, color: '#00aaff', type: 'station' }
             ];
-            
+
             testObjects.forEach(obj => {
                 const element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 element.setAttribute('cx', obj.x);
                 element.setAttribute('cy', obj.y);
                 element.setAttribute('r', obj.r);
                 element.setAttribute('fill', obj.color);
-                element.className = `object ${obj.type}`;
+                // SVG elements require setAttribute for class
+                element.setAttribute('class', `object ${obj.type}`);
                 element.setAttribute('data-object-id', obj.id);
                 element.setAttribute('data-name', obj.name);
                 svg.appendChild(element);

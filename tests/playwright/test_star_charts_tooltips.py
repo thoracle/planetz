@@ -49,8 +49,8 @@ class TestStarChartsTooltips:
             # Hover over the object
             test_object.hover()
 
-            # Wait for tooltip
-            tooltip = page.locator("#scanner-tooltip")
+            # Wait for tooltip (Star Charts uses #star-charts-tooltip, fallback to .scanner-tooltip)
+            tooltip = page.locator("#star-charts-tooltip, .scanner-tooltip").first
             expect(tooltip).to_be_visible()
 
             # Check that tooltip shows the name (not "Unknown")
@@ -71,8 +71,8 @@ class TestStarChartsTooltips:
             obj.hover()
             page.wait_for_timeout(200)  # Brief pause
 
-            # Check tooltip
-            tooltip = page.locator("#scanner-tooltip")
+            # Check tooltip (Star Charts uses #star-charts-tooltip)
+            tooltip = page.locator("#star-charts-tooltip, .scanner-tooltip").first
             if tooltip.is_visible():
                 expect(tooltip).to_have_text("Unknown")
 
@@ -126,7 +126,7 @@ class TestStarChartsTooltips:
             page.mouse.move(x, y)
 
             # If tooltip is visible, check its position is near mouse
-            tooltip = page.locator("#scanner-tooltip")
+            tooltip = page.locator("#star-charts-tooltip, .scanner-tooltip")
             if tooltip.is_visible():
                 tooltip_box = tooltip.bounding_box()
                 # Tooltip should be close to mouse position (within 50px)
@@ -148,7 +148,7 @@ class TestStarChartsTooltips:
             ship_icon = page.locator(".ship-position-icon")
             if ship_icon.is_visible():
                 ship_icon.hover()
-                tooltip = page.locator("#scanner-tooltip")
+                tooltip = page.locator("#star-charts-tooltip, .scanner-tooltip")
                 if tooltip.is_visible():
                     expect(tooltip).to_have_text("You are here")
 
@@ -174,7 +174,7 @@ class TestStarChartsTooltips:
             page.wait_for_timeout(300)
 
             # Tooltip should not be visible
-            tooltip = page.locator("#scanner-tooltip")
+            tooltip = page.locator("#star-charts-tooltip, .scanner-tooltip")
             expect(tooltip).not_to_be_visible()
 
 
@@ -197,7 +197,7 @@ class TestStarChartsIntegration:
         ship_icon = page.locator(".ship-position-icon")
         expect(ship_icon).to_be_visible()
         ship_icon.hover()
-        expect(page.locator("#scanner-tooltip")).to_have_text("You are here")
+        expect(page.locator("#star-charts-tooltip, .scanner-tooltip")).to_have_text("You are here")
 
         # 4. Test zooming
         page.keyboard.press("Shift+Click")  # Zoom out
@@ -207,7 +207,7 @@ class TestStarChartsIntegration:
 
         # 5. Test tooltip still works after zoom
         ship_icon.hover()
-        expect(page.locator("#scanner-tooltip")).to_have_text("You are here")
+        expect(page.locator("#star-charts-tooltip, .scanner-tooltip")).to_have_text("You are here")
 
         # 6. Close Star Charts (ESC)
         page.keyboard.press("Escape")

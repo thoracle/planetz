@@ -91,27 +91,37 @@ class TestStarChartsTooltipsFixed:
             # Create fallback SVG
             print("⚠️ Creating fallback Star Charts SVG")
             page.evaluate("""() => {
-                const container = document.querySelector('#star-charts-container') || document.body;
+                // Find or create a visible container
+                let container = document.querySelector('#star-charts-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'star-charts-container';
+                    container.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #000011;';
+                    document.body.appendChild(container);
+                }
+                container.style.display = 'block';
+
                 const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.className = 'starcharts-svg';
+                // IMPORTANT: SVG elements require setAttribute for class, not className
+                svg.setAttribute('class', 'starcharts-svg');
                 svg.setAttribute('width', '800');
                 svg.setAttribute('height', '600');
                 svg.setAttribute('viewBox', '0 0 800 600');
-                svg.style.background = '#000011';
-                svg.style.display = 'block';
+                svg.style.cssText = 'background: #000011; display: block; width: 100%; height: 100%;';
                 container.appendChild(svg);
-                
+
                 // Add test objects
                 const star = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 star.setAttribute('cx', '400');
                 star.setAttribute('cy', '300');
                 star.setAttribute('r', '8');
                 star.setAttribute('fill', '#ffff00');
-                star.className = 'object star';
+                // SVG elements require setAttribute for class
+                star.setAttribute('class', 'object star');
                 star.setAttribute('data-object-id', 'test-star');
                 star.setAttribute('data-name', 'Test Star');
                 svg.appendChild(star);
-                
+
                 return true;
             }""")
             
