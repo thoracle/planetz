@@ -398,5 +398,21 @@ def mock_star_charts_environment(page: Page, game_server):
             };
         }
     }""")
-    
+
     return page
+
+
+# Import fixtures from enhanced_conftest.py to make them available to all tests
+# These fixtures provide specialized testing environments for different game systems
+from enhanced_conftest import (
+    game_server_with_test_data,
+    isolated_ship_environment,
+    ai_testing_environment,
+    mission_testing_environment,
+    physics_testing_environment,
+    ui_testing_environment,
+    debug_helper,
+    game_state_validator,
+    test_data_manager,
+    test_cleanup,
+)
