@@ -300,7 +300,7 @@ debug('COMBAT', `Equipped ${slotIndex}/${this.weaponSystem.maxWeaponSlots} weapo
             return;
         }
         
-        // TODO: Implement synchronization logic when CardInventoryUI is updated
+        // Sync is handled automatically via initializeShipSystems() after docking
 debug('COMBAT', '🔫 Weapon system and card inventory are synchronized');
     }
     

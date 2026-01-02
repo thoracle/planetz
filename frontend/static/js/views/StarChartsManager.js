@@ -1503,24 +1503,24 @@ debug('UTILITY', `🎯 Waypoint triggered: ${waypoint.name}`);
         waypoint.actions.forEach(action => {
             switch (action.type) {
                 case 'spawn_ships':
-                    // TODO: Integrate with ship spawning system
-debug('UTILITY', `🚀 Spawn ships: ${action.params}`);
+                    // Handled by WaypointManager SpawnShipsAction
+                    debug('UTILITY', `🚀 Spawn ships: ${action.params}`);
                     break;
-                    
+
                 case 'play_comm':
                     if (window.audioManager) {
                         window.audioManager.playSound(action.params.audioFile);
                     }
                     break;
-                    
+
                 case 'next_waypoint':
-                    // TODO: Integrate with mission system
-debug('UTILITY', '➡️  Advance to next waypoint');
+                    // Handled by WaypointManager chain system
+                    debug('UTILITY', '➡️  Advance to next waypoint');
                     break;
-                    
+
                 case 'mission_update':
-                    // TODO: Integrate with mission system
-debug('MISSIONS', `📋 Mission update: ${action.params}`);
+                    // Handled by MissionEventService
+                    debug('MISSIONS', `📋 Mission update: ${action.params}`);
                     break;
                     
                 default:

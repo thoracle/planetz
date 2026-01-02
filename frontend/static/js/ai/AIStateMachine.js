@@ -359,7 +359,7 @@ debug('UTILITY', `🎯 ${this.ship.shipType} state: ${oldState} → ${newState}`
             this.ai.applyForce(retreatForce);
         }
         
-        // TODO: Add fighter deployment logic when fighter system is implemented
+        // FUTURE: Add fighter deployment for carrier-class ships
     }
     
     /**

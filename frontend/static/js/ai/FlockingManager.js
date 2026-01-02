@@ -284,8 +284,8 @@ debug('AI', `🎯 Assigned ${formationType} formation to flock ${flockId}`);
      * Get environmental obstacles near ship
      */
     getObstacles(ship) {
-        // TODO: Implement obstacle detection
-        // This would query the game world for asteroids, stations, other ships, etc.
+        // FUTURE: Query SpatialManager for asteroids, stations, other ships
+        // Currently returns empty - AI ships don't avoid obstacles yet
         return [];
     }
     

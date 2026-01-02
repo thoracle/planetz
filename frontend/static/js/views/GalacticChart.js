@@ -515,7 +515,7 @@ debug('NAVIGATION', 'No Galactic Chart system installed - using basic navigation
         if (probeButton && !isCurrentSector) {
             probeButton.addEventListener('click', () => {
 debug('UTILITY', 'Probe initiated for system:', system.star_name);
-                // TODO: Implement probe functionality
+                // FUTURE: Launch probe to scan unexplored systems
             });
         }
 

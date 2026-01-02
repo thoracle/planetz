@@ -197,9 +197,8 @@ debug('AI', `🤖 EnemyAI initialized for ${ship.shipType} with config:`, aiConf
         // For now, just log the firing event
 debug('TARGETING', `💥 ${this.ship.shipType} fired at ${firingSolution.target.shipType || 'target'} (${(firingSolution.hitProbability * 100).toFixed(1)}% hit chance)`);
         
-        // TODO: Create visual/audio effects
-        // TODO: Apply damage to target if hit
-        // TODO: Create projectile or beam effect
+        // FUTURE: Integrate with WeaponEffectsManager for visual/audio effects
+        // FUTURE: Apply damage via combat system when AI weapons are fully implemented
     }
     
     /**

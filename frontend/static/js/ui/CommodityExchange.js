@@ -625,7 +625,7 @@ debug('UTILITY', `✅ Purchase successful: ${quantity} units loaded`);
                 const commodityData = this.getCommodityData(commodityId);
                 this.showTradeNotification(`✅ Purchased ${quantity} units of ${commodityData.name} for ${totalCost.toLocaleString()} CR`, 'success');
                 
-                // TODO: Reduce station availability
+                // FUTURE: Reduce station inventory when economy simulation is added
             } else {
                 // Failed to deduct credits - this should not happen after canAfford check
                 debug('UI', '❌ Failed to deduct credits after successful cargo load');
@@ -677,7 +677,7 @@ debug('UI', `✅ Sale successful: ${quantity} units sold for ${totalValue} CR`);
                 // Show success notification
                 this.showTradeNotification(`✅ Sold ${quantity} units of ${cargoItem.name} for ${totalValue.toLocaleString()} CR`, 'success');
                 
-                // TODO: Update station availability
+                // FUTURE: Update station inventory when economy simulation is added
             } else {
                 debug('UI', '❌ Failed to add credits after successful cargo unload');
                 this.showTradeNotification(`❌ Credit transaction failed`, 'error');

@@ -255,12 +255,12 @@ export class AchievementSystem {
             debug('ACHIEVEMENTS', `💰 Awarded ${achievement.rewards.credits} credits`);
         }
         
-        // TODO: Implement title system
+        // FUTURE: Display earned titles in player profile
         if (achievement.rewards.title) {
             debug('ACHIEVEMENTS', `🎖️ Earned title: ${achievement.rewards.title}`);
         }
-        
-        // TODO: Implement special rewards
+
+        // FUTURE: Grant special rewards (ships, cards, etc.)
         if (achievement.rewards.special) {
             debug('ACHIEVEMENTS', `✨ Special reward: ${achievement.rewards.special}`);
         }

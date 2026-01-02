@@ -2668,7 +2668,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
     bindMouseEvents() {
         // Only handle clicks for weapons, no mouse look
         document.addEventListener('click', (event) => {
-            // TODO: Implement weapons fire
+            // Mouse click weapons fire - currently uses SPACE key instead
         }, { signal: this._abortController.signal });
     }
 
