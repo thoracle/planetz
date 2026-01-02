@@ -164,6 +164,9 @@ export class StarfieldManager {
         // AbortController for centralized event listener cleanup
         this._abortController = new AbortController();
 
+        // Track pending timeouts for cleanup on dispose
+        this._pendingTimeouts = new Set();
+
         // Expose target computer manager globally for waypoints integration
         window.targetComputerManager = this.targetComputerManager;
         
@@ -239,7 +242,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
         
         // Initialize mission system after a short delay to ensure all systems are ready
-        setTimeout(() => {
+        this._setTimeout(() => {
             this.initializeMissionSystem();
         }, 2000);
         
@@ -334,7 +337,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         
         // Try to initialize WeaponEffectsManager after a short delay
         // This ensures THREE.js is fully loaded and available
-        setTimeout(() => {
+        this._setTimeout(() => {
             this.initializeWeaponEffectsManager();
             this.initializeAIManager();
         }, 100);
@@ -2607,7 +2610,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         this.targetObjects = this.targetComputerManager.targetObjects;
 
         // DEBUG: Log target info for wireframe debugging
-        setTimeout(() => {
+        this._setTimeout(() => {
             const currentTarget = this.targetComputerManager.currentTarget;
             debug('TARGETING', `Target object details: name=${currentTarget?.name}, id=${currentTarget?.id}, type=${currentTarget?.type}, hasObject=${!!currentTarget?.object}, objType=${currentTarget?.object?.type}, geometry=${currentTarget?.object?.geometry?.type}`);
         }, 100);
@@ -3121,7 +3124,7 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
             
             // Update target list after sector change if target computer is enabled
             if (this.targetComputerEnabled) {
-                setTimeout(() => {
+                this._setTimeout(() => {
                     this.updateTargetList();
                     this.cycleTarget();
                 }, 100); // Small delay to ensure new system is fully generated
@@ -3422,12 +3425,38 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
             delete window.targetComputerManager;
         }
 
+        // Clear all pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(id => clearTimeout(id));
+            this._pendingTimeouts.clear();
+            this._pendingTimeouts = null;
+        }
+
         this.ship = null;
         this.scene = null;
         this.camera = null;
         this.viewManager = null;
 
         debug('UTILITY', '✅ StarfieldManager disposal complete');
+    }
+
+    /**
+     * Wrapped setTimeout that tracks the timeout ID for cleanup on dispose
+     * @param {Function} callback - The function to call after the delay
+     * @param {number} delay - The delay in milliseconds
+     * @returns {number} The timeout ID
+     */
+    _setTimeout(callback, delay) {
+        const id = setTimeout(() => {
+            if (this._pendingTimeouts) {
+                this._pendingTimeouts.delete(id);
+            }
+            callback();
+        }, delay);
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.add(id);
+        }
+        return id;
     }
 
     // Star sprite creation delegated to StarfieldRenderer
@@ -4313,11 +4342,11 @@ debug('COMBAT', `🔫 Could not hide weapon HUD during docking: weaponHUD=${!!th
             const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
             
             // Refresh missions for the docked station
-            setTimeout(() => {
+            this._setTimeout(() => {
                 this.refreshStationMissions(stationKey);
             }, 1000);
         }
-        
+
         return true;
     }
 
@@ -4645,7 +4674,7 @@ debug('COMBAT', '🔫 Cannot update weapon HUD - ship or weapon system not avail
 debug('COMBAT', '🔫 Weapon HUD restoration completed');
                     
                     // Additional debug: Check if elements are actually in DOM and visible
-                    setTimeout(() => {
+                    this._setTimeout(() => {
                         const weaponHUDInDOM = document.body.contains(this.weaponHUD.weaponSlotsDisplay);
                         const computedStyle = this.weaponHUD.weaponSlotsDisplay ? getComputedStyle(this.weaponHUD.weaponSlotsDisplay) : null;
 debug('COMBAT', `🔫 POST-LAUNCH CHECK: weaponHUD in DOM=${weaponHUDInDOM}, display=${computedStyle?.display}, visibility=${computedStyle?.visibility}`);
@@ -5247,7 +5276,7 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
                     );
                 } else {
                     // Fallback notification using HUD
-                    setTimeout(() => {
+                    this._setTimeout(() => {
                         this.showHUDEphemeral(
                             'MISSION AVAILABLE',
                             `${result.mission.title} - Navigate to waypoints`
@@ -5499,10 +5528,10 @@ debug('TARGETING', '🧹 Physics body removed for target dummy ship');
         this.hudEphemeralElement.style.animation = 'slideInFromTop 0.3s ease-out';
         
         // Hide after duration with animation
-        setTimeout(() => {
+        this._setTimeout(() => {
             if (this.hudEphemeralElement) {
                 this.hudEphemeralElement.style.animation = 'slideOutToTop 0.3s ease-in';
-                setTimeout(() => {
+                this._setTimeout(() => {
                     if (this.hudEphemeralElement) {
                         this.hudEphemeralElement.style.display = 'none';
                     }
@@ -7704,7 +7733,7 @@ debug('AI', 'Mission Status HUD available - press M to test');
         }
         
         // Test mission completion after 20 seconds
-        setTimeout(() => {
+        this._setTimeout(() => {
             if (this.missionCompletionUI) {
 debug('UI', 'Testing mission completion UI...');
                 this.missionCompletionUI.testCompletion();
@@ -7734,11 +7763,11 @@ debug('MISSIONS', `🎯 Enemy destruction updated ${result.updated_missions.leng
                 
                 // Refresh Mission Status HUD if visible
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
-                    setTimeout(() => {
+                    this._setTimeout(() => {
                         this.missionStatusHUD.refreshMissions();
                     }, 100);
                 }
-                
+
                 // Show mission progress notification
                 for (const mission of result.updated_missions) {
                     this.showMissionProgressNotification(mission, 'enemy_destroyed');
@@ -7768,11 +7797,11 @@ debug('MISSIONS', `🎯 Location reached updated ${result.updated_missions.lengt
                 
                 // Refresh Mission Status HUD if visible
                 if (this.missionStatusHUD && this.missionStatusHUD.visible) {
-                    setTimeout(() => {
+                    this._setTimeout(() => {
                         this.missionStatusHUD.refreshMissions();
                     }, 100);
                 }
-                
+
                 // Show mission progress notification
                 for (const mission of result.updated_missions) {
                     this.showMissionProgressNotification(mission, 'location_reached');

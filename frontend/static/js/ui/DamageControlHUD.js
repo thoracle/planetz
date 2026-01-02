@@ -42,6 +42,9 @@ export default class DamageControlHUD {
         // Track dynamically created button handlers for cleanup
         this._buttonHandlers = new Map(); // Maps button element -> {mouseenter, mouseleave}
 
+        // Track pending timeouts for cleanup on dispose
+        this._pendingTimeouts = new Set();
+
         this.init();
     }
     
@@ -368,7 +371,7 @@ export default class DamageControlHUD {
             }
             
             // Refresh the ops HUD to update the speed display
-            setTimeout(() => this.refresh(), 50);
+            this._setTimeout(() => this.refresh(), 50);
         }
     }
     
@@ -1094,7 +1097,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
                         // Same error handling as T key
                         this.starfieldManager.playCommandFailedSound();
@@ -1151,7 +1154,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                     shields.toggleShields();
                     
                     // Update button state immediately
-                    setTimeout(() => this.updateButtonState(systemName), 50);
+                    this._setTimeout(() => this.updateButtonState(systemName), 50);
                 } else {
                     // Same error handling as S key
                     this.starfieldManager.playCommandFailedSound();
@@ -1175,7 +1178,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                 }
                 
                 // Update button state immediately
-                setTimeout(() => this.updateButtonState(systemName), 50);
+                this._setTimeout(() => this.updateButtonState(systemName), 50);
             } else if (systemName === 'radar') {
                 // Radar system - do exactly what P key does
                 const ship = this.ship;
@@ -1209,7 +1212,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                     this.starfieldManager.toggleProximityDetector();
                     
                     // Update button state immediately
-                    setTimeout(() => this.updateButtonState(systemName), 50);
+                    this._setTimeout(() => this.updateButtonState(systemName), 50);
                 }
             } else if (systemName === 'long_range_scanner') {
                 // Long Range Scanner - do exactly what L key does (via ViewManager)
@@ -1229,7 +1232,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner.hide();
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else if (scannerSystem && scannerSystem.canActivate(ship)) {
                         // Scanner not visible, show it (same as L key when scanner is closed)
                         this.starfieldManager.playCommandSound();
@@ -1241,7 +1244,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                             this.starfieldManager.viewManager.navigationSystemManager?.longRangeScanner.show();
 
                             // Update button state immediately
-                            setTimeout(() => this.updateButtonState(systemName), 50);
+                            this._setTimeout(() => this.updateButtonState(systemName), 50);
                         } else {
                             debug('UI', '⚠️ Failed to start Long Range Scanner');
                         }
@@ -1284,14 +1287,14 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         this.starfieldManager.viewManager.navigationSystemManager?.starChartsUI.hide();
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else if (starCharts && starCharts.canActivate(ship)) {
                         // Star charts not visible, show it (same as C key when star charts is closed)
                         this.starfieldManager.playCommandSound();
                         this.starfieldManager.viewManager.navigationSystemManager?.starChartsUI.show();
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
                         // Same error handling as C key
                         this.starfieldManager.playCommandFailedSound();
@@ -1331,14 +1334,14 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         this.starfieldManager.viewManager.galacticChart.hide(true);
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else if (galacticChart && galacticChart.canActivate(ship)) {
                         // Galactic chart not visible, show it (same as G key when chart is closed)
                         this.starfieldManager.playCommandSound();
                         this.starfieldManager.viewManager.setView('galactic');
                         
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
                         // Same error handling as G key
                         this.starfieldManager.playCommandFailedSound();
@@ -1419,7 +1422,7 @@ debug('AI', `🔧 System validation: ${systemName} - hasCard: ${hasValidCard}, r
                         subspaceRadioUI.toggle();
 
                         // Update button state immediately
-                        setTimeout(() => this.updateButtonState(systemName), 50);
+                        this._setTimeout(() => this.updateButtonState(systemName), 50);
                     } else {
                         debug('UI', '⚠️ SubspaceRadio UI not available via any access method');
                     }
@@ -1659,7 +1662,33 @@ debug('AI', `🔧 Repair completed for ${systemName}`);
             this.updateTimeout = null;
         }
 
+        // Clear all pending timeouts
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.forEach(id => clearTimeout(id));
+            this._pendingTimeouts.clear();
+            this._pendingTimeouts = null;
+        }
+
         debug('UI', '🧹 DamageControlHUD disposed');
+    }
+
+    /**
+     * Wrapped setTimeout that tracks the timeout ID for cleanup on dispose
+     * @param {Function} callback - The function to call after the delay
+     * @param {number} delay - The delay in milliseconds
+     * @returns {number} The timeout ID
+     */
+    _setTimeout(callback, delay) {
+        const id = setTimeout(() => {
+            if (this._pendingTimeouts) {
+                this._pendingTimeouts.delete(id);
+            }
+            callback();
+        }, delay);
+        if (this._pendingTimeouts) {
+            this._pendingTimeouts.add(id);
+        }
+        return id;
     }
 
     /**

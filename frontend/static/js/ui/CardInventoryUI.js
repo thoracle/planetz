@@ -460,7 +460,7 @@ debug('UI', `🎵 Audio ${index} finished playing`);
         audioClone.addEventListener('error', (e) => {
             debug('UI', `❌ Audio ${index} error: ${e.type}`);
             // Immediately recreate this element after a delay
-            setTimeout(() => this.recreateAudioElement(index), 100);
+            this._setTimeout(() => this.recreateAudioElement(index), 100);
         });
 
         // Monitor for potential corruption - if an element gets stuck
@@ -633,6 +633,21 @@ debug('UI', '🔊 AudioContext resumed after user interaction');
             clearTimeout(timeoutId);
         });
         this.activeTimeouts.clear();
+    }
+
+    /**
+     * Wrapped setTimeout that tracks the timeout ID for cleanup on destroy
+     * @param {Function} callback - The function to call after the delay
+     * @param {number} delay - The delay in milliseconds
+     * @returns {number} The timeout ID
+     */
+    _setTimeout(callback, delay) {
+        const id = setTimeout(() => {
+            this.activeTimeouts.delete(id);
+            callback();
+        }, delay);
+        this.activeTimeouts.add(id);
+        return id;
     }
 
     /**
@@ -830,7 +845,7 @@ debug('UI', `🔧 Resetting audio ${currentPoolIndex} volume from ${audioToPlay.
                                 // Playing upgrade sound
                                 
                                 // Set up a corruption detection timeout
-                                setTimeout(() => {
+                                this._setTimeout(() => {
                                     if (audioToPlay.paused && audioToPlay.currentTime === 0) {
                                         debug('UI', `🔇 Audio ${currentPoolIndex} may have failed silently - recreating for next use`);
                                         this.recreateAudioElement(currentPoolIndex);
@@ -847,7 +862,7 @@ debug('UI', `🔄 Trying next audio element...`);
                                     currentPoolIndex = (currentPoolIndex + 1) % this.audioPool.length;
                                     attemptsRemaining--;
                                     // Recursive call to try next element
-                                    setTimeout(() => this.playUpgradeSound(), 10);
+                                    this._setTimeout(() => this.playUpgradeSound(), 10);
                                 } else {
                                     // All elements failed, try alternative playback
                                     this.tryAlternativeAudioPlayback();
@@ -928,7 +943,7 @@ debug('UI', '🎵 Playing fallback HTML5 upgrade sound (original method)');
             immediateAudio.volume = 0.7;
 
             // Add a small delay to ensure browser readiness
-            setTimeout(() => {
+            this._setTimeout(() => {
                 const playPromise = immediateAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
@@ -1108,7 +1123,7 @@ debug('UI', '🎵 Playing fallback HTML5 upgrade sound (original method)');
         debug('UI', '🔍 COLLECTION: Reloaded quantity increase timestamps from localStorage');
 
         // Clear quantity increase status after a delay to let user see red badges first
-        setTimeout(() => {
+        this._setTimeout(() => {
             debug('UI', '🔍 COLLECTION: Clearing quantity increase timestamps after delay');
             this.clearQuantityIncreaseStatus();
         }, 5000); // 5 second delay to see red badges
@@ -2446,7 +2461,7 @@ debug('UI', `🗑️ Dumped cargo from hold ${holdSlot} (slot ${slotId}):`, dump
         document.body.appendChild(modal);
         
         // Auto-close after 5 seconds
-        setTimeout(() => {
+        this._setTimeout(() => {
             if (document.body.contains(modal)) {
                 document.body.removeChild(modal);
             }
