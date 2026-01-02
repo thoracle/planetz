@@ -9,25 +9,23 @@ This test will:
 """
 
 import pytest
-import asyncio
-from playwright.async_api import Page, expect
+from playwright.sync_api import Page, expect
 
 
 class TestClickFirstTooltipBug:
     """Test suite to identify the click-first tooltip bug pattern."""
 
-    @pytest.mark.asyncio
-    async def test_identify_click_first_tooltip_bug(self, star_charts_page: Page):
+    def test_identify_click_first_tooltip_bug(self, star_charts_page: Page):
         """Systematically test all objects to identify click-first behavior."""
         page = star_charts_page
         
         print("\n🔧 Starting automated click-first tooltip bug detection...")
-        
+
         # Wait for Star Charts to be fully loaded
-        await page.wait_for_timeout(2000)
-        
+        page.wait_for_timeout(2000)
+
         # Inject our bug detection script
-        await page.evaluate("""
+        page.evaluate("""
             window.tooltipBugResults = {
                 clickFirstObjects: [],
                 hoverWorkingObjects: [],
@@ -54,7 +52,7 @@ class TestClickFirstTooltipBug:
         """)
         
         # Get the list of objects to test
-        all_objects = await page.evaluate("window.tooltipBugResults.allObjects")
+        all_objects = page.evaluate("window.tooltipBugResults.allObjects")
         print(f"🔍 Found {len(all_objects)} objects to test")
         
         if not all_objects:
@@ -73,7 +71,7 @@ class TestClickFirstTooltipBug:
             print(f"\n🧪 Testing object {i+1}/{len(all_objects)}: {object_id} '{object_name}' ({object_type})")
             
             # Test 1: Try hover first (without clicking)
-            hover_result = await self._test_hover_tooltip(page, object_id, object_name)
+            hover_result = self._test_hover_tooltip(page, object_id, object_name)
             
             if hover_result['success']:
                 print(f"  ✅ Hover works: Shows '{hover_result['tooltip_text']}'")
@@ -88,7 +86,7 @@ class TestClickFirstTooltipBug:
                 print(f"  ❌ Hover failed: {hover_result['reason']}")
                 
                 # Test 2: Try click then hover
-                click_result = await self._test_click_then_hover(page, object_id, object_name)
+                click_result = self._test_click_then_hover(page, object_id, object_name)
                 
                 if click_result['click_hover_success'] and not click_result['initial_hover_success']:
                     print(f"  🐛 CLICK-FIRST BUG: Hover failed initially but works after click")
@@ -104,7 +102,7 @@ class TestClickFirstTooltipBug:
                     print(f"  ⚠️ Consistently broken: Neither hover nor click+hover works")
             
             # Small delay between tests to avoid overwhelming the system
-            await page.wait_for_timeout(100)
+            page.wait_for_timeout(100)
         
         # Analyze results
         print(f"\n📊 ANALYSIS RESULTS:")
@@ -126,7 +124,7 @@ class TestClickFirstTooltipBug:
                 print(f"  ... and {len(hover_working_objects) - 5} more")
         
         # Store results for further analysis
-        await page.evaluate(f"""
+        page.evaluate(f"""
             window.tooltipBugResults.clickFirstObjects = {click_first_objects};
             window.tooltipBugResults.hoverWorkingObjects = {hover_working_objects};
             console.log('🔍 Bug detection complete - results stored in window.tooltipBugResults');
@@ -156,12 +154,12 @@ class TestClickFirstTooltipBug:
         else:
             print(f"\n🎉 NO CLICK-FIRST BUG FOUND - All tooltips work correctly on hover!")
 
-    async def _test_hover_tooltip(self, page: Page, object_id: str, object_name: str) -> dict:
+    def _test_hover_tooltip(self, page: Page, object_id: str, object_name: str) -> dict:
         """Test if hover tooltip works correctly."""
         try:
             # Try to find the object element and hover over it
-            result = await page.evaluate(f"""
-                (async () => {{
+            result = page.evaluate(f"""
+                (() => {{
                     const starChartsUI = window.navigationSystemManager?.starChartsUI;
                     if (!starChartsUI) return {{ success: false, reason: 'StarChartsUI not found' }};
                     
@@ -191,21 +189,18 @@ class TestClickFirstTooltipBug:
                     
                     objectElement.dispatchEvent(mouseEnterEvent);
                     objectElement.dispatchEvent(mouseMoveEvent);
-                    
-                    // Wait a bit for tooltip to appear
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Check if tooltip is visible and get its text
+
+                    // Check if tooltip is visible and get its text (sync check)
                     const tooltip = document.querySelector('#star-charts-tooltip, .star-charts-tooltip');
                     if (tooltip && tooltip.style.display !== 'none' && tooltip.textContent.trim()) {{
-                        return {{ 
-                            success: true, 
+                        return {{
+                            success: true,
                             tooltip_text: tooltip.textContent.trim(),
                             reason: 'Tooltip visible with content'
                         }};
                     }} else {{
-                        return {{ 
-                            success: false, 
+                        return {{
+                            success: false,
                             reason: tooltip ? 'Tooltip found but empty/hidden' : 'No tooltip found'
                         }};
                     }}
@@ -220,24 +215,24 @@ class TestClickFirstTooltipBug:
                 'reason': f'Exception during hover test: {str(e)}'
             }
 
-    async def _test_click_then_hover(self, page: Page, object_id: str, object_name: str) -> dict:
+    def _test_click_then_hover(self, page: Page, object_id: str, object_name: str) -> dict:
         """Test click then hover behavior."""
         try:
-            result = await page.evaluate(f"""
-                (async () => {{
+            result = page.evaluate(f"""
+                (() => {{
                     const starChartsUI = window.navigationSystemManager?.starChartsUI;
                     if (!starChartsUI) return {{ success: false, reason: 'StarChartsUI not found' }};
-                    
+
                     // Find the object element
                     const objectElement = document.querySelector(`[data-object-id="{object_id}"]`);
                     if (!objectElement) {{
                         return {{ success: false, reason: 'Object element not found in DOM' }};
                     }};
-                    
+
                     const rect = objectElement.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2;
                     const centerY = rect.top + rect.height / 2;
-                    
+
                     // Test 1: Initial hover (should fail)
                     const mouseEnterEvent1 = new MouseEvent('mouseenter', {{
                         clientX: centerX,
@@ -245,15 +240,14 @@ class TestClickFirstTooltipBug:
                         bubbles: true
                     }});
                     objectElement.dispatchEvent(mouseEnterEvent1);
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
+
                     const tooltip1 = document.querySelector('#star-charts-tooltip, .star-charts-tooltip');
                     const initialHoverText = tooltip1 ? tooltip1.textContent.trim() : '';
                     const initialHoverSuccess = tooltip1 && tooltip1.style.display !== 'none' && initialHoverText && initialHoverText !== 'Unknown';
-                    
+
                     // Clear any existing tooltip
                     if (tooltip1) tooltip1.style.display = 'none';
-                    
+
                     // Test 2: Click the object
                     const clickEvent = new MouseEvent('click', {{
                         clientX: centerX,
@@ -261,8 +255,7 @@ class TestClickFirstTooltipBug:
                         bubbles: true
                     }});
                     objectElement.dispatchEvent(clickEvent);
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    
+
                     // Test 3: Hover after click
                     const mouseEnterEvent2 = new MouseEvent('mouseenter', {{
                         clientX: centerX,
@@ -270,12 +263,11 @@ class TestClickFirstTooltipBug:
                         bubbles: true
                     }});
                     objectElement.dispatchEvent(mouseEnterEvent2);
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
+
                     const tooltip2 = document.querySelector('#star-charts-tooltip, .star-charts-tooltip');
                     const afterClickHoverText = tooltip2 ? tooltip2.textContent.trim() : '';
                     const afterClickHoverSuccess = tooltip2 && tooltip2.style.display !== 'none' && afterClickHoverText && afterClickHoverText !== 'Unknown';
-                    
+
                     return {{
                         initial_hover_success: initialHoverSuccess,
                         initial_hover_text: initialHoverText,
@@ -296,18 +288,17 @@ class TestClickFirstTooltipBug:
                 'error': str(e)
             }
 
-    @pytest.mark.asyncio
-    async def test_analyze_bug_pattern(self, star_charts_page: Page):
+    def test_analyze_bug_pattern(self, star_charts_page: Page):
         """Analyze the pattern of the click-first bug to identify root cause."""
         page = star_charts_page
-        
+
         print("\n🔬 Analyzing click-first bug pattern...")
-        
+
         # Run the main bug detection first
-        await self.test_identify_click_first_tooltip_bug(page)
-        
+        self.test_identify_click_first_tooltip_bug(page)
+
         # Get detailed analysis
-        analysis = await page.evaluate("""
+        analysis = page.evaluate("""
             (() => {
                 const results = window.tooltipBugResults;
                 if (!results) return { error: 'No bug results found' };
