@@ -22,6 +22,7 @@ import { TargetDataProcessor } from '../ui/TargetDataProcessor.js';
 import { TargetPositionManager } from '../ui/TargetPositionManager.js';
 import { TargetDiplomacyManager } from '../ui/TargetDiplomacyManager.js';
 import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
+import { TargetSectorManager } from '../ui/TargetSectorManager.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -177,6 +178,9 @@ export class TargetComputerManager {
 
         // Initialize StarChartsNotifier
         this.starChartsNotifier = new StarChartsNotifier(this);
+
+        // Initialize TargetSectorManager
+        this.targetSectorManager = new TargetSectorManager(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -2372,61 +2376,19 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
 
     /**
      * Update current sector - resets target computer state on sector changes
+     * Delegates to TargetSectorManager
      */
     updateCurrentSector() {
-        if (!this.solarSystemManager) return;
-
-        // Calculate current sector based on position
-        const currentSector = this.calculateCurrentSector();
-        
-        // Get the current sector from the solar system manager
-        const currentSystemSector = this.solarSystemManager.currentSector;
-        
-        // Only update if we've moved to a new sector
-        if (currentSector !== currentSystemSector) {
-            // Reset target computer state before sector change
-            if (this.targetComputerEnabled) {
-                this.currentTarget = null;
-                this.targetIndex = -1;
-                this.targetHUD.style.display = 'none';
-                this.targetReticle.style.display = 'none';
-                
-                // Clear any existing wireframe
-                if (this.targetWireframe) {
-                    this.wireframeScene.remove(this.targetWireframe);
-                    this.targetWireframe.geometry.dispose();
-                    this.targetWireframe.material.dispose();
-                    this.targetWireframe = null;
-                }
-            }
-            
-            this.solarSystemManager.setCurrentSector(currentSector);
-            // Generate new star system for the sector
-            this.solarSystemManager.generateStarSystem(currentSector);
-            
-            // Update target list after sector change if target computer is enabled
-            if (this.targetComputerEnabled) {
-                setTimeout(() => {
-                    this.updateTargetList();
-                    // Only auto-select if no manual selection exists
-                    if (!this.isManualSelection && !this.isManualNavigationSelection) {
-debug('TARGETING', `🎯 Sector change: Auto-selecting nearest target (no manual selection)`);
-                        this.cycleTarget(); // Auto-select nearest target
-                    } else {
-debug('UTILITY', `🎯 Sector change: Preserving existing manual navigation selection`);
-                    }
-                }, 100); // Small delay to ensure new system is fully generated
-            }
-        }
+        this.targetSectorManager.updateCurrentSector();
     }
 
     /**
-     * Calculate current sector - placeholder implementation
+     * Calculate current sector based on position
+     * Delegates to TargetSectorManager
+     * @returns {string} Current sector identifier
      */
     calculateCurrentSector() {
-        // This would need actual implementation based on camera position
-        // Placeholder for now
-        return 'A0';
+        return this.targetSectorManager.calculateCurrentSector();
     }
 
     /**
