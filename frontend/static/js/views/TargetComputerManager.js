@@ -13,6 +13,7 @@ import { SubSystemPanelManager } from '../ui/SubSystemPanelManager.js';
 import { WireframeRenderer } from '../ui/WireframeRenderer.js';
 import { TargetingFeedbackManager } from '../ui/TargetingFeedbackManager.js';
 import { TargetOutlineManager } from '../ui/TargetOutlineManager.js';
+import { HUDStatusManager } from '../ui/HUDStatusManager.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -141,6 +142,9 @@ export class TargetComputerManager {
 
         // Initialize TargetOutlineManager
         this.targetOutlineManager = new TargetOutlineManager(this);
+
+        // Initialize HUDStatusManager
+        this.hudStatusManager = new HUDStatusManager(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -486,69 +490,18 @@ export class TargetComputerManager {
 
     /**
      * Add scan line effects to the target HUD that sync with comm HUD
+     * Delegates to HUDStatusManager
      */
     addTargetScanLineEffects() {
-        // Add CSS styles for scan line effects
-        this.addTargetScanLineStyles();
-        
-        // Create static scan line overlay (repeating lines)
-        const scanLineOverlay = document.createElement('div');
-        scanLineOverlay.className = 'target-scan-lines';
-        scanLineOverlay.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 200px;
-            height: 150px;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 65, 0.03) 2px,
-                rgba(0, 255, 65, 0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 1;
-        `;
-        
-        // Create animated scan line with delay to sync with comm HUD
-        this.animatedScanLine = document.createElement('div');
-        this.animatedScanLine.className = 'target-scan-line';
-        this.animatedScanLine.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 200px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00ff41, transparent);
-            animation: targetScanLine 2s linear infinite;
-            animation-delay: 0.5s;
-            opacity: 0.6;
-            pointer-events: none;
-            z-index: 2;
-        `;
-        
-        this.targetHUD.appendChild(scanLineOverlay);
-        this.targetHUD.appendChild(this.animatedScanLine);
+        this.hudStatusManager.addTargetScanLineEffects();
     }
-    
+
     /**
      * Add CSS styles for target scan line animations
+     * Delegates to HUDStatusManager
      */
     addTargetScanLineStyles() {
-        if (document.getElementById('target-scan-line-styles')) return;
-
-        const style = document.createElement('style');
-        style.id = 'target-scan-line-styles';
-        style.textContent = `
-            @keyframes targetScanLine {
-                0% { transform: translateY(0); opacity: 0; }
-                50% { opacity: 0.6; }
-                100% { transform: translateY(150px); opacity: 0; }
-            }
-        `;
-
-        document.head.appendChild(style);
+        this.hudStatusManager.addTargetScanLineStyles();
     }
 
     /**
@@ -3882,72 +3835,12 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
     
     /**
      * Update status icons with diplomacy color and info
+     * Delegates to HUDStatusManager
      */
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info, isObjectDiscovered) {
-        // New service availability logic
-        if (this.serviceIcons) {
-            const isEnemy = (info?.diplomacy || '').toLowerCase() === 'enemy';
-            const isStar = info?.type === 'star' || (this.getStarSystem && this.getStarSystem() && info?.name === this.getStarSystem().star_name);
-            const isPlanet = info?.type === 'planet';
-            const isWaypoint = this.currentTarget?.isWaypoint || this.currentTarget?.isVirtual || info?.type === 'waypoint';
-            const canUse = !isEnemy && isObjectDiscovered && !isWaypoint; // Exclude waypoints from showing services
-
-            const availability = isStar ? {
-                repairRefuel: false,
-                shipRefit: false,
-                tradeExchange: false,
-                missionBoard: false
-            } : {
-                repairRefuel: canUse,
-                shipRefit: canUse,
-                tradeExchange: canUse && isPlanet,
-                missionBoard: canUse
-            };
-
-            Object.entries(this.serviceIcons).forEach(([key, icon]) => {
-                const visible = !!availability[key];
-                icon.style.display = visible ? 'flex' : 'none';
-                icon.style.borderColor = diplomacyColor;
-                icon.style.color = diplomacyColor;
-                icon.style.textShadow = `0 0 4px ${diplomacyColor}`;
-                icon.style.boxShadow = `0 0 4px ${diplomacyColor}`;
-                icon.title = icon.title; // keep tooltip text
-            });
-
-            const anyVisible = !isStar && Object.entries(this.serviceIcons).some(([_, icon]) => icon.style.display !== 'none');
-            this.statusIconsContainer.style.display = anyVisible ? 'flex' : 'none';
-        }
-
-        // Update reticle colors
-        const corners = this.getTargetReticleCorners();
-        Array.from(corners).forEach(corner => {
-            corner.style.borderColor = diplomacyColor;
-            corner.style.boxShadow = `0 0 2px ${diplomacyColor}`;
-        });
-
-        // Update target name and distance display colors
-        if (this.targetNameDisplay) {
-            this.targetNameDisplay.style.color = diplomacyColor;
-            this.targetNameDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
-        }
-        if (this.targetDistanceDisplay) {
-            this.targetDistanceDisplay.style.color = diplomacyColor;
-            this.targetDistanceDisplay.style.textShadow = `0 0 4px ${diplomacyColor}`;
-        }
-
-        // Update HUD and wireframe container colors to match diplomacy
-        if (this.targetHUD) {
-            this.targetHUD.style.borderColor = diplomacyColor;
-            this.targetHUD.style.color = diplomacyColor;
-        }
-        if (this.wireframeContainer) {
-            this.wireframeContainer.style.borderColor = diplomacyColor;
-        }
-
-        // Update arrow colors to match diplomacy
-        this.updateArrowColors(diplomacyColor);
+        this.hudStatusManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info, isObjectDiscovered);
     }
-    
+
     /**
      * Update arrow colors to match diplomacy
      * Delegates to DirectionArrowRenderer
@@ -3955,35 +3848,21 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
     updateArrowColors(diplomacyColor) {
         this.directionArrowRenderer.updateArrowColors(diplomacyColor);
     }
-    
+
     /**
      * Update action buttons based on target type
+     * Delegates to HUDStatusManager
      */
     updateActionButtons(currentTargetData, info) {
-        // Dock button removed - docking is now handled by the DockingModal
-        // which shows when conditions are met (distance, speed, etc.)
-        
-        // Clear existing buttons since we no longer show dock button
-        this.clearActionButtons();
-        
-        // Reset button state on StarfieldManager if it exists
-        if (this.viewManager?.starfieldManager) {
-            this.viewManager.starfieldManager.currentButtonState = {
-                hasDockButton: false,
-                isDocked: this.viewManager.starfieldManager.isDocked || false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-        }
+        this.hudStatusManager.updateActionButtons(currentTargetData, info);
     }
 
     /**
      * Clear action buttons container
+     * Delegates to HUDStatusManager
      */
     clearActionButtons() {
-        if (this.actionButtonsContainer) {
-            this.actionButtonsContainer.innerHTML = '';
-        }
+        this.hudStatusManager.clearActionButtons();
     }
     
     /**
@@ -4009,6 +3888,11 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
         // Clean up TargetOutlineManager
         if (this.targetOutlineManager) {
             this.targetOutlineManager.dispose();
+        }
+
+        // Clean up HUDStatusManager
+        if (this.hudStatusManager) {
+            this.hudStatusManager.dispose();
         }
 
         // Clean up wireframe renderer
