@@ -43,24 +43,24 @@ export class AchievementSystem {
         // Set global reference
         window.achievementSystem = this;
         
-        // Add global debug functions
+        // Add global debug functions (using P1 channel for always-visible output)
         window.checkAchievements = () => {
-            console.log('🏆 Achievement System Status:');
-            console.log(`Total achievements: ${this.achievements.size}`);
-            console.log(`Unlocked achievements: ${this.unlockedAchievements.size}`);
-            console.log('Achievement progress:');
+            debug('P1', '🏆 Achievement System Status:');
+            debug('P1', `Total achievements: ${this.achievements.size}`);
+            debug('P1', `Unlocked achievements: ${this.unlockedAchievements.size}`);
+            debug('P1', 'Achievement progress:');
             this.achievements.forEach((achievement, id) => {
                 const progress = this.playerProgress.get(id);
-                console.log(`  ${achievement.name}: ${progress.current}/${achievement.requirements.target} ${progress.unlocked ? '✅' : '⏳'}`);
+                debug('P1', `  ${achievement.name}: ${progress.current}/${achievement.requirements.target} ${progress.unlocked ? '✅' : '⏳'}`);
             });
             return this.getStatistics();
         };
-        
+
         window.testAchievement = (discoveryCount) => {
-            console.log(`🧪 Testing achievement system with ${discoveryCount} discoveries`);
+            debug('P1', `🧪 Testing achievement system with ${discoveryCount} discoveries`);
             this.updateDiscoveryProgress(discoveryCount);
         };
-        
+
         window.testNotification = () => {
             debug('P1', '🧪 Testing achievement notification system');
             if (window.starfieldManager && window.starfieldManager.showHUDEphemeral) {
@@ -72,16 +72,16 @@ export class AchievementSystem {
                 );
             } else {
                 debug('P1', '❌ StarfieldManager or showHUDEphemeral not available');
-                console.log('StarfieldManager available:', !!window.starfieldManager);
-                console.log('showHUDEphemeral available:', !!(window.starfieldManager && window.starfieldManager.showHUDEphemeral));
+                debug('P1', 'StarfieldManager available:', !!window.starfieldManager);
+                debug('P1', 'showHUDEphemeral available:', !!(window.starfieldManager && window.starfieldManager.showHUDEphemeral));
             }
         };
-        
+
         // Debug helper to fix corrupted achievements
         window.fixAchievements = () => {
-            console.log('🔧 Manually validating and fixing achievement data...');
+            debug('P1', '🔧 Manually validating and fixing achievement data...');
             this.validateAchievementData();
-            console.log('✅ Achievement validation complete');
+            debug('P1', '✅ Achievement validation complete');
             return this.getStatistics();
         };
         

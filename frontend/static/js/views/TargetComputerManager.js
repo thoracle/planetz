@@ -1,5 +1,12 @@
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
+import {
+    TARGETING_TIMING,
+    TARGETING_RANGE,
+    WIREFRAME_COLORS,
+    WIREFRAME_GEOMETRY,
+    SUBSYSTEM_GEOMETRY,
+} from '../constants/TargetingConstants.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -42,7 +49,7 @@ export class TargetComputerManager {
         // Persistent target cache for better cycling experience
         this.knownTargets = new Map(); // Cache of all known targets by name
         this.lastFullScanTime = 0;
-        this.fullScanInterval = 30000; // 30 seconds between full scans
+        this.fullScanInterval = TARGETING_TIMING.FULL_SCAN_INTERVAL_MS;
         
         // Waypoint interruption tracking
         this.interruptedWaypoint = null;
@@ -80,7 +87,7 @@ export class TargetComputerManager {
         
         // Sorting state
         this.lastSortTime = 0;
-        this.sortInterval = 2000; // Sort every 2 seconds
+        this.sortInterval = TARGETING_TIMING.SORT_INTERVAL_MS;
         
         // Arrow state tracking
         this.lastArrowState = null;
@@ -104,10 +111,13 @@ export class TargetComputerManager {
         
         // Wireframe animation
         this.wireframeAnimationId = null;
-        
+
+        // AbortController for centralized event listener cleanup
+        this._abortController = new AbortController();
+
         // Warning throttling
         this.lastTargetNotFoundWarning = 0;
-        
+
         // console.log('🎯 TargetComputerManager initialized');
     }
 
@@ -209,16 +219,16 @@ export class TargetComputerManager {
             cursor: pointer;
         `;
         
-        // Add click handler for left/right half sub-targeting
+        // Add click handler for left/right half sub-targeting (with abort signal for cleanup)
         this.subSystemPanel.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            
+
             // Use the panel's bounding rect for consistent click detection regardless of child elements
             const rect = this.subSystemPanel.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
             const halfWidth = rect.width / 2;
-            
+
             if (clickX < halfWidth) {
                 // Left half - same as Z (previous sub-target)
                 this.cycleToPreviousSubTarget();
@@ -226,7 +236,7 @@ export class TargetComputerManager {
                 // Right half - same as X (next sub-target)
                 this.cycleToNextSubTarget();
             }
-        });
+        }, { signal: this._abortController.signal });
 
         // Create sub-system wireframe container (10% bigger than previous)
         this.subSystemWireframeContainer = document.createElement('div');
@@ -248,7 +258,7 @@ export class TargetComputerManager {
         // Create scene and camera for sub-system wireframe
         this.subSystemWireframeScene = new this.THREE.Scene();
         this.subSystemWireframeCamera = new this.THREE.PerspectiveCamera(45, 149/75, 0.1, 1000);
-        this.subSystemWireframeCamera.position.z = 4; // Closer for smaller viewport
+        this.subSystemWireframeCamera.position.z = WIREFRAME_GEOMETRY.SUBSYSTEM_CAMERA_Z;
         
         // Add lights to sub-system wireframe scene
         const subSystemWireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
@@ -309,7 +319,7 @@ export class TargetComputerManager {
         // Create scene and camera for wireframe
         this.wireframeScene = new this.THREE.Scene();
         this.wireframeCamera = new this.THREE.PerspectiveCamera(45, 200/150, 0.1, 1000);
-        this.wireframeCamera.position.z = 5;
+        this.wireframeCamera.position.z = WIREFRAME_GEOMETRY.MAIN_CAMERA_Z;
         
         // Add lights to wireframe scene
         const wireframeLight = new this.THREE.DirectionalLight(0x00ff41, 1);
@@ -351,8 +361,8 @@ export class TargetComputerManager {
         document.head.appendChild(targetInfoStyle);
         this.targetInfoDisplay.className = 'target-info-display';
         
-        // Add click handler for left/right half targeting
-        
+        // Add click handler for left/right half targeting (with abort signal for cleanup)
+
         // Forward any clicks on the main container to the targetInfoDisplay for seamless interaction
         this.targetHUD.addEventListener('click', (event) => {
             // Always forward clicks to targetInfoDisplay for consistent behavior
@@ -364,16 +374,16 @@ export class TargetComputerManager {
                 clientY: event.clientY
             });
             this.targetInfoDisplay.dispatchEvent(newEvent);
-        });
-        
+        }, { signal: this._abortController.signal });
+
         this.targetInfoDisplay.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            
+
             const rect = this.targetInfoDisplay.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
             const halfWidth = rect.width / 2;
-            
+
             if (clickX < halfWidth) {
                 // Left half - same as SHIFT-TAB (previous target)
                 this.cycleToPreviousTarget();
@@ -381,7 +391,7 @@ export class TargetComputerManager {
                 // Right half - same as TAB (next target)
                 this.cycleToNextTarget();
             }
-        });
+        }, { signal: this._abortController.signal });
         
 
         // Create status icons container
@@ -400,7 +410,7 @@ export class TargetComputerManager {
         `;
         this.statusIconsContainer.className = 'status-icons-container';
 
-        // Create icons with tooltips - match original
+        // Create icons with tooltips - match original (with abort signal for cleanup)
         const createIcon = (symbol, tooltip) => {
             const icon = document.createElement('div');
             icon.style.cssText = `
@@ -421,20 +431,20 @@ export class TargetComputerManager {
             `;
             icon.innerHTML = symbol;
             icon.title = tooltip;
-            
-            // Add hover effects
+
+            // Add hover effects (with abort signal for cleanup)
             icon.addEventListener('mouseenter', () => {
                 icon.style.opacity = '1';
                 icon.style.transform = 'scale(1.1)';
                 // Box shadow will be updated by updateStatusIcons with diplomacy color
-            });
-            
+            }, { signal: this._abortController.signal });
+
             icon.addEventListener('mouseleave', () => {
                 icon.style.opacity = '0.8';
                 icon.style.transform = 'scale(1)';
                 // Box shadow will be updated by updateStatusIcons with diplomacy color
-            });
-            
+            }, { signal: this._abortController.signal });
+
             return icon;
         };
 
@@ -1742,7 +1752,7 @@ export class TargetComputerManager {
     enhanceTargetListWithCache(currentTargets) {
         const enhancedTargets = [...currentTargets];
         const currentTargetNames = new Set(currentTargets.map(t => t.name));
-        const maxCyclingRange = 500; // 500km for cycling purposes
+        const maxCyclingRange = TARGETING_RANGE.MAX_CYCLING_RANGE;
         
         // CRITICAL FIX: Get current sector to prevent cross-sector contamination
         const currentSector = this.solarSystemManager?.currentSector || 'A0';
@@ -2254,10 +2264,10 @@ export class TargetComputerManager {
                 targetData.distance = this.calculateDistance(this.camera.position, targetData.position);
             } else {
                 // Last resort: set to a large distance so these targets sort to the end
-                targetData.distance = 999999;
+                targetData.distance = TARGETING_RANGE.INFINITY_DISTANCE;
                 debug('TARGETING', `⚠️ Target ${targetData.name} has no position data - setting distance to ${targetData.distance}km`);
             }
-            
+
             // Clear outOfRange flag if target is back within normal range
             const ship = this.viewManager?.getShip();
             const targetComputer = ship?.getSystem('target_computer');
@@ -2292,7 +2302,7 @@ export class TargetComputerManager {
                 targetData.distance = this.calculateDistance(this.camera.position, targetData.position);
             } else {
                 // Last resort: set to a large distance so these targets sort to the end
-                targetData.distance = 999999;
+                targetData.distance = TARGETING_RANGE.INFINITY_DISTANCE;
                 debug('TARGETING', `⚠️ Target ${targetData.name} has no position data - setting distance to ${targetData.distance}km`);
             }
 
@@ -5387,14 +5397,59 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
      * Clean up resources
      */
     dispose() {
+        debug('TARGETING', '⚡ TargetComputerManager disposal started...');
+
+        // Abort all event listeners registered with AbortController
+        if (this._abortController) {
+            this._abortController.abort();
+            this._abortController = null;
+        }
+
+        // Stop wireframe animation
+        this.stopWireframeAnimation();
+
+        // Clear all timers
+        if (this.noTargetsInterval) {
+            clearInterval(this.noTargetsInterval);
+            this.noTargetsInterval = null;
+        }
+        if (this.noTargetsTimeout) {
+            clearTimeout(this.noTargetsTimeout);
+            this.noTargetsTimeout = null;
+        }
+        if (this.rangeMonitoringInterval) {
+            clearInterval(this.rangeMonitoringInterval);
+            this.rangeMonitoringInterval = null;
+        }
+
+        // Clean up audio elements
+        if (this.audioElements) {
+            this.audioElements.forEach((audio, key) => {
+                if (audio) {
+                    audio.pause();
+                    audio.src = '';
+                }
+            });
+            this.audioElements.clear();
+        }
+
         // Clean up wireframe renderer
         if (this.wireframeRenderer) {
             this.wireframeRenderer.dispose();
+            this.wireframeRenderer = null;
         }
-        
+
+        // Clean up sub-system wireframe renderer
+        if (this.subSystemWireframeRenderer) {
+            this.subSystemWireframeRenderer.dispose();
+            this.subSystemWireframeRenderer = null;
+        }
+
         // Clean up target wireframe
         if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
+            if (this.wireframeScene) {
+                this.wireframeScene.remove(this.targetWireframe);
+            }
             if (this.targetWireframe.geometry) {
                 this.targetWireframe.geometry.dispose();
             }
@@ -5407,22 +5462,87 @@ debug('TARGETING', `🎯 Star Charts: Target set by name to ${target.name} at in
             }
             this.targetWireframe = null;
         }
-        
+
+        // Clean up wireframe scene children
+        if (this.wireframeScene) {
+            while (this.wireframeScene.children.length > 0) {
+                const child = this.wireframeScene.children[0];
+                this.wireframeScene.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+            this.wireframeScene = null;
+        }
+
+        // Clean up sub-system wireframe scene
+        if (this.subSystemWireframeScene) {
+            while (this.subSystemWireframeScene.children.length > 0) {
+                const child = this.subSystemWireframeScene.children[0];
+                this.subSystemWireframeScene.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+            this.subSystemWireframeScene = null;
+        }
+
         // Clean up UI elements
-        if (this.targetHUD) document.body.removeChild(this.targetHUD);
-        if (this.targetReticle) document.body.removeChild(this.targetReticle);
-        
+        if (this.targetHUD && this.targetHUD.parentNode) {
+            this.targetHUD.parentNode.removeChild(this.targetHUD);
+            this.targetHUD = null;
+        }
+        if (this.targetReticle && this.targetReticle.parentNode) {
+            this.targetReticle.parentNode.removeChild(this.targetReticle);
+            this.targetReticle = null;
+        }
+        if (this.subSystemPanel && this.subSystemPanel.parentNode) {
+            this.subSystemPanel.parentNode.removeChild(this.subSystemPanel);
+            this.subSystemPanel = null;
+        }
+
         // Clean up direction arrows
         Object.values(this.directionArrows).forEach(arrow => {
-            if (arrow.parentNode) {
-                document.body.removeChild(arrow);
+            if (arrow && arrow.parentNode) {
+                arrow.parentNode.removeChild(arrow);
             }
         });
-        
+        this.directionArrows = {};
+
         // Clean up target outline
         this.clearTargetOutline();
-        
-        // console.log('🎯 TargetComputerManager disposed');
+
+        // Clear known targets cache
+        if (this.knownTargets) {
+            this.knownTargets.clear();
+        }
+
+        // Clear target arrays
+        this.targetObjects = [];
+        this.validTargets = [];
+        this.subTargetIndicators = [];
+        this.targetableAreas = [];
+
+        // Null out references
+        this.currentTarget = null;
+        this.previousTarget = null;
+        this.targetedObject = null;
+        this.scene = null;
+        this.camera = null;
+        this.viewManager = null;
+        this.solarSystemManager = null;
+
+        debug('TARGETING', '✅ TargetComputerManager disposal complete');
     }
 
     /**

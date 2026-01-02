@@ -40,6 +40,11 @@ import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
 import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 // SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
+// Constants
+import { SHIP_MOVEMENT, DOCKING } from '../constants/ShipConstants.js';
+import { TARGETING_TIMING } from '../constants/TargetingConstants.js';
+import { STARFIELD } from '../constants/GameConstants.js';
+
 // VERSION TRACKING
 const STARFIELD_VERSION = '7.8.0-targeting-fixes';
 const STARFIELD_BUILD_DATE = '2025-09-30T20:30:00Z';
@@ -74,32 +79,32 @@ export class StarfieldManager {
         
         this.targetSpeed = 0;
         this.currentSpeed = 0;
-        this.maxSpeed = 9;
-        this.acceleration = 0.02; // Much slower acceleration
-        this.deceleration = 0.03; // Slightly faster deceleration than acceleration
+        this.maxSpeed = SHIP_MOVEMENT.MAX_SPEED;
+        this.acceleration = SHIP_MOVEMENT.ACCELERATION;
+        this.deceleration = SHIP_MOVEMENT.DECELERATION;
         this.decelerating = false; // New flag for tracking deceleration state
         this.velocity = new this.THREE.Vector3();
-        this.rotationSpeed = 2.0; // Radians per second
+        this.rotationSpeed = SHIP_MOVEMENT.ROTATION_SPEED;
         this.cameraDirection = new this.THREE.Vector3();
         this.cameraRight = new this.THREE.Vector3();
         this.cameraUp = new this.THREE.Vector3();
-        this.mouseSensitivity = 0.002;
+        this.mouseSensitivity = SHIP_MOVEMENT.MOUSE_SENSITIVITY;
         this.mouseRotation = new this.THREE.Vector2();
         this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
         this.view = 'FORE'; // Initialize with FORE view
-        
+
         // Ship heading tracking (independent of camera view for radar consistency)
         this.shipHeading = undefined; // Will be initialized from camera rotation when first needed
         this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
-        
+
         // Docking state
         this.isDocked = false;
         this.dockedTo = null;
-        this.orbitRadius = 1.5; // Changed from 5km to 1.5km orbit radius
+        this.orbitRadius = DOCKING.ORBIT_RADIUS;
         this.orbitAngle = 0;
-        this.orbitSpeed = 0.001; // Radians per frame
-        this.dockingRange = 1.5; // Changed from 20km to 1.5km docking range
+        this.orbitSpeed = DOCKING.ORBIT_SPEED;
+        this.dockingRange = DOCKING.DOCKING_RANGE;
         
         // Target computer state
         this.targetComputerEnabled = false;
@@ -114,22 +119,22 @@ export class StarfieldManager {
         
         // Add sorting state
         this.lastSortTime = 0;
-        this.sortInterval = 2000; // Sort every 2 seconds
-        
+        this.sortInterval = TARGETING_TIMING.SORT_INTERVAL_MS;
+
         // Add arrow state tracking
         this.lastArrowState = null;
-        
+
         // Add button state logging throttling
         this.lastButtonStateLog = null;
-        
+
         // Smooth rotation state
         this.rotationVelocity = { x: 0, y: 0 };
-        this.rotationAcceleration = 0.0008; // How quickly rotation speeds up
-        this.rotationDeceleration = 0.0012; // How quickly rotation slows down
-        this.maxRotationSpeed = 0.025; // Maximum rotation speed
-        
+        this.rotationAcceleration = SHIP_MOVEMENT.ROTATION_ACCELERATION;
+        this.rotationDeceleration = SHIP_MOVEMENT.ROTATION_DECELERATION;
+        this.maxRotationSpeed = SHIP_MOVEMENT.MAX_ROTATION_SPEED;
+
         // Create starfield renderer with quintuple density
-        this.starCount = 40000;  // Increased from 8000 to 40000
+        this.starCount = STARFIELD.STAR_COUNT;
         this.starfieldRenderer = new StarfieldRenderer(this.scene, this.THREE, this.starCount);
         this.starfield = this.starfieldRenderer.initialize();
         
@@ -155,7 +160,10 @@ export class StarfieldManager {
         );
         
         // Help screen controller will be initialized later in constructor
-        
+
+        // AbortController for centralized event listener cleanup
+        this._abortController = new AbortController();
+
         // Expose target computer manager globally for waypoints integration
         window.targetComputerManager = this.targetComputerManager;
         
@@ -573,20 +581,20 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         `;
         this.shipSystemsHUD.appendChild(this.damageControlCloseButton);
 
-        // Add close button hover effect and click handler
+        // Add close button hover effect and click handler (with abort signal for cleanup)
         this.damageControlCloseButton.addEventListener('mouseenter', () => {
             this.damageControlCloseButton.style.background = '#00ff41';
             this.damageControlCloseButton.style.color = '#000';
-        });
-        
+        }, { signal: this._abortController.signal });
+
         this.damageControlCloseButton.addEventListener('mouseleave', () => {
             this.damageControlCloseButton.style.background = 'rgba(0, 20, 0, 0.5)';
             this.damageControlCloseButton.style.color = '#00ff41';
-        });
-        
+        }, { signal: this._abortController.signal });
+
         this.damageControlCloseButton.addEventListener('click', () => {
             this.toggleDamageControl();
-        });
+        }, { signal: this._abortController.signal });
 
         // Add custom scrollbar styles for webkit browsers
         const style = document.createElement('style');
@@ -2460,13 +2468,13 @@ debug('TARGETING', 'Spawning target dummy ships: 1 at 60km, 2 within 25km...');
                     this.toggleDamageControl();
                 }
             }
-        });
+        }, { signal: this._abortController.signal });
 
         document.addEventListener('keyup', (event) => {
             if (this.keys.hasOwnProperty(event.key)) {
                 this.keys[event.key] = false;
             }
-        });
+        }, { signal: this._abortController.signal });
     }
 
     toggleTargetComputer() {
@@ -2658,7 +2666,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         // Only handle clicks for weapons, no mouse look
         document.addEventListener('click', (event) => {
             // TODO: Implement weapons fire
-        });
+        }, { signal: this._abortController.signal });
     }
 
     updateSmoothRotation(deltaTime) {
@@ -3263,14 +3271,74 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
     }
 
     dispose() {
-debug('UTILITY', '⚡ StarfieldManager disposal started...');
-        
+        debug('UTILITY', '⚡ StarfieldManager disposal started...');
+
+        // Abort all event listeners registered with AbortController
+        if (this._abortController) {
+            this._abortController.abort();
+            this._abortController = null;
+        }
+
+        // Clean up TargetComputerManager
+        if (this.targetComputerManager) {
+            this.targetComputerManager.dispose();
+            this.targetComputerManager = null;
+        }
+
+        // Clean up EnemyAIManager
+        if (this.enemyAIManager) {
+            if (typeof this.enemyAIManager.dispose === 'function') {
+                this.enemyAIManager.dispose();
+            }
+            this.enemyAIManager = null;
+        }
+
+        // Clean up StarChartsManager
+        if (this.starChartsManager) {
+            if (typeof this.starChartsManager.dispose === 'function') {
+                this.starChartsManager.dispose();
+            }
+            this.starChartsManager = null;
+        }
+
+        // Clean up ProximityDetector3D (radar)
+        if (this.proximityDetector3D) {
+            if (typeof this.proximityDetector3D.dispose === 'function') {
+                this.proximityDetector3D.dispose();
+            }
+            this.proximityDetector3D = null;
+        }
+
+        // Clean up WeaponHUD
+        if (this.weaponHUD) {
+            if (typeof this.weaponHUD.dispose === 'function') {
+                this.weaponHUD.dispose();
+            }
+            this.weaponHUD = null;
+        }
+
+        // Clean up HelpInterface
+        if (this.helpInterface) {
+            if (typeof this.helpInterface.dispose === 'function') {
+                this.helpInterface.dispose();
+            }
+            this.helpInterface = null;
+        }
+
+        // Clean up MissionStatusHUD
+        if (this.missionStatusHUD) {
+            if (typeof this.missionStatusHUD.dispose === 'function') {
+                this.missionStatusHUD.dispose();
+            }
+            this.missionStatusHUD = null;
+        }
+
         // Clean up docking modal
         if (this.dockingModal) {
             this.dockingModal.destroy();
             this.dockingModal = null;
         }
-        
+
         // Clean up damage control HUD
         if (this.damageControlHUD) {
             this.damageControlHUD.dispose();
@@ -3284,7 +3352,7 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
             clearInterval(this.repairUpdateInterval);
             this.repairUpdateInterval = null;
         }
-        
+
         // Clean up WeaponHUD retry interval
         if (this.weaponHUDRetryInterval) {
             clearInterval(this.weaponHUDRetryInterval);
@@ -3297,15 +3365,19 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
         // Clean up starfield renderer
         if (this.starfieldRenderer) {
             this.starfieldRenderer.dispose();
+            this.starfieldRenderer = null;
         }
 
         // Clean up wireframe and renderer
         if (this.wireframeRenderer) {
             this.wireframeRenderer.dispose();
+            this.wireframeRenderer = null;
         }
-        
+
         if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
+            if (this.wireframeScene) {
+                this.wireframeScene.remove(this.targetWireframe);
+            }
             if (this.targetWireframe.geometry) {
                 this.targetWireframe.geometry.dispose();
             }
@@ -3316,13 +3388,29 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
                     this.targetWireframe.material.dispose();
                 }
             }
+            this.targetWireframe = null;
         }
 
         // Clean up audio manager
         if (this.audioManager) {
             this.audioManager.dispose();
+            this.audioManager = null;
         }
-        
+
+        // Clean up UI elements
+        if (this.shipSystemsHUD && this.shipSystemsHUD.parentNode) {
+            this.shipSystemsHUD.parentNode.removeChild(this.shipSystemsHUD);
+            this.shipSystemsHUD = null;
+        }
+        if (this.speedIndicator && this.speedIndicator.parentNode) {
+            this.speedIndicator.parentNode.removeChild(this.speedIndicator);
+            this.speedIndicator = null;
+        }
+        if (this.intelHUD && this.intelHUD.parentNode) {
+            this.intelHUD.parentNode.removeChild(this.intelHUD);
+            this.intelHUD = null;
+        }
+
         // Remove global references
         if (window.starfieldManager === this) {
             delete window.starfieldManager;
@@ -3330,10 +3418,16 @@ debug('UTILITY', '⚡ StarfieldManager disposal started...');
         if (window.starfieldAudioManager === this.audioManager) {
             delete window.starfieldAudioManager;
         }
-        
-        this.ship = null;
+        if (window.targetComputerManager === this.targetComputerManager) {
+            delete window.targetComputerManager;
+        }
 
-        this.updateShipSystemsDisplay();
+        this.ship = null;
+        this.scene = null;
+        this.camera = null;
+        this.viewManager = null;
+
+        debug('UTILITY', '✅ StarfieldManager disposal complete');
     }
 
     // Star sprite creation delegated to StarfieldRenderer
