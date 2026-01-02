@@ -9,6 +9,7 @@ import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import DiplomacyHUD from '../ui/DiplomacyHUD.js';
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
+import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -93,14 +94,39 @@ export class StarfieldManager {
         this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
 
-        // Docking state
-        this.isDocked = false;
-        this.dockedTo = null;
-        this.orbitRadius = DOCKING.ORBIT_RADIUS;
-        this.orbitAngle = 0;
-        this.orbitSpeed = DOCKING.ORBIT_SPEED;
-        this.dockingRange = DOCKING.DOCKING_RANGE;
-        
+        // Initialize Docking Operations Manager
+        this.dockingOperationsManager = new DockingOperationsManager(this);
+
+        // Expose docking state for backwards compatibility
+        Object.defineProperty(this, 'isDocked', {
+            get: () => this.dockingOperationsManager.isDocked,
+            set: (val) => { this.dockingOperationsManager.isDocked = val; }
+        });
+        Object.defineProperty(this, 'dockedTo', {
+            get: () => this.dockingOperationsManager.dockedTo,
+            set: (val) => { this.dockingOperationsManager.dockedTo = val; }
+        });
+        Object.defineProperty(this, 'orbitRadius', {
+            get: () => this.dockingOperationsManager.orbitRadius,
+            set: (val) => { this.dockingOperationsManager.orbitRadius = val; }
+        });
+        Object.defineProperty(this, 'orbitAngle', {
+            get: () => this.dockingOperationsManager.orbitAngle,
+            set: (val) => { this.dockingOperationsManager.orbitAngle = val; }
+        });
+        Object.defineProperty(this, 'orbitSpeed', {
+            get: () => this.dockingOperationsManager.orbitSpeed,
+            set: (val) => { this.dockingOperationsManager.orbitSpeed = val; }
+        });
+        Object.defineProperty(this, 'dockingRange', {
+            get: () => this.dockingOperationsManager.dockingRange,
+            set: (val) => { this.dockingOperationsManager.dockingRange = val; }
+        });
+        Object.defineProperty(this, 'undockCooldown', {
+            get: () => this.dockingOperationsManager.undockCooldown,
+            set: (val) => { this.dockingOperationsManager.undockCooldown = val; }
+        });
+
         // Target computer state
         this.targetComputerEnabled = false;
         this.currentTarget = null;
@@ -108,9 +134,6 @@ export class StarfieldManager {
         this.targetObjects = [];
         this.targetWireframe = null;
         this.targetReticle = null;
-        
-        // Undocking cooldown to prevent immediate re-targeting
-        this.undockCooldown = null;
         
         // Add sorting state
         this.lastSortTime = 0;
@@ -3668,318 +3691,33 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         return false;
     }
 
-    // Add new docking methods
+    // ========================================
+    // Docking Operations Methods
+    // (Implementation moved to DockingOperationsManager)
+    // ========================================
+
     canDock(target) {
-        // Use the comprehensive DockingSystemManager for validation
-        const ship = this.viewManager?.getShip();
-        const validation = this.dockingSystemManager.validateDocking(ship, target, this);
-        
-        // Only log validation results when actively attempting to dock (not during continuous checks)
-        // This prevents console spam during normal operation
-        
-        return validation.canDock;
+        return this.dockingOperationsManager.canDock(target);
     }
-    
-    // Method for getting docking validation with logging (used when player actively tries to dock)
+
     canDockWithLogging(target) {
-        const ship = this.viewManager?.getShip();
-        const validation = this.dockingSystemManager.validateDocking(ship, target, this);
-        
-        // Log detailed validation results only when explicitly requested
-        if (!validation.canDock) {
-            debug('P1', `Cannot dock: ${validation.reasons.join(', ')}`);
-        }
-        
-        if (validation.warnings.length > 0) {
-        }
-        
-        return validation.canDock;
+        return this.dockingOperationsManager.canDockWithLogging(target);
     }
 
-    /**
-     * Initialize physics-based docking when physics system is ready
-     */
     initializeSimpleDocking() {
-        if (window.spatialManagerReady && window.collisionManagerReady && !this.simpleDockingManager) {
-            this.simpleDockingManager = new SimpleDockingManager(
-                this, 
-                window.spatialManager, 
-                window.collisionManager
-            );
-debug('UTILITY', 'Simple docking system initialized');
-            
-            // Start monitoring for docking opportunities
-            this.simpleDockingManager.startDockingMonitoring();
-        } else if (!this.simpleDockingManager) {
-            debug('P1', `🚀 Cannot initialize SimpleDockingManager: spatialManagerReady=${window.spatialManagerReady}, collisionManagerReady=${window.collisionManagerReady}`);
-        }
+        this.dockingOperationsManager.initializeSimpleDocking();
     }
 
-    /**
-     * Show docking interface when docked to a station
-     * @param {THREE.Object3D} target - The docked target (station/planet/moon)
-     */
     showDockingInterface(target) {
-        if (this.dockingInterface) {
-            // SINGLE SOURCE OF TRUTH: No synchronization needed since both use the same singleton instance
-            
-debug('TARGETING', 'Showing docking interface for', target.name);
-            this.dockingInterface.show(target);
-        } else {
-            debug('P1', '🚀 DockingInterface not available');
-        }
+        this.dockingOperationsManager.showDockingInterface(target);
     }
 
-    /**
-     * Safely get position from target object (handles different target structures)
-     */
     getTargetPosition(target) {
-        if (!target) return null;
-        
-        if (target.position && typeof target.position.clone === 'function') {
-            // Three.js Vector3 object
-            return target.position;
-        } else if (target.object && target.object.position) {
-            // Target has a nested object with position
-            if (typeof target.object.position.clone === 'function') {
-                // Already a Vector3
-                return target.object.position;
-            } else if (Array.isArray(target.object.position)) {
-                // Position is stored as array [x, y, z]
-                return new this.THREE.Vector3(...target.object.position);
-            } else if (typeof target.object.position === 'object' && 
-                       typeof target.object.position.x === 'number') {
-                // Position is a plain object with x, y, z properties
-                return new this.THREE.Vector3(target.object.position.x, target.object.position.y, target.object.position.z);
-            } else {
-                debug('P1', `🎯 Could not convert nested object position to Vector3: ${target.object.position}`);
-                return null;
-            }
-        } else if (target.position && Array.isArray(target.position)) {
-            // Position is stored as array [x, y, z]
-            if (!this.THREE || !this.THREE.Vector3) {
-                debug('P1', '🎯 THREE.js not available in StarfieldManager');
-                return null;
-            }
-            return new this.THREE.Vector3(...target.position);
-        } else if (target.position && typeof target.position === 'object' &&
-                   typeof target.position.x === 'number') {
-            // Position is a plain object with x, y, z properties
-            if (!this.THREE || !this.THREE.Vector3) {
-                debug('P1', '🎯 THREE.js not available in StarfieldManager');
-                return null;
-            }
-            return new this.THREE.Vector3(target.position.x, target.position.y, target.position.z);
-        }
-
-        debug('P1', `🎯 Could not extract position from target: ${target?.name || 'unknown'}`);
-        return null;
+        return this.dockingOperationsManager.getTargetPosition(target);
     }
 
     dock(target) {
-        // Ensure guard flag exists
-        if (typeof this._inPhysicsDocking !== 'boolean') {
-            this._inPhysicsDocking = false;
-        }
-        // Initialize simple docking if not already done
-        this.initializeSimpleDocking();
-
-        // Use simple docking system for all targets
-        const targetObject = target?.object || target;
-        
-        // DISABLED: This creates duplicate calls when SimpleDockingManager calls dock()
-        // The unified docking system should handle everything
-        // if (this.simpleDockingManager && !this._inPhysicsDocking) {
-        //     // Avoid recursion: if docking path calls back into dock(), skip here
-        //     this._inPhysicsDocking = true;
-        //     const res = this.simpleDockingManager.initiateUnifiedDocking(targetObject);
-        //     this._inPhysicsDocking = false;
-        //     return res;
-        // }
-
-        // Fallback to original distance-based docking (planets/moons)
-        if (!this.canDockWithLogging(target)) {
-            return false;
-        }
-
-        // Get ship instance for docking procedures
-        const ship = this.viewManager?.getShip();
-        if (ship) {
-            // Docking should not cost energy - docks are for refueling!
-            // Energy cost removed to allow docking when low on power
-debug('UTILITY', 'Docking procedures initiated - no energy cost');
-        }
-
-        // Store the current view before docking
-        this.previousView = this.view;
-
-        // Stop engine sounds and reduce speed immediately when docking starts
-        if (this.audioManager && this.audioManager.getEngineState() === 'running') {
-            this.playEngineShutdown();
-debug('UTILITY', '🔇 Engine shutdown called during docking');
-        } else {
-debug('UTILITY', '🔇 Engine state check:', this.audioManager ? this.audioManager.getEngineState() : 'no audioManager');
-        }
-        
-        // Immediately cut speed to 0 when docking initiates
-        this.targetSpeed = 0;
-        this.currentSpeed = 0;
-        this.decelerating = false;
-
-        // Calculate initial position relative to target
-        const targetPosition = this.getTargetPosition(target);
-        if (!targetPosition) {
-            debug('P1', '🚀 Cannot dock - invalid target position');
-            return false;
-        }
-        
-        const relativePos = new this.THREE.Vector3().subVectors(this.camera.position, targetPosition);
-        this.orbitAngle = Math.atan2(relativePos.z, relativePos.x);
-        
-        // Store initial state for transition
-        this.dockingState = {
-            startPos: this.camera.position.clone(),
-            startRot: this.camera.quaternion.clone(),
-            progress: 0,
-            transitioning: true,
-            target: target
-        };
-
-        // Get target info for orbit radius calculation
-        const info = this.solarSystemManager.getCelestialBodyInfo(target);
-        
-        // Calculate orbit radius based on body size
-        this.orbitRadius = this.dockingRange; // Default 1.5 for moons
-        if (info?.type === 'planet') {
-            // For planets, use a fixed 4.0KM orbit
-            this.orbitRadius = 4.0;
-        }
-
-        // Calculate final orbit position
-        const finalOrbitPos = new this.THREE.Vector3(
-            targetPosition.x + Math.cos(this.orbitAngle) * this.orbitRadius,
-            targetPosition.y,
-            targetPosition.z + Math.sin(this.orbitAngle) * this.orbitRadius
-        );
-        this.dockingState.endPos = finalOrbitPos;
-
-        // Calculate final rotation (looking at target)
-        const targetRot = new this.THREE.Quaternion();
-        const lookAtMatrix = new this.THREE.Matrix4();
-        lookAtMatrix.lookAt(finalOrbitPos, target.position, new this.THREE.Vector3(0, 1, 0));
-        targetRot.setFromRotationMatrix(lookAtMatrix);
-        this.dockingState.endRot = targetRot;
-
-        // Set docking state
-        this.isDocked = true;
-        this.dockedTo = target;
-        this.targetSpeed = 0;
-        this.currentSpeed = 0;
-        this.decelerating = false;
-
-        // Hide crosshairs when docked
-        if (this.viewManager) {
-            this.viewManager.frontCrosshair.style.display = 'none';
-            this.viewManager.aftCrosshair.style.display = 'none';
-            
-            // Comprehensively power down all ship systems when docking to save energy
-            this.shutdownAllSystems();
-            
-            // Power down target computer UI (system is already powered down in shutdownAllSystems)
-            if (this.targetComputerEnabled) {
-                this.targetComputerEnabled = false;
-                this.targetComputerManager.hideTargetHUD();
-                this.targetComputerManager.hideTargetReticle();
-                this.targetComputerManager.hideAllDirectionArrows();
-                
-                // Clear wireframe through target computer manager
-                this.targetComputerManager.clearTargetWireframe();
-            }
-            
-            // Close galactic chart if open - navigation systems powered down when docked
-            if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
-                this.viewManager.galacticChart.hide(false);
-
-            }
-            
-            // Close long range scanner if open - scanner systems powered down when docked
-            if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
-                this.viewManager.longRangeScanner.hide(false);
-debug('UTILITY', '🚪 Long Range Scanner dismissed during docking - scanner systems powered down');
-            }
-            
-            // Hide proximity detector if open - radar systems powered down when docked
-            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
-                this.proximityDetector3D.isVisible = false;
-                this.proximityDetector3D.detectorContainer.style.display = 'none';
-debug('UTILITY', '🚪 Proximity Detector dismissed during docking - radar systems powered down');
-            }
-            
-            // Hide subspace radio UI during docking
-            if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
-                this.viewManager.subspaceRadio.hide();
-            }
-            
-            // Hide communication HUD during docking - stations have their own communication systems
-            if (this.communicationHUD && this.communicationHUD.visible) {
-                this.communicationHUD.hide();
-debug('AI', '🚪 Communication HUD dismissed during docking - station communications available');
-            }
-            
-            // Hide damage control HUD when docking since systems are powered down
-            if (this.damageControlVisible || (this.damageControlHUD && this.damageControlHUD.isVisible)) {
-                this.damageControlVisible = false;
-                if (this.damageControlHUD) {
-                    this.damageControlHUD.hide();
-                }
-                // Don't restore view since Operations HUD doesn't change views anymore
-debug('COMBAT', '🚪 Damage Control HUD dismissed during docking');
-            }
-            
-            // Hide mission status HUD when docking - use station mission board instead
-            if (this.missionStatusHUD && this.missionStatusHUD.visible) {
-                this.missionStatusHUD.hide();
-debug('UI', '🚪 Mission Status HUD dismissed during docking - use station Mission Board');
-            }
-            
-            // Hide weapon HUD when docking since weapon systems are powered down
-            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-                this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
-                this.weaponHUD.autofireIndicator.style.display = 'none';
-                this.weaponHUD.targetLockIndicator.style.display = 'none';
-                this.weaponHUD.unifiedDisplay.style.display = 'none';
-debug('COMBAT', '🚪 Weapon HUD hidden during docking');
-debug('COMBAT', `🔫 WeaponHUD state during docking: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
-            } else {
-debug('COMBAT', `🔫 Could not hide weapon HUD during docking: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
-            }
-            
-            // Restore view to FORE if in modal view
-            if (this.viewManager.currentView === 'GALACTIC' || this.viewManager.currentView === 'SCANNER') {
-                this.viewManager.restorePreviousView();
-            }
-        }
-
-        // Play command sound for successful dock
-        this.playCommandSound();
-
-        // Show station menu with services available at this location
-        this.dockingInterface.show(target);
-
-        // Update the dock button to show "LAUNCH"
-        this.updateTargetDisplay();
-        
-        // Refresh missions for the docked station (cargo deliveries handled by physics docking for stations)
-        if (target && target.userData && target.userData.name) {
-            const stationKey = String(target.userData.name).toLowerCase().replace(/\s+/g, '_');
-            
-            // Refresh missions for the docked station
-            this._setTimeout(() => {
-                this.refreshStationMissions(stationKey);
-            }, 1000);
-        }
-
-        return true;
+        return this.dockingOperationsManager.dock(target);
     }
 
     /**
@@ -4078,418 +3816,50 @@ debug('UTILITY', `🚛 Removed ${cargo.quantity} units of ${cargo.commodityId} f
         }
     }
 
-    /**
-     * Complete docking for stations via physics path without re-entering routing logic
-     */
     completeDockingStation(target) {
-        // Set docking state
-        this.isDocked = true;
-        this.dockedTo = target;
-        this.targetSpeed = 0;
-        this.currentSpeed = 0;
-        this.decelerating = false;
-
-        // Hide crosshairs and power down systems similar to distance docking
-        if (this.viewManager) {
-            if (this.viewManager.frontCrosshair) this.viewManager.frontCrosshair.style.display = 'none';
-            if (this.viewManager.aftCrosshair) this.viewManager.aftCrosshair.style.display = 'none';
-            this.shutdownAllSystems();
-            if (this.targetComputerEnabled && this.targetComputerManager) {
-                this.targetComputerEnabled = false;
-                this.targetComputerManager.hideTargetHUD();
-                this.targetComputerManager.hideTargetReticle();
-                this.targetComputerManager.hideAllDirectionArrows();
-                this.targetComputerManager.clearTargetWireframe();
-            }
-            if (this.viewManager.galacticChart && this.viewManager.galacticChart.isVisible()) {
-                this.viewManager.galacticChart.hide(false);
-debug('UTILITY', '🚪 Galactic Chart dismissed during docking completion');
-            }
-            if (this.viewManager.longRangeScanner && this.viewManager.longRangeScanner.isVisible()) {
-                this.viewManager.longRangeScanner.hide(false);
-debug('UTILITY', '🚪 Long Range Scanner dismissed during docking completion');
-            }
-            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
-                this.proximityDetector3D.isVisible = false;
-                this.proximityDetector3D.detectorContainer.style.display = 'none';
-debug('UTILITY', '🚪 Proximity Detector dismissed during docking completion');
-            }
-            if (this.viewManager.subspaceRadio && this.viewManager.subspaceRadio.isVisible) {
-                this.viewManager.subspaceRadio.hide();
-            }
-            if (this.communicationHUD && this.communicationHUD.visible) {
-                this.communicationHUD.hide();
-debug('UI', '🚪 Communication HUD dismissed during docking completion');
-            }
-            if (this.damageControlVisible || (this.damageControlHUD && this.damageControlHUD.isVisible)) {
-                this.damageControlVisible = false;
-                if (this.damageControlHUD) {
-                    this.damageControlHUD.hide();
-                }
-                // Don't restore view since Operations HUD doesn't change views anymore
-debug('COMBAT', '🚪 Damage Control HUD dismissed during docking completion');
-            }
-            if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-                this.weaponHUD.weaponSlotsDisplay.style.display = 'none';
-                this.weaponHUD.autofireIndicator.style.display = 'none';
-                this.weaponHUD.targetLockIndicator.style.display = 'none';
-                this.weaponHUD.unifiedDisplay.style.display = 'none';
-            }
-            
-            // Dismiss mission rewards overlay if visible
-            const missionRewardsOverlay = document.getElementById('mission-rewards-overlay');
-            if (missionRewardsOverlay) {
-                missionRewardsOverlay.remove();
-                debug('UTILITY', '🚪 Mission rewards overlay dismissed during docking completion');
-            }
-        }
-
-        // Play feedback
-        this.playCommandSound();
-        return true;
+        return this.dockingOperationsManager.completeDockingStation(target);
     }
+
     undock() {
-debug('UTILITY', 'StarfieldManager.undock() called');
-debug('UTILITY', `🚀 this.isDocked: ${this.isDocked}`);
-debug('UTILITY', `🚀 this.simpleDockingManager exists: ${!!this.simpleDockingManager}`);
-debug('UTILITY', `🚀 this.simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
-        
-        if (!this.isDocked) {
-debug('UTILITY', 'Not docked - returning early');
-            return;
-        }
-
-        // Use simple docking system launch if available
-        if (this.simpleDockingManager && this.simpleDockingManager.isDocked) {
-debug('UTILITY', 'Using SimpleDockingManager for launch - skipping old undock logic');
-            const result = this.simpleDockingManager.launchFromStation();
-debug('UTILITY', 'SimpleDockingManager.launchFromStation() returned:', result);
-            return result;
-        }
-        
-debug('AI', 'SimpleDockingManager not available or not docked - using old undock logic');
-debug('UTILITY', `🚀 simpleDockingManager exists: ${!!this.simpleDockingManager}`);
-debug('UTILITY', `🚀 simpleDockingManager.isDocked: ${this.simpleDockingManager?.isDocked}`);
-
-        // Get ship instance for launch procedures
-        const ship = this.viewManager?.getShip();
-        if (ship) {
-            // Use DockingSystemManager for comprehensive launch validation
-            const launchValidation = this.dockingSystemManager.validateLaunch(ship);
-            
-            if (!launchValidation.canLaunch) {
-                debug('P1', `Launch failed: ${launchValidation.reasons.join(', ')}`);
-                // Show error in station menu instead of hiding it
-                return;
-            }
-            
-            if (launchValidation.warnings.length > 0) {
-debug('UTILITY', 'Launch warnings:', launchValidation.warnings.join(', '));
-            }
-            
-            // Launch should not cost energy - players should be able to leave even when low on power
-debug('UTILITY', 'Launch procedures initiated - no energy cost');
-        }
-
-        // Store the target we're launching from before clearing it
-        const launchTarget = this.dockedTo;
-
-        // Hide station menu
-        this.dockingInterface.hide();
-
-        // Play command sound for successful launch
-        this.playCommandSound();
-
-        // Start engine sound at impulse 1
-        if (this.soundLoaded && this.engineState === 'stopped') {
-            this.playEngineStartup(1/this.maxSpeed); // Volume for impulse 1
-        }
-
-        // Store initial state for transition
-        this.undockingState = {
-            startPos: this.camera.position.clone(),
-            startRot: this.camera.quaternion.clone(),
-            progress: 0,
-            transitioning: true
-        };
-
-        // Calculate undock position (move away from the body in the current direction)
-        const forward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-        
-        // NEW: Calculate safe launch distance to avoid nearby dockable objects
-        const safeDistance = this.calculateSafeLaunchDistance(launchTarget);
-        const targetPos = this.camera.position.clone().add(forward.multiplyScalar(safeDistance));
-        this.undockingState.endPos = targetPos;
-
-        // Reset to forward-facing rotation
-        const targetRot = new this.THREE.Quaternion();
-        this.undockingState.endRot = targetRot;
-
-        this.isDocked = false;
-        this.dockedTo = null;
-        
-        // Reset button state to prevent stale dock buttons after undocking
-        this.currentButtonState = {
-            hasDockButton: false,
-            isDocked: false,
-            hasScanButton: false,
-            hasTradeButton: false
-        };
-        
-        // Clear current target to prevent showing dock button for previously docked body
-        this.currentTarget = null;
-        this.targetIndex = -1;
-        
-        // Explicitly clear any existing action buttons to prevent stale dock buttons
-        if (this.actionButtonsContainer) {
-            this.actionButtonsContainer.innerHTML = '';
-        }
-        
-        // Add a brief delay before target computer can be used again
-        this.undockCooldown = Date.now() + 10000; // 10 second cooldown
-        
-        // Set speed to impulse 1 for a gentle launch
-        this.targetSpeed = 1;
-        this.currentSpeed = 1;
-        this.decelerating = false;
-
-        // Restore crosshairs based on previous view
-        if (this.viewManager) {
-            // Use the previous view that was stored when docking
-            const viewToRestore = this.previousView === 'AFT' ? 'AFT' : 'FORE';
-            this.view = viewToRestore;
-            
-            // Update camera rotation based on the restored view
-            if (viewToRestore === 'AFT') {
-                this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
-            } else {
-                this.camera.rotation.set(0, 0, 0); // Reset to forward
-            }
-            
-            // Show appropriate crosshair
-            this.viewManager.frontCrosshair.style.display = viewToRestore === 'FORE' ? 'block' : 'none';
-            this.viewManager.aftCrosshair.style.display = viewToRestore === 'AFT' ? 'block' : 'none';
-            
-            // Initialize all ship systems for the current ship (whatever ship we're launching in)
-            debug('UTILITY', '🚀 LAUNCH: About to initialize ship systems - this should appear during launch');
-debug('COMBAT', '🚀 Starting ship systems initialization during launch...');
-            this.initializeShipSystems().then(() => {
-                debug('UTILITY', '🚀 LAUNCH: Ship systems initialized, about to restore weapon HUD');
-debug('COMBAT', '🚀 Ship systems initialization completed, restoring weapon HUD...');
-                
-                // Restore weapon HUD AFTER systems are fully initialized
-                debug('COMBAT', '🔫 LAUNCH: Checking weapon HUD existence:', {
-                    weaponHUD: !!this.weaponHUD,
-                    weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay,
-                    weaponHUDConnected: this.weaponHUDConnected
-                });
-                if (this.weaponHUD && this.weaponHUD.weaponSlotsDisplay) {
-debug('COMBAT', '🔫 Restoring weapon HUD display elements...');
-                    this.weaponHUD.weaponSlotsDisplay.style.display = 'flex';
-                    this.weaponHUD.autofireIndicator.style.display = 'none'; // Will be shown if autofire is on
-                    this.weaponHUD.targetLockIndicator.style.display = 'none'; // Will be shown if locked
-                    this.weaponHUD.unifiedDisplay.style.display = 'none'; // Will be shown when needed
-debug('COMBAT', '🔫 Weapon HUD display set to flex');
-                    
-                    // Update weapon HUD with current weapon system state
-                    const ship = this.viewManager?.getShip();
-debug('COMBAT', `🔫 Getting ship for weapon HUD update: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}`);
-                    if (ship && ship.weaponSystem) {
-debug('COMBAT', `🔫 Updating weapon HUD with ${ship.weaponSystem.weaponSlots?.length} weapon slots, active: ${ship.weaponSystem.activeSlotIndex}`);
-                        this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
-                        // Ensure connection is established
-                        this.connectWeaponHUDToSystem();
-debug('COMBAT', '🔫 Weapon HUD updated and connected');
-                    } else {
-debug('COMBAT', '🔫 Cannot update weapon HUD - ship or weapon system not available');
-                    }
-debug('COMBAT', '🔫 Weapon HUD restoration completed');
-                    
-                    // Additional debug: Check if elements are actually in DOM and visible
-                    this._setTimeout(() => {
-                        const weaponHUDInDOM = document.body.contains(this.weaponHUD.weaponSlotsDisplay);
-                        const computedStyle = this.weaponHUD.weaponSlotsDisplay ? getComputedStyle(this.weaponHUD.weaponSlotsDisplay) : null;
-debug('COMBAT', `🔫 POST-LAUNCH CHECK: weaponHUD in DOM=${weaponHUDInDOM}, display=${computedStyle?.display}, visibility=${computedStyle?.visibility}`);
-                    }, 1000);
-                } else {
-                    debug('COMBAT', '🔫 LAUNCH: Cannot restore weapon HUD - missing components:', {
-                        weaponHUD: !!this.weaponHUD,
-                        weaponSlotsDisplay: !!this.weaponHUD?.weaponSlotsDisplay
-                    });
-debug('COMBAT', `🔫 Cannot restore weapon HUD: weaponHUD=${!!this.weaponHUD}, weaponSlotsDisplay=${!!this.weaponHUD?.weaponSlotsDisplay}`);
-                }
-            }).catch(error => {
-                debug('P1', `Failed to initialize ship systems during launch: ${error}`);
-debug('COMBAT', '🔫 Ship systems initialization failed - weapon HUD not restored');
-            });
-            
-            // Restore Mission Status HUD after launch (it was hidden during docking)
-            if (this.missionStatusHUD && !this.missionStatusHUD.isVisible) {
-                // Only show if there are active missions
-                this.missionStatusHUD.refreshMissions().then(() => {
-                    if (this.missionStatusHUD.activeMissions && this.missionStatusHUD.activeMissions.length > 0) {
-                        this.missionStatusHUD.show();
-debug('UI', 'Mission Status HUD restored after launch');
-                    }
-                }).catch(error => {
-debug('UI', 'Mission Status HUD: No active missions to display after launch');
-                });
-            }
-            
-            // Remove flawed subspace radio state restoration - systems will be properly initialized above
-        }
-        
-        // Ensure Target Computer leaves any power-up state on undock/launch
-        if (this.targetComputerManager) {
-            this.targetComputerManager.resetAfterUndock?.();
-        }
-
-        // Update the dock button to show "DOCK"
-        this.updateTargetDisplay();
-        this.updateSpeedIndicator();
-
-        // Notify systems that launch has occurred to allow deferred notifications
-        try {
-            window.dispatchEvent(new CustomEvent('shipLaunched'));
-        } catch (_) {}
+        return this.dockingOperationsManager.undock();
     }
 
-    /**
-     * Launch from docked station (alias for undock)
-     */
     launch() {
-        return this.undock();
+        return this.dockingOperationsManager.launch();
     }
-
 
     updateOrbit(deltaTime) {
-        if (!this.isDocked || !this.dockedTo) return;
-        
-        // Debug: Log when orbit update is moving the camera (P1 for camera shake debugging)
-        if (Date.now() % 5000 < 100) { // Log every 5 seconds
-debug('P1', `🔄 updateOrbit() moving camera - isDocked: ${this.isDocked}, dockedTo: ${this.dockedTo?.name}`);
-debug('P1', `🔄 Camera position being set to orbit around: (${this.dockedTo.position.x.toFixed(2)}, ${this.dockedTo.position.y.toFixed(2)}, ${this.dockedTo.position.z.toFixed(2)})`);
-        }
-
-        // Handle docking transition
-        if (this.dockingState && this.dockingState.transitioning) {
-            // Update progress with smooth easing
-            this.dockingState.progress = Math.min(1, this.dockingState.progress + deltaTime * 0.5);
-            const smoothProgress = this.easeInOutCubic(this.dockingState.progress);
-            
-            // Move to final position and rotate to face target
-            this.camera.position.lerp(this.dockingState.endPos, smoothProgress);
-            this.camera.quaternion.slerp(this.dockingState.endRot, smoothProgress);
-            
-            if (this.dockingState.progress >= 1) {
-                this.dockingState.transitioning = false;
-            }
-            return;
-        }
-
-        // Regular orbit update
-        const targetPos = this.dockedTo.position;
-        
-        // Update orbit angle
-        this.orbitAngle += this.orbitSpeed;
-        if (this.orbitAngle > Math.PI * 2) this.orbitAngle -= Math.PI * 2;
-
-        // Update position
-        this.camera.position.x = targetPos.x + Math.cos(this.orbitAngle) * this.orbitRadius;
-        this.camera.position.y = targetPos.y;
-        this.camera.position.z = targetPos.z + Math.sin(this.orbitAngle) * this.orbitRadius;
-        
-        // Always look at target center
-        this.camera.lookAt(targetPos);
-        
-        // Update target display to maintain button visibility
-        this.updateTargetDisplay();
+        this.dockingOperationsManager.updateOrbit(deltaTime);
     }
 
-    // Helper function for smooth easing
     easeInOutCubic(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        return this.dockingOperationsManager.easeInOutCubic(t);
     }
 
-    // Add new debug methods for dock/undock
     async dockWithDebug(target) {
-        // Ensure SimpleDockingManager is initialized
-        if (!this.simpleDockingManager) {
-debug('UTILITY', 'Initializing SimpleDockingManager for docking');
-            this.initializeSimpleDocking();
-        }
-        
-        // Use the new SimpleDockingManager for docking
-        if (this.simpleDockingManager) {
-debug('UTILITY', 'Using SimpleDockingManager for docking');
-            const result = await this.simpleDockingManager.initiateUnifiedDocking(target);
-            return result;
-        } else {
-            debug('P1', '🚀 SimpleDockingManager could not be initialized - spatial/collision managers not ready');
-            return false;
-        }
+        return this.dockingOperationsManager.dockWithDebug(target);
     }
 
     undockWithDebug() {
-        if (!this.isDocked) {
-            return;
-        }
-        this.undock();
+        this.dockingOperationsManager.undockWithDebug();
     }
 
-    // Add new method to handle dock button clicks (launch is handled by station menu)
     handleDockButtonClick(isDocked, targetName) {
-        if (!this.currentTarget) {
-            debug('P1', 'No current target available for docking');
-            return;
-        }
+        this.dockingOperationsManager.handleDockButtonClick(isDocked, targetName);
+    }
 
-        // Use the canDockWithLogging method for user-initiated docking attempts
-        if (this.canDockWithLogging(this.currentTarget)) {
-            this.dockWithDebug(this.currentTarget);
-        } else {
-            // Get target info to provide helpful feedback
-            const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-            const distance = this.camera.position.distanceTo(this.currentTarget.position);
-            
-            // Calculate docking range for display
-            let dockingRange = this.dockingRange; // Default 1.5 for moons
-            if (info?.type === 'planet') {
-                dockingRange = 4.0;
-            }
-            
-            if (info?.diplomacy?.toLowerCase() === 'enemy') {
-                this.viewManager.warpFeedback.showWarning(
-                    'Cannot Dock at Hostile Target',
-                    'This planet or moon is hostile to your ship.',
-                    () => {}
-                );
-            } else {
-                debug('P1', `Target is out of docking range: ${distance.toFixed(2)}km (max: ${dockingRange}km)`);
-            }
-        }
-        
-        // Update display after docking attempt
-        this.updateTargetDisplay();
-    }
-    
-    /**
-     * Get comprehensive docking status information
-     * @returns {Object} Detailed docking status
-     */
     getDockingStatus() {
-        const ship = this.viewManager?.getShip();
-        return this.dockingSystemManager.getDockingStatus(ship, this);
+        return this.dockingOperationsManager.getDockingStatus();
     }
-    
-    /**
-     * Get docking requirements for UI display
-     * @returns {Object} Docking requirements
-     */
+
     getDockingRequirements() {
-        return this.dockingSystemManager.getDockingRequirements();
+        return this.dockingOperationsManager.getDockingRequirements();
     }
-    
+
+    calculateSafeLaunchDistance(launchTarget) {
+        return this.dockingOperationsManager.calculateSafeLaunchDistance(launchTarget);
+    }
+
     /**
      * Power down all ship systems when docking to conserve energy
      */
@@ -6225,80 +5595,6 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         return true;
     }
 
-    // NEW: Calculate safe launch distance - simple 2x docking distance rule + object radius
-    calculateSafeLaunchDistance(launchTarget) {
-        // Get the docking range for the target we're launching from
-        const targetInfo = this.solarSystemManager?.getCelestialBodyInfo(launchTarget);
-        let dockingRange = 1.5; // Default for moons
-        
-        if (targetInfo?.type === 'planet') {
-            dockingRange = 4.0; // Planets have 4km docking range
-        } else if (targetInfo?.type === 'station') {
-            // For stations, check if they have a custom docking range
-            dockingRange = launchTarget.userData?.dockingRange || 2.0;
-        }
-        
-        // Get the object's radius to ensure we launch from the surface, not the center
-        const objectRadius = launchTarget.geometry?.parameters?.radius || 
-                           launchTarget.userData?.radius || 
-                           (targetInfo?.type === 'planet' ? 1.2 : 0.3); // Default radii
-        
-        // Launch distance = object radius + (2x docking range)
-        // This ensures we're 2x docking range away from the surface, not the center
-        const launchDistance = objectRadius + (dockingRange * 2.0);
-        
-debug('UTILITY', `🚀 Launch distance calculated: ${launchDistance.toFixed(1)}km (${objectRadius.toFixed(1)}km radius + 2x ${dockingRange.toFixed(1)}km docking range)`);
-        return launchDistance;
-    }
-
-    /**
-     * Shutdown all ship systems when docking - properly power down without trying to save state
-     */
-    shutdownAllSystems() {
-debug('UTILITY', '🛑 Shutting down all ship systems for docking');
-        
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            debug('P1', 'No ship available for system shutdown');
-            return;
-        }
-        
-        // Simply power down all systems without saving state
-        for (const [systemName, system] of ship.systems) {
-            try {
-                if (systemName === 'shields' && system.isShieldsUp) {
-                    system.deactivateShields();
-debug('COMBAT', `  🛡️ Shields deactivated`);
-                } else if (systemName === 'long_range_scanner' && system.isScanning) {
-                    system.stopScan();
-debug('UTILITY', `  📡 Scanner stopped`);
-                } else if (systemName === 'target_computer' && system.isTargeting) {
-                    system.deactivate();
-debug('TARGETING', `  🎯 Targeting computer deactivated`);
-                } else if (systemName === 'subspace_radio') {
-                    if (system.isRadioActive) {
-                        system.deactivateRadio();
-                    }
-                    if (system.isChartActive) {
-                        system.deactivateChart();
-                    }
-debug('UTILITY', `  📻 Subspace radio deactivated`);
-                } else if (systemName === 'impulse_engines') {
-                    system.setImpulseSpeed(0);
-                    system.setMovingForward(false);
-debug('UTILITY', `  🚀 Impulse engines stopped`);
-                } else if (system.isActive) {
-                    system.deactivate();
-debug('UTILITY', `  ⚡ ${systemName} deactivated`);
-                }
-            } catch (error) {
-                debug('P1', `Failed to shutdown system ${systemName}: ${error}`);
-            }
-        }
-        
-debug('UTILITY', '🛑 All ship systems shutdown complete');
-    }
-    
     /**
      * Initialize all ship systems for launch - fresh setup regardless of previous state
      * This is the unified method that should be used for ALL ship initialization scenarios
@@ -6521,18 +5817,6 @@ debug('COMBAT', '    🎯 Updating weapon selection UI...');
             this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
         }
         
-    }
-
-    /**
-     * Get the requirements to dock with a target
-     * @param {Object} target - Target object to dock with
-     * @returns {Array} Array of requirement objects
-     */
-    getDockingRequirements() {
-        return [
-            { name: 'Within Docking Range', met: true },
-            { name: 'Ship Systems Operational', met: true }
-        ];
     }
 
     /**
