@@ -23,6 +23,7 @@ import { TargetPositionManager } from '../ui/TargetPositionManager.js';
 import { TargetDiplomacyManager } from '../ui/TargetDiplomacyManager.js';
 import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
 import { TargetSectorManager } from '../ui/TargetSectorManager.js';
+import { TargetStateManager } from '../ui/TargetStateManager.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -181,6 +182,9 @@ export class TargetComputerManager {
 
         // Initialize TargetSectorManager
         this.targetSectorManager = new TargetSectorManager(this);
+
+        // Initialize TargetStateManager
+        this.targetStateManager = new TargetStateManager(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -2258,6 +2262,11 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
             this.targetListManager.dispose();
         }
 
+        // Clean up TargetStateManager
+        if (this.targetStateManager) {
+            this.targetStateManager.dispose();
+        }
+
         // Clear target arrays
         this.targetObjects = [];
         this.validTargets = [];
@@ -2286,81 +2295,34 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
 
     /**
      * Activate target computer and select first target if available
+     * Delegates to TargetStateManager
      */
     activateTargetComputer() {
-        debug('TARGETING', `🎯 activateTargetComputer called: targetComputerEnabled=${this.targetComputerEnabled}, isPoweringUp=${this.isPoweringUp}, targets=${this.targetObjects?.length || 0}`);
-        this.targetComputerEnabled = true;
-
-        // If we have targets, select the first one
-        if (this.targetObjects && this.targetObjects.length > 0) {
-            this.targetIndex = 0;
-            debug('TARGETING', `🎯 activateTargetComputer: About to call updateTargetDisplay after activation`);
-            this.updateTargetDisplay();
-            // Force direction arrow update when target computer is activated
-            this.updateDirectionArrow();
-        }
-        
-        // console.log('🎯 Target Computer activated and display updated');
+        this.targetStateManager.activateTargetComputer();
     }
 
     /**
      * Deactivate target computer and hide HUD
+     * Delegates to TargetStateManager
      */
     deactivateTargetComputer() {
-        this.targetComputerEnabled = false;
-        this.currentTarget = null;
-        this.targetIndex = -1;
-        this.isManualNavigationSelection = false; // Reset navigation selection flag
-        this.isManualSelection = false; // Reset manual selection flag
-        
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
-        
-        // Stop wireframe animation and clear wireframe
-        this.stopWireframeAnimation();
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                this.targetWireframe.material.dispose();
-            }
-            this.targetWireframe = null;
-        }
-        
-        // console.log('🎯 Target Computer deactivated');
+        this.targetStateManager.deactivateTargetComputer();
     }
 
     /**
      * Cycle to next target
+     * Delegates to TargetStateManager
      */
     cycleTargetNext() {
-        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
-            return;
-        }
-        
-        this.targetIndex = (this.targetIndex + 1) % this.targetObjects.length;
-        this.updateTargetDisplay();
+        this.targetStateManager.cycleTargetNext();
     }
 
     /**
-     * Cycle to previous target  
+     * Cycle to previous target
+     * Delegates to TargetStateManager
      */
     cycleTargetPrevious() {
-        if (!this.targetComputerEnabled || !this.targetObjects || this.targetObjects.length === 0) {
-            return;
-        }
-        
-        this.targetIndex = this.targetIndex - 1;
-        if (this.targetIndex < 0) {
-            this.targetIndex = this.targetObjects.length - 1;
-        }
-        this.updateTargetDisplay();
+        this.targetStateManager.cycleTargetPrevious();
     }
 
     /**
@@ -2393,50 +2355,10 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
 
     /**
      * Clear target computer state completely - removes all target data and UI elements
+     * Delegates to TargetStateManager
      */
     clearTargetComputer() {
-        // Reset ALL target state variables
-        this.currentTarget = null;
-        this.previousTarget = null;
-        this.targetedObject = null;
-        this.lastTargetedObjectId = null;
-        this.targetIndex = -1;
-        this.targetObjects = [];
-        this.validTargets = [];
-        this.lastTargetCycleTime = 0;
-        this.isManualNavigationSelection = false; // Reset navigation selection flag
-        
-        // Clear target computer system state if available
-        const ship = this.viewManager?.getShip();
-        const targetComputerSystem = ship?.getSystem('target_computer');
-        if (targetComputerSystem) {
-            targetComputerSystem.clearTarget();
-            targetComputerSystem.deactivate();
-        }
-        
-        // Hide HUD elements
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-        }
-        
-        // Clear wireframe
-        if (this.targetWireframe) {
-            this.wireframeScene.remove(this.targetWireframe);
-            this.targetWireframe.geometry.dispose();
-            this.targetWireframe.material.dispose();
-            this.targetWireframe = null;
-        }
-        
-        // Clear 3D outline
-        this.clearTargetOutline();
-        
-        // Disable target computer
-        this.targetComputerEnabled = false;
-        
-        // console.log('🎯 Target computer completely cleared - all state reset');
+        this.targetStateManager.clearTargetComputer();
     }
 
     /**
@@ -2462,97 +2384,18 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
 
     /**
      * Clear current target and reset target state
+     * Delegates to TargetStateManager
      */
     clearCurrentTarget() {
-        debug('TARGETING', `🎯 clearCurrentTarget() called - current target: ${this.currentTarget?.name || 'None'}`);
-        
-        this.currentTarget = null;
-        this.targetIndex = -1;
-        
-        // Keep HUD visible but show "No Target" state
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'block';
-            this.targetHUD.style.visibility = 'visible';
-            this.targetHUD.style.opacity = '1';
-            debug('TARGETING', `🎯 Keeping target HUD visible for "No Target" state`);
-            
-            // Update display to show "No Target"
-            this.updateTargetDisplay();
-            
-            // Ensure frame elements stay visible
-            setTimeout(() => {
-                if (this.targetHUD) {
-                    this.targetHUD.style.display = 'block';
-                    this.targetHUD.style.visibility = 'visible';
-                    
-                    // Make sure any frame elements with styling are visible
-                    const styledElements = this.targetHUD.querySelectorAll('*');
-                    styledElements.forEach(el => {
-                        const style = window.getComputedStyle(el);
-                        if (style.borderWidth !== '0px' || 
-                            style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
-                            style.backgroundImage !== 'none') {
-                            if (el.style.display === 'none') {
-                                el.style.display = 'block';
-                            }
-                            if (el.style.visibility === 'hidden') {
-                                el.style.visibility = 'visible';
-                            }
-                        }
-                    });
-                }
-            }, 10);
-        }
-        
-        if (this.targetReticle) {
-            this.targetReticle.style.display = 'none';
-            debug('TARGETING', `🎯 Hidden target reticle`);
-        }
-        
-        // Clear wireframe
-        debug('TARGETING', `🎯 About to clear wireframe...`);
-        this.clearTargetWireframe();
-        
-        // Clear HUD wireframe
-        if (this.wireframeRenderer) {
-            this.wireframeRenderer.clear();
-            this.wireframeRenderer.render(new this.THREE.Scene(), new this.THREE.Camera());
-        }
-        
-        if (this.wireframeContainer) {
-            this.wireframeContainer.style.display = 'none';
-        }
-        
-        debug('TARGETING', `🎯 Wireframe cleared`);
-        
-        // Hide direction arrows
-        this.hideAllDirectionArrows();
-        debug('TARGETING', `🎯 Direction arrows hidden`);
-        
-        debug('TARGETING', `✅ clearCurrentTarget() completed - HUD showing "No Target" state`);
+        this.targetStateManager.clearCurrentTarget();
     }
 
     /**
      * Find next valid target when current target is invalid
+     * Delegates to TargetStateManager
      */
     findNextValidTarget() {
-        const startIndex = this.targetIndex;
-        
-        // Search for next valid target
-        for (let i = 0; i < this.targetObjects.length; i++) {
-            const nextIndex = (startIndex + i + 1) % this.targetObjects.length;
-            const target = this.targetObjects[nextIndex];
-            
-            if (target && (target.object || target.position)) {
-                this.targetIndex = nextIndex;
-                // console.log(`🎯 Found valid target at index ${nextIndex}: ${target.name}`);
-                return;
-            }
-        }
-        
-        // No valid targets found
-        // console.warn('🎯 No valid targets found in target list');
-        this.clearCurrentTarget();
+        this.targetStateManager.findNextValidTarget();
     }
 
     /**
