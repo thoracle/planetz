@@ -18,6 +18,7 @@ import { TargetIdManager } from '../ui/TargetIdManager.js';
 import { TargetListManager } from '../ui/TargetListManager.js';
 import { WaypointTargetManager } from '../ui/WaypointTargetManager.js';
 import { TargetSelectionManager } from '../ui/TargetSelectionManager.js';
+import { TargetDataProcessor } from '../ui/TargetDataProcessor.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -161,6 +162,9 @@ export class TargetComputerManager {
 
         // Initialize TargetSelectionManager
         this.targetSelectionManager = new TargetSelectionManager(this);
+
+        // Initialize TargetDataProcessor
+        this.targetDataProcessor = new TargetDataProcessor(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -1768,130 +1772,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Get current target data
+     * Delegates to TargetDataProcessor
+     * @returns {Object|null} Processed target data or null
      */
     getCurrentTargetData() {
-        // Debug logging for beacons (much less frequent)
-        if (this.currentTarget?.name?.includes('Navigation Beacon') && Math.random() < 0.001) {
-            debug('TARGETING', `getCurrentTargetData() called for beacon: ${this.currentTarget?.name}`, {
-                targetIndex: this.targetIndex,
-                targetObjectsLength: this.targetObjects.length
-            });
-        }
-        
-        if (!this.currentTarget) {
-            return null;
-        }
-
-        // First, check if the current targetIndex is valid and matches currentTarget
-        if (this.targetIndex >= 0 && this.targetIndex < this.targetObjects.length) {
-            const targetData = this.targetObjects[this.targetIndex];
-if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Checking targetIndex ${this.targetIndex}, targetData:`, targetData?.name || 'no name');
-            if (targetData) {
-                // For targets from addNonPhysicsTargets, the Three.js object is in targetData.object
-                // For other targets, the targetData might be the object itself
-                const matches = targetData === this.currentTarget ||
-                    targetData.object === this.currentTarget ||
-                    (targetData.object && targetData.object.uuid === this.currentTarget?.uuid) ||
-                    targetData.name === this.currentTarget?.name;
-if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Target match check - matches: ${matches}, targetData.name: ${targetData.name}, currentTarget.name: ${this.currentTarget?.name}`);
-                if (matches) {
-if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Found matching target, processing...`);
-                    return this.processTargetData(targetData);
-                } else {
-if (window?.DEBUG_TCM) debug('INSPECTION', `🔍 DEBUG: Index mismatch detected - finding correct index...`);
-                    // Index mismatch detected - find correct index and fix it silently
-                    const correctIndex = this.targetObjects.findIndex(target => 
-                        target === this.currentTarget ||
-                        target.object === this.currentTarget ||
-                        (target.object && target.object.uuid === this.currentTarget?.uuid) ||
-                        target.name === this.currentTarget?.name
-                    );
-                    
-                    if (correctIndex !== -1) {
-                        this.targetIndex = correctIndex;
-                        return this.processTargetData(this.targetObjects[correctIndex]);
-                    }
-                    
-// Rate limit debug output to prevent spam
-                if (Math.random() < 0.001) {
-                    debug('TARGETING', `🔍 getCurrentTargetData: Index ${this.targetIndex} target mismatch - targetData: ${targetData.name}, currentTarget: ${this.currentTarget?.name}, type: ${typeof this.currentTarget}`);
-                }
-                }
-            }
-        }
-
-        // If current target is already a target data object, try to find it in the list
-        if (this.currentTarget && typeof this.currentTarget === 'object') {
-            for (let i = 0; i < this.targetObjects.length; i++) {
-                const targetData = this.targetObjects[i];
-                if (targetData) {
-                    // More robust target matching - check multiple criteria
-                    const isExactMatch = targetData === this.currentTarget;
-                    const isObjectMatch = targetData.object === this.currentTarget;
-                    const isUUIDMatch = targetData.object?.uuid && this.currentTarget.uuid && targetData.object.uuid === this.currentTarget.uuid;
-                    const isNameTypeMatch = targetData.name === this.currentTarget.name && targetData.type === this.currentTarget.type;
-                    const isIdMatch = targetData.id === this.currentTarget.id;
-
-                    if (isExactMatch || isObjectMatch || isUUIDMatch || isNameTypeMatch || isIdMatch) {
-                        // Update the index to match the found target
-                        this.targetIndex = i;
-                        this.currentTarget = targetData.object || targetData; // Ensure we have the original object, not processed target data
-debug('TARGETING', `🔧 Fixed target index mismatch: set to ${i} for target ${targetData.name} (${isExactMatch ? 'exact' : isObjectMatch ? 'object' : isUUIDMatch ? 'uuid' : isIdMatch ? 'ID' : 'name/type'})`);
-
-                        // Process and return the target data
-                        const processedData = this.processTargetData(targetData);
-if (window?.DEBUG_TCM) debug('TARGETING', `🔍 DEBUG: Returning processed data for ${targetData.name}:`, processedData);
-                        return processedData;
-                    }
-                }
-            }
-        }
-
-        // If we still can't find the target, it might have been destroyed or removed
-        // Don't spam the console - only log occasionally
-        const now = Date.now();
-        if (!this.lastTargetNotFoundWarning || (now - this.lastTargetNotFoundWarning) > 5000) { // Only warn every 5 seconds
-debug('TARGETING', `⚠️ Current target not found in target list - may have been destroyed or updated`);
-            this.lastTargetNotFoundWarning = now;
-        }
-        
-        // For manual navigation selections (Star Charts/LRS), don't clear the target - return it directly
-        if (this.isManualNavigationSelection && this.currentTarget && this.currentTarget.name && this.currentTarget.type) {
-            // Rate limit debug output to prevent spam
-            if (Math.random() < 0.001) {
-                debug('TARGETING', `🎯 Using scanner target data directly: ${this.currentTarget.name}`);
-            }
-            return this.processTargetData(this.currentTarget);
-        }
-        
-        // For manual selections (including Star Charts), try to use the current target directly
-        if (this.isManualSelection && this.currentTarget && this.currentTarget.name) {
-debug('TARGETING', `🎯 Using manual selection target data directly: ${this.currentTarget.name}`, this.currentTarget);
-            return this.processTargetData(this.currentTarget);
-        }
-        
-        // SPECIAL CASE: Handle virtual waypoints that may not be in targetObjects yet
-        if (this.currentTarget && (this.currentTarget.isWaypoint || this.currentTarget.isVirtual || this.currentTarget.type === 'waypoint')) {
-            debug('WAYPOINTS', `🎯 Using virtual waypoint target data directly: ${this.currentTarget.name}`);
-            return this.processTargetData(this.currentTarget);
-        }
-        
-        // For Star Charts objects that may have lost their 3D position, try to preserve them
-        // Check if this is a Star Charts object (has A0_ ID or is discovered)
-        if (this.currentTarget && this.currentTarget.name) {
-            const hasStarChartsId = this.currentTarget.id && this.currentTarget.id.toString().startsWith('A0_');
-            const isDiscoveredObject = this.isObjectDiscovered(this.currentTarget);
-            
-            if (hasStarChartsId || isDiscoveredObject) {
-                debug('TARGETING', `🎯 Preserving Star Charts object without 3D position: ${this.currentTarget.name}`);
-                return this.processTargetData(this.currentTarget);
-            }
-        }
-        
-        // Clear the invalid target to prevent repeated warnings (only for non-scanner/non-manual/non-StarCharts targets)
-if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearing invalid target and returning null`);
-        this.clearCurrentTarget();
-        return null;
+        return this.targetDataProcessor.getCurrentTargetData();
     }
 
     /**
@@ -1928,206 +1813,12 @@ if (window?.DEBUG_TCM) debug('P1', `🔍 DEBUG: getCurrentTargetData() - clearin
 
     /**
      * Process target data and return standardized format
+     * Delegates to TargetDataProcessor
+     * @param {Object} targetData - Raw target data
+     * @returns {Object|null} Standardized target data
      */
     processTargetData(targetData) {
-        if (!targetData) {
-            return null;
-        }
-
-        // Debug logging for beacons (much less frequent)
-        if (targetData.name?.includes('Navigation Beacon') && Math.random() < 0.001) {
-            debug('TARGETING', `processTargetData for beacon: ${targetData.name}`, {
-                type: targetData.type,
-                discovered: targetData.discovered,
-                diplomacy: targetData.diplomacy,
-                faction: targetData.faction,
-                _isUndiscovered: targetData._isUndiscovered
-            });
-        }
-
-        // For navigation beacons, check actual discovery status and apply appropriate properties
-        if (targetData.type === 'navigation_beacon') {
-            const actuallyDiscovered = this.isObjectDiscovered(targetData);
-            if (!actuallyDiscovered) {
-                // Beacon is undiscovered - apply unknown properties
-                if (targetData.diplomacy !== 'unknown' || targetData.faction !== 'Unknown') {
-                    try {
-                        targetData.discovered = false;
-                        targetData.diplomacy = 'unknown';
-                        targetData.faction = 'Unknown';
-                        debug('TARGETING', `Applied undiscovered properties to beacon: ${targetData.name}`);
-                    } catch (e) {
-                        // Ignore readonly property errors
-                        if (e.message && !e.message.includes('readonly')) {
-                            debug('P1', `🎯 Error setting undiscovered beacon properties: ${e}`);
-                        }
-                    }
-                }
-            } else {
-                // Beacon is discovered - ensure it has proper faction properties
-                try {
-                    targetData.discovered = true;
-                    // Only set neutral faction if no faction is already set
-                    if (!targetData.faction || targetData.faction === 'Unknown') {
-                        targetData.faction = 'Neutral';
-                        targetData.diplomacy = 'neutral';
-                        debug('TARGETING', `Applied discovered properties to beacon: ${targetData.name} (neutral faction)`);
-                    }
-                } catch (e) {
-                    // Ignore readonly property errors
-                    if (e.message && !e.message.includes('readonly')) {
-                        debug('P1', `🎯 Error setting discovered beacon properties: ${e}`);
-                    }
-                }
-            }
-        }
-
-        // CRITICAL: Ensure target data has proper Star Charts ID for consistent discovery checks
-        // This MUST happen before any discovery status checks
-        const constructedId = this.constructStarChartsId(targetData);
-        if (constructedId && (!targetData.id || !targetData.id.toString().startsWith('A0_'))) {
-            // Update the target data to use the proper Star Charts ID
-            try {
-                targetData.id = constructedId;
-            } catch (e) {
-                // Ignore readonly property errors
-                if (e.message && !e.message.includes('readonly')) {
-                    debug('P1', `🎯 Error setting target ID: ${e}`);
-                }
-            }
-        }
-        
-        // Check discovery status for non-ship objects (now with proper ID)
-        // Use same position validation logic as display update for consistency
-        const hasValidPositionForStar = this.getTargetPosition(targetData) !== null;
-        const isDiscovered = targetData.isShip || (this.isObjectDiscovered(targetData) && hasValidPositionForStar);
-
-        // SPECIAL CASE: Stars should always show as neutral when discovered
-        if (targetData.type === 'star' && isDiscovered) {
-            try {
-                targetData.discovered = true;
-                targetData.diplomacy = 'neutral';
-                targetData.faction = 'Neutral';
-                // Rate limit Sol debug spam to prevent console flooding
-                if (targetData.name === 'Sol' && Math.random() < 0.0001) {
-                    debug('TARGETING', `Applied discovered properties to star: ${targetData.name} (neutral faction)`);
-                }
-            } catch (e) {
-                // Ignore readonly property errors
-                if (e.message && !e.message.includes('readonly')) {
-                    debug('P1', `🎯 Error setting star properties: ${e}`);
-                }
-            }
-        }
-
-        // SPECIAL CASE: Handle waypoints first (before ship check)
-        if (targetData.type === 'waypoint' || targetData.isWaypoint || targetData.isVirtual) {
-            debug('WAYPOINTS', `🎯 Processing waypoint in processTargetData: ${targetData.name}`);
-            return {
-                object: this.currentTarget,
-                name: targetData.name || 'Mission Waypoint',
-                type: 'waypoint',
-                isShip: false,
-                isWaypoint: true,
-                isVirtual: targetData.isVirtual || true,
-                distance: targetData.distance || 0,
-                faction: 'waypoint',
-                diplomacy: 'waypoint',
-                isDiscovered: true, // Waypoints are always "discovered" since they're mission targets
-                ...targetData // Include all original properties
-            };
-        }
-
-        // Check if this is a ship (either 'ship' or 'enemy_ship' type, or has isShip flag)
-        if (targetData.type === 'ship' || targetData.type === 'enemy_ship' || targetData.isShip) {
-            // Ensure we get the actual ship instance - try multiple sources
-            let shipInstance = targetData.ship;
-
-            // If no ship in targetData, try to get it from the object
-            if (!shipInstance && targetData.object?.userData?.ship) {
-                shipInstance = targetData.object.userData.ship;
-            }
-
-            // If still no ship, try from currentTarget (which should be the original mesh)
-            if (!shipInstance && this.currentTarget?.userData?.ship) {
-                shipInstance = this.currentTarget.userData.ship;
-            }
-
-            // For target dummies, ensure the ship instance is preserved
-            if (!shipInstance && targetData.name?.includes('Target Dummy')) {
-                // Try to find the ship from the target dummy list
-                if (this.viewManager?.starfieldManager?.targetDummyShips) {
-                    shipInstance = this.viewManager.starfieldManager.targetDummyShips.find(
-                        dummy => dummy.shipName === targetData.name
-                    );
-                }
-            }
-            
-            return {
-                object: this.currentTarget,
-                name: targetData.name || shipInstance?.shipName || this.currentTarget?.shipName || 'Enemy Ship',
-                type: targetData.type || 'enemy_ship',
-                isShip: true,
-                ship: shipInstance || targetData.ship, // Don't fall back to this.currentTarget as it's the target data object
-                distance: targetData.distance,
-                isMoon: targetData.isMoon || false,
-                diplomacy: targetData.diplomacy || shipInstance?.diplomacy,
-                faction: targetData.faction || shipInstance?.faction || targetData.diplomacy || shipInstance?.diplomacy,
-                isDiscovered: isDiscovered,
-                ...targetData // Include all original properties
-            };
-        } else {
-            // For non-ship targets, prefer the data we already have from target list
-            // If targetData already has the info (from addNonPhysicsTargets), use it
-            if (targetData.type && targetData.type !== 'unknown') {
-                return {
-                    object: this.currentTarget,
-                    name: isDiscovered ? (targetData.name || 'Unknown') : 'Unknown',
-                    type: targetData.type,
-                    isShip: false,
-                    distance: targetData.distance,
-                    isMoon: targetData.isMoon || false,
-                    isSpaceStation: targetData.isSpaceStation,
-                    faction: isDiscovered ? targetData.faction : 'unknown',
-                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
-                    isDiscovered: isDiscovered,
-                    ...targetData
-                };
-            } else if (targetData.name && targetData.name !== 'Unknown') {
-                // For targets with valid names (like from Star Charts) but no type, 
-                // use the target data directly and avoid falling back to Sol
-debug('TARGETING', `🎯 Processing target with name but no type: ${targetData.name}`);
-                return {
-                    object: this.currentTarget,
-                    name: isDiscovered ? targetData.name : 'Unknown',
-                    type: targetData.type || 'celestial_body', // Default type for celestial objects
-                    isShip: false,
-                    distance: targetData.distance,
-                    isMoon: targetData.isMoon || false,
-                    isSpaceStation: targetData.isSpaceStation,
-                    faction: isDiscovered ? targetData.faction : 'unknown',
-                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
-                    isDiscovered: isDiscovered,
-                    ...targetData
-                };
-            } else {
-                // Fallback to getCelestialBodyInfo only if we have no useful target data
-debug('TARGETING', `🎯 Falling back to getCelestialBodyInfo for target:`, targetData);
-                const info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-                return {
-                    object: this.currentTarget,
-                    name: isDiscovered ? (info?.name || targetData.name || 'Unknown') : 'Unknown',
-                    type: info?.type || targetData.type || 'unknown',
-                    isShip: false,
-                    distance: targetData.distance,
-                    isMoon: targetData.isMoon || false,
-                    faction: isDiscovered ? info?.faction : 'unknown',
-                    diplomacy: isDiscovered ? info?.diplomacy : 'unknown',
-                    isDiscovered: isDiscovered,
-                    ...info
-                };
-            }
-        }
+        return this.targetDataProcessor.processTargetData(targetData);
     }
 
     /**
