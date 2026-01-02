@@ -1,5 +1,6 @@
 import { debug } from '../debug.js';
 import { CardValidationEngine, CARGO_HOLD_TYPES } from './CardValidationEngine.js';
+import { CardBadgeManager, getBadgeManager } from './CardBadgeManager.js';
 
 /**
  * CardInventoryUI class - Drag-and-drop interface for card inventory management
@@ -161,12 +162,13 @@ export default class CardInventoryUI {
         // Track event listener types for interaction tracking
         this._interactionEventTypes = ['click', 'touchstart', 'keydown'];
 
-        // Track NEW card badges
-        this.lastShopVisit = this.getLastShopVisit();
-        this.newCardTimestamps = this.getNewCardTimestamps();
-        
-        // Track quantity increases (red badges)
-        this.quantityIncreaseTimestamps = this.getQuantityIncreaseTimestamps();
+        // Initialize badge manager for NEW and quantity increase badges
+        this.badgeManager = getBadgeManager();
+
+        // Expose badge state for backwards compatibility
+        this.lastShopVisit = this.badgeManager.lastShopVisit;
+        this.newCardTimestamps = this.badgeManager.newCardTimestamps;
+        this.quantityIncreaseTimestamps = this.badgeManager.quantityIncreaseTimestamps;
         
         // Audio setup for upgrade sounds
         this.initializeAudio();
@@ -216,115 +218,62 @@ export default class CardInventoryUI {
         return CardInventoryUI.instance;
     }
 
-    /**
-     * Get the timestamp of the last shop visit from localStorage
-     */
+    // ========================================
+    // Badge Tracking Methods
+    // (Implementation moved to CardBadgeManager)
+    // ========================================
+
     getLastShopVisit() {
-        const stored = localStorage.getItem('planetz_last_shop_visit');
-        return stored ? parseInt(stored) : 0;
+        return this.badgeManager.getLastShopVisit();
     }
 
-    /**
-     * Save the current timestamp as the last shop visit
-     */
     saveLastShopVisit() {
-        const now = Date.now();
-        localStorage.setItem('planetz_last_shop_visit', now.toString());
-        this.lastShopVisit = now;
+        this.badgeManager.saveLastShopVisit();
+        this.lastShopVisit = this.badgeManager.lastShopVisit;
     }
 
-    /**
-     * Get the timestamps when cards were awarded from localStorage
-     */
     getNewCardTimestamps() {
-        const stored = localStorage.getItem('planetz_new_card_timestamps');
-        return stored ? JSON.parse(stored) : {};
+        return this.badgeManager.getNewCardTimestamps();
     }
 
-    /**
-     * Get the quantity increase timestamps from localStorage
-     */
     getQuantityIncreaseTimestamps() {
-        const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
-        return stored ? JSON.parse(stored) : {};
+        return this.badgeManager.getQuantityIncreaseTimestamps();
     }
 
-    /**
-     * Save the new card timestamps to localStorage
-     */
     saveNewCardTimestamps() {
-        localStorage.setItem('planetz_new_card_timestamps', JSON.stringify(this.newCardTimestamps));
+        this.badgeManager.saveNewCardTimestamps();
     }
 
-    /**
-     * Save the quantity increase timestamps to localStorage
-     */
     saveQuantityIncreaseTimestamps() {
-        localStorage.setItem('planetz_quantity_increase_timestamps', JSON.stringify(this.quantityIncreaseTimestamps));
+        this.badgeManager.saveQuantityIncreaseTimestamps();
     }
 
-    /**
-     * Mark a card as newly awarded
-     * @param {string} cardType - The type of card that was awarded
-     */
     markCardAsNew(cardType) {
-        this.newCardTimestamps[cardType] = Date.now();
-        this.saveNewCardTimestamps();
+        this.badgeManager.markCardAsNew(cardType);
+        this.newCardTimestamps = this.badgeManager.newCardTimestamps;
     }
 
-    /**
-     * Check if a card should show the NEW badge
-     * @param {string} cardType - The type of card to check
-     * @returns {boolean} True if the card should show NEW badge
-     */
     isCardNew(cardType) {
-        const cardTimestamp = this.newCardTimestamps[cardType];
-        return cardTimestamp && cardTimestamp > this.lastShopVisit;
+        return this.badgeManager.isCardNew(cardType);
     }
 
-    /**
-     * Mark a card as having a quantity increase
-     * @param {string} cardType - The type of card that had a quantity increase
-     */
     markCardQuantityIncrease(cardType) {
-        debug('UI', `🔴 Marking quantity increase for ${cardType}`);
-        this.quantityIncreaseTimestamps[cardType] = Date.now();
-        this.saveQuantityIncreaseTimestamps();
+        this.badgeManager.markCardQuantityIncrease(cardType);
+        this.quantityIncreaseTimestamps = this.badgeManager.quantityIncreaseTimestamps;
     }
 
-    /**
-     * Check if a card has a quantity increase
-     * @param {string} cardType - The type of card to check
-     * @returns {boolean} - True if the card has a quantity increase
-     */
     hasQuantityIncrease(cardType) {
-        // Also check localStorage directly as fallback
-        const stored = localStorage.getItem('planetz_quantity_increase_timestamps');
-        const timestamps = stored ? JSON.parse(stored) : {};
-        
-        // Use localStorage data if instance data is empty
-        if (Object.keys(this.quantityIncreaseTimestamps).length === 0 && Object.keys(timestamps).length > 0) {
-            return timestamps.hasOwnProperty(cardType);
-        }
-        
-        return this.quantityIncreaseTimestamps.hasOwnProperty(cardType);
+        return this.badgeManager.hasQuantityIncrease(cardType);
     }
 
-    /**
-     * Clear NEW status for all cards (called when shop is opened)
-     */
     clearNewCardStatus() {
-        // Update last shop visit to current time
-        this.saveLastShopVisit();
-        // No need to clear timestamps - they'll be compared against the new lastShopVisit
+        this.badgeManager.clearNewCardStatus();
+        this.lastShopVisit = this.badgeManager.lastShopVisit;
     }
 
-    /**
-     * Clear quantity increase status for all cards (called when collection is opened)
-     */
     clearQuantityIncreaseStatus() {
-        this.quantityIncreaseTimestamps = {};
-        this.saveQuantityIncreaseTimestamps();
+        this.badgeManager.clearQuantityIncreaseStatus();
+        this.quantityIncreaseTimestamps = this.badgeManager.quantityIncreaseTimestamps;
     }
 
     /**
