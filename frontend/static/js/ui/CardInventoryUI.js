@@ -1,8 +1,9 @@
 import { debug } from '../debug.js';
+import { CardValidationEngine, CARGO_HOLD_TYPES } from './CardValidationEngine.js';
 
 /**
  * CardInventoryUI class - Drag-and-drop interface for card inventory management
- * 
+ *
  * Features:
  * - Card inventory UI with grid layout
  * - Ship slot interface for card installation
@@ -1874,180 +1875,30 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
         return false;
     }
 
+    // ========================================
+    // Card Validation Methods
+    // (Implementation moved to CardValidationEngine)
+    // ========================================
+
     /**
      * Check if a card type is compatible with a slot type
      */
     isCardCompatibleWithSlot(cardType, slotType) {
-        const cardToSlotMapping = {
-            // Engine slot cards
-            'impulse_engines': ['engines'],
-            'quantum_drive': ['engines'],
-            'dimensional_shifter': ['engines'],
-            'temporal_engine': ['engines'],
-            'gravity_well_drive': ['engines'],
-            
-            // Reactor/Power slot cards
-            'energy_reactor': ['reactor'],
-            'quantum_reactor': ['reactor'],
-            'dark_matter_core': ['reactor'],
-            'antimatter_generator': ['reactor'],
-            'crystalline_matrix': ['reactor'],
-            
-            // Weapon slot cards
-            'laser_cannon': ['weapons'],
-            'pulse_cannon': ['weapons'],
-            'plasma_cannon': ['weapons'],
-            'phaser_array': ['weapons'],
-            'disruptor_cannon': ['weapons'],
-            'particle_beam': ['weapons'],
-            'ion_storm_cannon': ['weapons'],
-            'graviton_beam': ['weapons'],
-            'quantum_torpedo': ['weapons'],
-            'singularity_launcher': ['weapons'],
-            'void_ripper': ['weapons'],
-            'nanite_swarm': ['weapons'],
-            // Specialized combat weapons (AI-compatible)
-            'energy_pulse_cannon': ['weapons'],
-            'energy_cannon': ['weapons'],
-            'long_range_beam': ['weapons'],
-            'defensive_turret': ['weapons'],
-            'dual_turret': ['weapons'],
-            // Advanced weapon systems
-            'missile_launcher': ['weapons'],
-            'point_defense': ['weapons'],
-            'missile_pod': ['weapons'],
-            // Projectile weapons
-            'standard_missile': ['weapons'],
-            'homing_missile': ['weapons'],
-            'photon_torpedo': ['weapons'],
-            'proximity_mine': ['weapons'],
-            
-            // Utility slot cards (most flexible)
-            'hull_plating': ['utility'],
-            'adaptive_armor': ['utility'],  // Advanced armor
-            'shield_generator': ['utility'],
-            'shields': ['utility'],
-            'phase_shield': ['utility'],
-            'quantum_barrier': ['utility'],
-            'temporal_deflector': ['utility'],
-            'cargo_hold': ['utility'],
-            'reinforced_cargo_hold': ['utility'],
-            'shielded_cargo_hold': ['utility'],
-            'warp_drive': ['utility'],
-            'long_range_scanner': ['utility'],
-            'quantum_scanner': ['utility'],  // Advanced scanner
-            'dimensional_radar': ['utility'],
-            'basic_radar': ['utility'],
-            'advanced_radar': ['utility'],
-            'tactical_radar': ['utility'],
-            'subspace_radio': ['utility'],
-            'galactic_chart': ['utility'],
-            'target_computer': ['utility'],
-            'tactical_computer': ['utility'],
-            'combat_computer': ['utility'],
-            'strategic_computer': ['utility'],
-            'precognition_array': ['utility'],
-            'psionic_amplifier': ['utility'],
-            'neural_interface': ['utility'],
-            
-            // Alien Technology (utility only)
-            'zephyrian_crystal': ['utility'],
-            'vorthan_mind_link': ['utility'],
-            'nexus_harmonizer': ['utility'],
-            'ethereal_conduit': ['utility'],
-            
-            // Experimental Systems (utility only)
-            'probability_drive': ['utility'],
-            'chaos_field_gen': ['utility'],
-            'reality_anchor': ['utility'],
-            'entropy_reverser': ['utility'],
-            
-            // Capital Ship Systems (RESTRICTED - Capital ships and stations only)
-            'landing_bay': ['capital'],
-            'fighter_launch_bay': ['capital'],
-            'shuttle_bay': ['capital'],
-            'ship_construction_bay': ['capital'],
-            'repair_facility': ['capital'],
-            'manufacturing_plant': ['capital'],
-            'fleet_command_center': ['capital'],
-            'communications_array': ['capital'],
-            'battle_bridge': ['capital'],
-            'point_defense_grid': ['capital'],
-            'shield_array': ['capital'],
-            'reactor_core': ['capital'],
-            'cargo_processing_center': ['capital'],
-            'medical_bay': ['capital'],
-            'science_lab': ['capital'],
-            
-            // Station-Specific Systems (RESTRICTED - Stations only)
-            'mining_array': ['station'],
-            'industrial_fabricator': ['station'],
-            'security_complex': ['station'],
-            'observatory_array': ['station'],
-            'logistics_center': ['station'],
-            'frontier_command': ['station']
-        };
-        
-        const allowedSlots = cardToSlotMapping[cardType] || ['utility']; // Default to utility
-        
-        // CRITICAL: Block capital ship and station cards from regular ships
-        if (allowedSlots.includes('capital') || allowedSlots.includes('station')) {
-            // Check if this is a capital ship or station
-            const isCapitalShip = this.isCapitalShipType(this.currentShipType);
-            const isStation = this.isStationType(this.currentShipType);
-            
-            if (allowedSlots.includes('capital') && !isCapitalShip && !isStation) {
-                debug('UI', `❌ CAPITAL SHIP RESTRICTION: ${cardType} cannot be installed on regular ship ${this.currentShipType}`);
-                return false; // Block capital ship cards from regular ships
-            }
-            
-            if (allowedSlots.includes('station') && !isStation) {
-                debug('UI', `❌ STATION RESTRICTION: ${cardType} cannot be installed on non-station ${this.currentShipType}`);
-                return false; // Block station cards from ships
-            }
-            
-            // If we get here, it's a valid capital ship/station, allow utility slot placement
-            return slotType === 'utility';
-        }
-        
-        return allowedSlots.includes(slotType);
+        return CardValidationEngine.isCardCompatibleWithSlot(cardType, slotType, this.currentShipType);
     }
 
     /**
      * Check if a ship type is a capital ship (can use capital ship systems)
      */
     isCapitalShipType(shipType) {
-        const capitalShipTypes = [
-            'carrier',           // Primary capital ship
-            'heavy_freighter',   // Largest cargo vessel (can use some capital systems)
-            'destroyer',         // Future capital ship
-            'battleship',        // Future capital ship
-            'cruiser'            // Future capital ship
-        ];
-        return capitalShipTypes.includes(shipType);
+        return CardValidationEngine.isCapitalShipType(shipType);
     }
 
     /**
      * Check if a ship type is a station (can use station-specific systems)
      */
     isStationType(shipType) {
-        const stationTypes = [
-            'space_station',     // Generic space station
-            'asteroid_mine',     // Resource extraction
-            'refinery',          // Material processing
-            'storage_depot',     // Cargo warehouse
-            'research_lab',      // Scientific research
-            'repair_station',    // Ship maintenance
-            'frontier_outpost',  // Multi-purpose base
-            'prison',            // Detention facility
-            'shipyard',          // Ship construction
-            'defense_platform',  // Military fortress
-            'factory',           // Manufacturing
-            'communications_array', // Comms hub
-            'listening_post',    // Intelligence gathering
-            'orbital_telescope'  // Deep space observation
-        ];
-        return stationTypes.includes(shipType);
+        return CardValidationEngine.isStationType(shipType);
     }
 
     /**
@@ -2058,10 +1909,9 @@ debug('UI', `Configuration saved with ${this.shipSlots.size} total cards`);
      */
     async checkCargoHoldRemoval(card, slotId) {
 debug('UI', `🛡️ CARGO CHECK: Checking ${card.cardType} in slot ${slotId}`);
-        
-        // Check if this is a cargo hold card
-        const cargoHoldTypes = ['cargo_hold', 'reinforced_cargo_hold', 'shielded_cargo_hold'];
-        if (!cargoHoldTypes.includes(card.cardType)) {
+
+        // Check if this is a cargo hold card (using imported constant)
+        if (!CardValidationEngine.isCargoHoldCard(card.cardType)) {
 debug('UI', `🛡️ CARGO CHECK: ${card.cardType} is not a cargo hold card`);
             return false; // Not a cargo hold, proceed with normal removal
         }
@@ -3292,20 +3142,7 @@ debug('UI', `Loaded ${this.shipSlots.size} cards from current ship`);
      * Check if a card type is a weapon
      */
     isWeaponCard(cardType) {
-        const weaponCards = [
-            // Energy weapons (lasers, beams, cannons)
-            'laser_cannon', 'pulse_cannon', 'plasma_cannon', 'phaser_array', 'disruptor_cannon', 
-            'particle_beam', 'ion_storm_cannon', 'graviton_beam', 
-            // Specialized combat weapons (AI-compatible)
-            'energy_pulse_cannon', 'energy_cannon', 'long_range_beam', 'defensive_turret', 'dual_turret',
-            // Advanced weapon systems
-            'missile_launcher', 'point_defense', 'missile_pod',
-            // Projectile weapons (missiles, torpedoes, mines)
-            'standard_missile', 'homing_missile', 'photon_torpedo', 'proximity_mine',
-            // Exotic weapons
-            'quantum_torpedo', 'singularity_launcher', 'void_ripper', 'nanite_swarm'
-        ];
-        return weaponCards.includes(cardType);
+        return CardValidationEngine.isWeaponCard(cardType);
     }
 
     /**
