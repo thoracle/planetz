@@ -11,6 +11,7 @@ import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.j
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
 import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
 import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
+import { ShipMovementController } from '../managers/ShipMovementController.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -74,12 +75,8 @@ export class StarfieldManager {
             this.ship.setStarfieldManager(this);
         }
         
-        this.targetSpeed = 0;
-        this.currentSpeed = 0;
-        this.maxSpeed = SHIP_MOVEMENT.MAX_SPEED;
-        this.acceleration = SHIP_MOVEMENT.ACCELERATION;
-        this.deceleration = SHIP_MOVEMENT.DECELERATION;
-        this.decelerating = false; // New flag for tracking deceleration state
+        // Movement state is now managed by ShipMovementController
+        // Keeping camera-related vectors here
         this.velocity = new this.THREE.Vector3();
         this.rotationSpeed = SHIP_MOVEMENT.ROTATION_SPEED;
         this.cameraDirection = new this.THREE.Vector3();
@@ -89,9 +86,6 @@ export class StarfieldManager {
         this.mouseRotation = new this.THREE.Vector2();
         this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
         this.view = 'FORE'; // Initialize with FORE view
-
-        // Ship heading tracking (independent of camera view for radar consistency)
-        this.shipHeading = undefined; // Will be initialized from camera rotation when first needed
         this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
 
@@ -137,6 +131,55 @@ export class StarfieldManager {
             set: (val) => { this.keyboardInputManager.keys = val; }
         });
 
+        // Initialize Ship Movement Controller
+        this.shipMovementController = new ShipMovementController(this);
+
+        // Expose movement state for backwards compatibility
+        Object.defineProperty(this, 'targetSpeed', {
+            get: () => this.shipMovementController.targetSpeed,
+            set: (val) => { this.shipMovementController.targetSpeed = val; }
+        });
+        Object.defineProperty(this, 'currentSpeed', {
+            get: () => this.shipMovementController.currentSpeed,
+            set: (val) => { this.shipMovementController.currentSpeed = val; }
+        });
+        Object.defineProperty(this, 'maxSpeed', {
+            get: () => this.shipMovementController.maxSpeed,
+            set: (val) => { this.shipMovementController.maxSpeed = val; }
+        });
+        Object.defineProperty(this, 'acceleration', {
+            get: () => this.shipMovementController.acceleration,
+            set: (val) => { this.shipMovementController.acceleration = val; }
+        });
+        Object.defineProperty(this, 'deceleration', {
+            get: () => this.shipMovementController.deceleration,
+            set: (val) => { this.shipMovementController.deceleration = val; }
+        });
+        Object.defineProperty(this, 'decelerating', {
+            get: () => this.shipMovementController.decelerating,
+            set: (val) => { this.shipMovementController.decelerating = val; }
+        });
+        Object.defineProperty(this, 'rotationVelocity', {
+            get: () => this.shipMovementController.rotationVelocity,
+            set: (val) => { this.shipMovementController.rotationVelocity = val; }
+        });
+        Object.defineProperty(this, 'rotationAcceleration', {
+            get: () => this.shipMovementController.rotationAcceleration,
+            set: (val) => { this.shipMovementController.rotationAcceleration = val; }
+        });
+        Object.defineProperty(this, 'rotationDeceleration', {
+            get: () => this.shipMovementController.rotationDeceleration,
+            set: (val) => { this.shipMovementController.rotationDeceleration = val; }
+        });
+        Object.defineProperty(this, 'maxRotationSpeed', {
+            get: () => this.shipMovementController.maxRotationSpeed,
+            set: (val) => { this.shipMovementController.maxRotationSpeed = val; }
+        });
+        Object.defineProperty(this, 'shipHeading', {
+            get: () => this.shipMovementController.shipHeading,
+            set: (val) => { this.shipMovementController.shipHeading = val; }
+        });
+
         // Target computer state
         this.targetComputerEnabled = false;
         this.currentTarget = null;
@@ -155,11 +198,7 @@ export class StarfieldManager {
         // Add button state logging throttling
         this.lastButtonStateLog = null;
 
-        // Smooth rotation state
-        this.rotationVelocity = { x: 0, y: 0 };
-        this.rotationAcceleration = SHIP_MOVEMENT.ROTATION_ACCELERATION;
-        this.rotationDeceleration = SHIP_MOVEMENT.ROTATION_DECELERATION;
-        this.maxRotationSpeed = SHIP_MOVEMENT.MAX_ROTATION_SPEED;
+        // Smooth rotation state is now managed by ShipMovementController
 
         // Create starfield renderer with quintuple density
         this.starCount = STARFIELD.STAR_COUNT;
@@ -1395,92 +1434,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
     }
 
     updateSmoothRotation(deltaTime) {
-        // Determine target rotation velocities based on key states
-        let targetRotationX = 0;
-        let targetRotationY = 0;
-        
-        if (this.keys.ArrowLeft) {
-            targetRotationY = this.maxRotationSpeed;
-        }
-        if (this.keys.ArrowRight) {
-            targetRotationY = -this.maxRotationSpeed;
-        }
-        if (this.keys.ArrowUp) {
-            targetRotationX = this.maxRotationSpeed;
-        }
-        if (this.keys.ArrowDown) {
-            targetRotationX = -this.maxRotationSpeed;
-        }
-        
-        // Smooth acceleration/deceleration for Y rotation (left/right)
-        if (Math.abs(targetRotationY) > 0) {
-            // Accelerate towards target rotation speed
-            if (Math.abs(this.rotationVelocity.y) < Math.abs(targetRotationY)) {
-                const direction = Math.sign(targetRotationY);
-                this.rotationVelocity.y += direction * this.rotationAcceleration * deltaTime * 60;
-                // Clamp to target speed
-                if (Math.abs(this.rotationVelocity.y) > Math.abs(targetRotationY)) {
-                    this.rotationVelocity.y = targetRotationY;
-                }
-            }
-        } else {
-            // Decelerate to zero
-            if (Math.abs(this.rotationVelocity.y) > 0) {
-                const direction = -Math.sign(this.rotationVelocity.y);
-                this.rotationVelocity.y += direction * this.rotationDeceleration * deltaTime * 60;
-                // Stop if we've crossed zero
-                if (Math.sign(this.rotationVelocity.y) !== Math.sign(this.rotationVelocity.y + direction * this.rotationDeceleration * deltaTime * 60)) {
-                    this.rotationVelocity.y = 0;
-                }
-            }
-        }
-        
-        // Smooth acceleration/deceleration for X rotation (up/down)
-        if (Math.abs(targetRotationX) > 0) {
-            // Accelerate towards target rotation speed
-            if (Math.abs(this.rotationVelocity.x) < Math.abs(targetRotationX)) {
-                const direction = Math.sign(targetRotationX);
-                this.rotationVelocity.x += direction * this.rotationAcceleration * deltaTime * 60;
-                // Clamp to target speed
-                if (Math.abs(this.rotationVelocity.x) > Math.abs(targetRotationX)) {
-                    this.rotationVelocity.x = targetRotationX;
-                }
-            }
-        } else {
-            // Decelerate to zero
-            if (Math.abs(this.rotationVelocity.x) > 0) {
-                const direction = -Math.sign(this.rotationVelocity.x);
-                this.rotationVelocity.x += direction * this.rotationDeceleration * deltaTime * 60;
-                // Stop if we've crossed zero
-                if (Math.sign(this.rotationVelocity.x) !== Math.sign(this.rotationVelocity.x + direction * this.rotationDeceleration * deltaTime * 60)) {
-                    this.rotationVelocity.x = 0;
-                }
-            }
-        }
-        
-        // Apply rotation to camera
-        if (Math.abs(this.rotationVelocity.y) > 0.0001) {
-            this.camera.rotateY(this.rotationVelocity.y * deltaTime * 60);
-            // Update ship heading when actually rotating (for radar consistency)
-            if (this.shipHeading === undefined) {
-                this.shipHeading = this.camera.rotation.y;
-            } else {
-                this.shipHeading += this.rotationVelocity.y * deltaTime * 60;
-            }
-        }
-        if (Math.abs(this.rotationVelocity.x) > 0.0001) {
-            this.camera.rotateX(this.rotationVelocity.x * deltaTime * 60);
-        }
-        
-        // Update impulse engines rotation state for energy consumption
-        const ship = this.viewManager?.getShip();
-        if (ship) {
-            const impulseEngines = ship.getSystem('impulse_engines');
-            if (impulseEngines) {
-                const isRotating = Math.abs(this.rotationVelocity.x) > 0.0001 || Math.abs(this.rotationVelocity.y) > 0.0001;
-                impulseEngines.setRotating(isRotating);
-            }
-        }
+        this.shipMovementController.updateSmoothRotation(deltaTime);
     }
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
@@ -1522,81 +1476,8 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         this.updateSmoothRotation(deltaTime);
 
         // Handle speed changes with acceleration/deceleration
-        if (this.decelerating) {
-            // Calculate truly proportional deceleration rate to prevent oscillation near target
-            const previousSpeed = this.currentSpeed;
-            const speedDifference = this.currentSpeed - this.targetSpeed;
+        this.shipMovementController.updateSpeedState(deltaTime);
 
-            // Truly proportional deceleration that scales with remaining distance
-            // This prevents oscillation by ensuring deceleration decreases as we approach target
-            const proportionalDecel = Math.min(this.deceleration, Math.max(0.001, speedDifference * 0.5));
-
-            // Apply deceleration
-            this.currentSpeed = Math.max(
-                this.targetSpeed,
-                this.currentSpeed - proportionalDecel
-            );
-
-            // Check if we've reached target speed
-            const speedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
-            if (speedDiff < 0.01) {
-                this.currentSpeed = this.targetSpeed;
-                this.decelerating = false;
-
-            }
-
-            // Debug deceleration behavior
-            const speedChange = Math.abs(this.currentSpeed - previousSpeed);
-
-            // Check for oscillation (rapid changes near target)
-            if (speedChange > 0.001 && speedDiff < 0.05) { // Small changes near target = potential oscillation
-
-            }
-
-            // Update engine sound during deceleration
-            if (this.audioManager.getEngineState() === 'running') {
-                const volume = this.currentSpeed / this.maxSpeed;
-                if (volume < 0.01) {
-                    this.audioManager.playEngineShutdown();
-                } else {
-                    this.audioManager.updateEngineVolume(this.currentSpeed, this.maxSpeed);
-                }
-            }
-        } else if (this.currentSpeed < this.targetSpeed) {
-            // Only handle acceleration if we're not decelerating
-            const previousSpeed = this.currentSpeed;
-            const speedDiff = this.targetSpeed - this.currentSpeed;
-
-            // Truly proportional acceleration that scales with remaining distance
-            // This prevents oscillation by ensuring acceleration decreases as we approach target
-            const proportionalAccel = Math.min(this.acceleration, Math.max(0.001, speedDiff * 0.5));
-
-            const newSpeed = Math.min(
-                this.targetSpeed,
-                this.currentSpeed + proportionalAccel
-            );
-            this.currentSpeed = newSpeed;
-
-            // Debug acceleration behavior (commented out to reduce spam)
-            // const accelSpeedDiff = Math.abs(this.currentSpeed - this.targetSpeed);
-
-            // Check for oscillation (rapid changes near target)
-            // const accelSpeedChange = Math.abs(this.currentSpeed - previousSpeed);
-            // if (accelSpeedChange > 0.001 && accelSpeedDiff < 0.05) { // Small changes near target = potential oscillation
-
-            // }
-
-            // Update engine sound during acceleration
-            if (this.soundLoaded) {
-                const volume = this.currentSpeed / this.maxSpeed;
-                if (this.engineState === 'stopped' && this.currentSpeed > 0) {
-                    this.playEngineStartup(volume);
-                } else if (this.engineState === 'running') {
-                    this.engineSound.setVolume(volume);
-                }
-            }
-        }
-        
         this.updateSpeedIndicator();
         
         // Only update ship systems display when damage control is open
@@ -1616,62 +1497,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         this.ensureWeaponEffectsConnection();
 
         // Forward/backward movement based on view
-        if (this.currentSpeed > 0) {
-            const moveDirection = this.view === 'AFT' ? -1 : 1;
-            
-            // Update impulse engines movement state
-            const ship = this.viewManager?.getShip();
-            if (ship) {
-                const impulseEngines = ship.getSystem('impulse_engines');
-                if (impulseEngines) {
-                    impulseEngines.setMovingForward(true);
-                }
-            }
-            
-            // Calculate speed multiplier with reduced speeds for impulse 1, 2, 3, and 4
-            let speedMultiplier = this.currentSpeed * 0.3; // Base multiplier
-            
-            // Apply speed reductions for lower impulse levels
-            if (this.currentSpeed <= 3) {
-                // Exponential reduction for impulse 1-3
-                const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Changed from 0.3 to 0.15 to reduce impulse 1 speed by 50%
-                speedMultiplier *= reductionFactor;
-
-            } else if (this.currentSpeed === 4) {
-                // Impulse 4: Use consistent exponential formula like other speeds
-                const reductionFactor = Math.pow(0.15, 4 - this.currentSpeed); // Same formula as impulse 1-3
-                speedMultiplier *= reductionFactor;
-
-            } else if (this.currentSpeed >= 5) {
-                // Impulse 5+: Standard calculation without reduction
-
-            }
-            
-            // Calculate actual movement based on current speed
-            const forwardVector = new this.THREE.Vector3(0, 0, -speedMultiplier * moveDirection);
-            forwardVector.applyQuaternion(this.camera.quaternion);
-
-            // Debug speed vs movement correlation (commented out to reduce spam)
-            // const movementMagnitude = forwardVector.length();
-
-            // Apply movement
-            this.camera.position.add(forwardVector);
-            this.camera.updateMatrixWorld();
-            
-            // Update ship position for weapon effects
-            if (this.ship && this.ship.position) {
-                this.ship.position.copy(this.camera.position);
-            }
-        } else {
-            // Update impulse engines movement state when not moving
-            const ship = this.viewManager?.getShip();
-            if (ship) {
-                const impulseEngines = ship.getSystem('impulse_engines');
-                if (impulseEngines) {
-                    impulseEngines.setMovingForward(false);
-                }
-            }
-        }
+        this.shipMovementController.applyMovement(deltaTime);
 
         // Update starfield positions
         const positions = this.starfield.geometry.attributes.position;
