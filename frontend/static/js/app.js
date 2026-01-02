@@ -13,7 +13,6 @@ import SimpleCollisionManager from './SimpleCollisionManager.js';
 import SimpleDockingManager from './SimpleDockingManager.js';
 import './ship/systems/services/HitScanService.js'; // Load Three.js hit scan service
 import './ship/systems/services/SimpleProjectileService.js'; // Load simplified projectile system
-import './cache-test.js'; // Cache test - TIMESTAMP: 1755751628397
 import './utils/ErrorReporter.js'; // Error reporting system for debugging
 import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logging system
 import { debug } from './debug.js';
