@@ -22,6 +22,7 @@ import { HUDMessageManager } from '../managers/HUDMessageManager.js';
 import { CargoDeliveryHandler } from '../managers/CargoDeliveryHandler.js';
 import { WaypointTestManager } from '../managers/WaypointTestManager.js';
 import { CommandAudioManager } from '../managers/CommandAudioManager.js';
+import { WeaponHUDManager } from '../managers/WeaponHUDManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -475,6 +476,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Command audio manager (extracted)
         this.commandAudioManager = new CommandAudioManager(this);
+
+        // Weapon HUD manager (extracted)
+        this.weaponHUDManager = new WeaponHUDManager(this);
     }
 
     /**
@@ -812,79 +816,17 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     createWeaponHUD() {
-        // Import and initialize WeaponHUD
-        debug('COMBAT', '🔫 StarfieldManager: Starting WeaponHUD creation...');
-        import('../ui/WeaponHUD.js').then(({ WeaponHUD }) => {
-            debug('COMBAT', '🔫 StarfieldManager: WeaponHUD module loaded, creating instance...');
-            this.weaponHUD = new WeaponHUD(document.body);
-            
-            // Initialize weapon slots display
-            this.weaponHUD.initializeWeaponSlots(4);
-            debug('COMBAT', '🔫 StarfieldManager: WeaponHUD created and initialized');
-            debug('COMBAT', `🔫 WeaponHUD elements created: weaponSlotsDisplay=${!!this.weaponHUD.weaponSlotsDisplay}`);
-            
-            // Connect to weapon system if available
-            this.connectWeaponHUDToSystem();
-            
-            // Set up retry mechanism for connection
-            this.setupWeaponHUDConnectionRetry();
-            
-        }).catch(error => {
-            debug('P1', `❌ StarfieldManager: Failed to initialize WeaponHUD: ${error}`);
-        });
+        this.weaponHUDManager.createWeaponHUD();
     }
-    
-    /**
-     * Set up retry mechanism for WeaponHUD connection
-     */
-    setupWeaponHUDConnectionRetry() {
-        // Retry connection every 500ms for up to 30 seconds
-        this.weaponHUDRetryCount = 0;
-        this.maxWeaponHUDRetries = 60; // 30 seconds at 500ms intervals
-        
-        this.weaponHUDRetryInterval = setInterval(() => {
-            this.weaponHUDRetryCount++;
-            
-            // Try to connect
-            this.connectWeaponHUDToSystem();
-            
-            // If connected or max retries reached, stop trying
-            if (this.weaponHUDConnected || this.weaponHUDRetryCount >= this.maxWeaponHUDRetries) {
-                clearInterval(this.weaponHUDRetryInterval);
-                this.weaponHUDRetryInterval = null;
-                
-                if (this.weaponHUDConnected) {
-                    debug('UTILITY', `WeaponHUD connected after ${this.weaponHUDRetryCount} attempts`);
-                } else {
-                    debug('UTILITY', `WeaponHUD connection will retry later (${this.maxWeaponHUDRetries} attempts completed)`);
-                }
-            }
-        }, 500);
-    }
-    
-    /**
-     * Connect WeaponHUD to WeaponSystemCore
-     */
-    connectWeaponHUDToSystem() {
-        const ship = this.viewManager?.getShip();
-        
-        debug('COMBAT', `🔫 connectWeaponHUDToSystem: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}, weaponHUD=${!!this.weaponHUD}`);
 
-        if (ship && ship.weaponSystem && this.weaponHUD) {
-            // Set HUD reference in weapon system
-            ship.weaponSystem.setWeaponHUD(this.weaponHUD);
-            
-            // Update weapon slots display
-            this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
-            
-            this.weaponHUDConnected = true;
-            debug('COMBAT', '🔫 WeaponHUD successfully connected to WeaponSystemCore');
-            debug('COMBAT', `🔫 Weapon slots: ${ship.weaponSystem.weaponSlots?.length}, active: ${ship.weaponSystem.activeSlotIndex}`);
-        } else {
-            this.weaponHUDConnected = false;
-            debug('COMBAT', `🔫 WeaponHUD connection failed: ship=${!!ship}, weaponSystem=${!!ship?.weaponSystem}, weaponHUD=${!!this.weaponHUD}`);
-        }
+    setupWeaponHUDConnectionRetry() {
+        this.weaponHUDManager.setupWeaponHUDConnectionRetry();
     }
+
+    connectWeaponHUDToSystem() {
+        this.weaponHUDManager.connectWeaponHUDToSystem();
+    }
+
     bindKeyEvents() {
         this.keyboardInputManager.bindKeyEvents();
     }
