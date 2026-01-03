@@ -16,6 +16,7 @@ import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
 import { TargetDummyManager } from '../managers/TargetDummyManager.js';
 import { TargetOutlineManager } from '../managers/TargetOutlineManager.js';
 import { DestroyedTargetHandler } from '../managers/DestroyedTargetHandler.js';
+import { ReticleManager } from '../managers/ReticleManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -451,6 +452,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Destroyed target handler (extracted)
         this.destroyedTargetHandler = new DestroyedTargetHandler(this);
+
+        // Reticle manager (extracted)
+        this.reticleManager = new ReticleManager(this);
     }
 
     /**
@@ -2621,167 +2625,20 @@ debug('UI', '📊 Ship status display restored and enabled');
         this.updateReticlePosition();
     }
 
+    /**
+     * Update reticle position based on current target
+     * Delegated to ReticleManager
+     */
     updateReticlePosition() {
-        if (!this.currentTarget || !this.targetComputerEnabled) {
-            this.targetComputerManager.hideTargetReticle();
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
-            return;
-        }
-
-        // Get target position using helper function
-        const targetPosition = this.getTargetPosition(this.currentTarget);
-        if (!targetPosition) {
-            debug('P1', '🎯 Cannot update reticle - invalid target position');
-            return;
-        }
-
-        // Ensure targetPosition is a Three.js Vector3 object
-        if (typeof targetPosition.clone !== 'function') {
-            debug('P1', `🎯 targetPosition is not a Vector3 object: ${typeof targetPosition}, constructor: ${targetPosition?.constructor?.name}`);
-            return;
-        }
-
-        // Calculate target's screen position
-        const screenPosition = targetPosition.clone().project(this.camera);
-        const isOnScreen = Math.abs(screenPosition.x) <= 1 && Math.abs(screenPosition.y) <= 1;
-
-        if (isOnScreen) {
-            const x = (screenPosition.x + 1) * window.innerWidth / 2;
-            const y = (-screenPosition.y + 1) * window.innerHeight / 2;
-            
-            const cameraForward = new this.THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            const relativePos = targetPosition.clone().sub(this.camera.position);
-            const isBehindCamera = relativePos.dot(cameraForward) < 0;
-            
-            if (isBehindCamera) {
-                this.targetComputerManager.hideTargetReticle();
-                if (this.targetNameDisplay) {
-                    this.targetNameDisplay.style.display = 'none';
-                }
-                if (this.targetDistanceDisplay) {
-                    this.targetDistanceDisplay.style.display = 'none';
-                }
-            } else {
-                // RESTORED: Direct reticle positioning like original backup version
-                this.targetComputerManager.showTargetReticle();
-                const targetReticle = this.targetComputerManager.targetReticle;
-                if (targetReticle) {
-                    targetReticle.style.left = `${x}px`;
-                    targetReticle.style.top = `${y}px`;
-                }
-                
-                // Update target information displays if reticle is visible
-                this.updateReticleTargetInfo();
-            }
-        } else {
-            this.targetComputerManager.hideTargetReticle();
-            if (this.targetNameDisplay) {
-                this.targetNameDisplay.style.display = 'none';
-            }
-            if (this.targetDistanceDisplay) {
-                this.targetDistanceDisplay.style.display = 'none';
-            }
-        }
+        this.reticleManager.updateReticlePosition();
     }
 
+    /**
+     * Update reticle target information (name, distance, colors)
+     * Delegated to ReticleManager
+     */
     updateReticleTargetInfo() {
-        if (!this.currentTarget || !this.targetNameDisplay || !this.targetDistanceDisplay) {
-            return;
-        }
-
-        // Get current target data
-        const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) {
-            return;
-        }
-
-        // Calculate distance to target
-        const targetPos = this.getTargetPosition(this.currentTarget);
-        const distance = targetPos ? this.calculateDistance(this.camera.position, targetPos) : 0;
-        
-        // Get target info for diplomacy status and display
-        let info = null;
-        let isEnemyShip = false;
-        let targetName = 'Unknown Target';
-        
-        // Check if this is an enemy ship
-        if (currentTargetData.isShip && currentTargetData.ship) {
-            isEnemyShip = true;
-            info = {
-                type: 'enemy_ship',
-                diplomacy: currentTargetData.diplomacy || currentTargetData.ship.diplomacy || 'enemy',
-                faction: currentTargetData.faction || currentTargetData.ship.faction || currentTargetData.diplomacy || 'enemy',
-                name: currentTargetData.ship.shipName,
-                shipType: currentTargetData.ship.shipType
-            };
-            targetName = info.name || 'Enemy Ship';
-            
-            // Debug log for reticle color issue
-debug('INSPECTION', `🎯 RETICLE DEBUG: Enemy ship detected - diplomacy: ${info.diplomacy}, faction: ${info.faction}, isEnemyShip: ${isEnemyShip}`);
-        } else {
-            // Get celestial body info - need to pass the actual Three.js object
-            const targetObject = this.currentTarget?.object || this.currentTarget;
-            info = this.solarSystemManager.getCelestialBodyInfo(targetObject);
-            
-            // Fallback to target data name if celestial body info not found
-            if (!info || !info.name) {
-                const targetData = this.targetComputerManager.getCurrentTargetData();
-                targetName = targetData?.name || 'Unknown Target';
-            } else {
-                targetName = info.name;
-            }
-        }
-        
-        // Determine reticle color based on diplomacy using faction color rules
-        let reticleColor = '#44ffff'; // Default teal for unknown
-        if (isEnemyShip) {
-            reticleColor = '#ff0000'; // Enemy ships are bright red
-        } else if (info?.type === 'star') {
-            reticleColor = '#ffff00'; // Stars are neutral yellow
-        } else {
-            // Convert faction to diplomacy if needed
-            let diplomacy = info?.diplomacy?.toLowerCase();
-            if (!diplomacy && info?.faction) {
-                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
-            }
-            
-            if (diplomacy === 'enemy') {
-                reticleColor = '#ff0000'; // Enemy territories are bright red
-            } else if (diplomacy === 'neutral') {
-                reticleColor = '#ffff00'; // Neutral territories are yellow
-            } else if (diplomacy === 'friendly') {
-                reticleColor = '#00ff41'; // Friendly territories are green
-            } else if (diplomacy === 'unknown') {
-                reticleColor = '#44ffff'; // Unknown territories are cyan
-            }
-        }
-
-        // Update reticle corner colors
-        const corners = this.targetComputerManager.getTargetReticleCorners();
-        for (const corner of corners) {
-            corner.style.borderColor = reticleColor;
-            corner.style.boxShadow = `0 0 2px ${reticleColor}`;
-        }
-
-        // Format distance display
-        const formattedDistance = this.formatDistance(distance);
-
-        // Update target name display
-        this.targetNameDisplay.textContent = targetName;
-        this.targetNameDisplay.style.color = reticleColor;
-        this.targetNameDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
-        this.targetNameDisplay.style.display = 'block';
-
-        // Update target distance display
-        this.targetDistanceDisplay.textContent = formattedDistance;
-        this.targetDistanceDisplay.style.color = reticleColor;
-        this.targetDistanceDisplay.style.textShadow = `0 0 4px ${reticleColor}`;
-        this.targetDistanceDisplay.style.display = 'block';
+        this.reticleManager.updateReticleTargetInfo();
     }
 
     getCurrentTargetData() {
