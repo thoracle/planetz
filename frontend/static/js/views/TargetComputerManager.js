@@ -27,6 +27,7 @@ import { TargetStateManager } from '../ui/TargetStateManager.js';
 import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
 import { TargetHUDController } from '../ui/TargetHUDController.js';
 import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
+import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -197,6 +198,9 @@ export class TargetComputerManager {
 
         // Initialize TargetComputerToggle
         this.targetComputerToggle = new TargetComputerToggle(this);
+
+        // Initialize TargetWireframeCreator
+        this.targetWireframeCreator = new TargetWireframeCreator(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -788,244 +792,10 @@ export class TargetComputerManager {
 
     /**
      * Create wireframe for current target
+     * Delegates to TargetWireframeCreator
      */
     createTargetWireframe() {
-        debug('TARGETING', `🖼️ createTargetWireframe() called for target: ${this.currentTarget?.name || 'none'}`);
-        
-        if (!this.currentTarget) {
-            debug('TARGETING', '🖼️ No current target - aborting wireframe creation');
-            return;
-        }
-
-        // SPECIAL CASE: If this is a waypoint, delegate to waypoint wireframe creation
-        if (this.currentTarget && this.currentTarget.isWaypoint) {
-            debug('WAYPOINTS', `🎯 Delegating to createWaypointWireframe for: ${this.currentTarget.name}`);
-            this.createWaypointWireframe();
-            return;
-        }
-
-        const childrenBefore = this.wireframeScene.children.length;
-        debug('TARGETING', `🖼️ Wireframe scene children before: ${childrenBefore}`);
-
-        // Clear any existing wireframe first to prevent duplicates
-        this.clearTargetWireframe();
-        
-        const childrenAfter = this.wireframeScene.children.length;
-        // Only log if there's a significant change
-        if (childrenBefore !== childrenAfter) {
-            debug('UI', `🖼️ WIREFRAME: Scene children: ${childrenBefore} -> ${childrenAfter}`);
-        }
-
-        try {
-            // Ensure currentTarget is hydrated with a real object/position before building geometry
-            if (!this.currentTarget.position) {
-                try {
-                    const vm = this.viewManager || window.viewManager;
-                    const ssm = this.solarSystemManager || vm?.solarSystemManager || window.solarSystemManager;
-                    const sfm = vm?.starfieldManager || window.starfieldManager;
-                    const currentData = this.targetObjects?.[this.targetIndex];
-                    const normalizedId = typeof (currentData?.id || '') === 'string' ? (currentData?.id || '').replace(/^a0_/i, 'A0_') : (currentData?.id || '');
-                    let resolved = null;
-                    if (currentData?.type === 'navigation_beacon' && sfm?.navigationBeacons) {
-                        resolved = sfm.navigationBeacons.find(b => b?.userData?.id === normalizedId) ||
-                                   sfm.navigationBeacons.find(b => (b?.userData?.name || b?.name) === currentData.name);
-                    }
-                    if (!resolved && ssm?.celestialBodies) {
-                        resolved = ssm.celestialBodies.get(normalizedId) ||
-                                   ssm.celestialBodies.get(`beacon_${normalizedId}`) ||
-                                   ssm.celestialBodies.get(`station_${currentData?.name?.toLowerCase()?.replace(/\s+/g, '_')}`);
-                    }
-                    if (resolved) {
-                        this.currentTarget = resolved;
-                        this.targetObjects[this.targetIndex] = { ...currentData, object: resolved, position: resolved.position };
-                    }
-                } catch (_) {}
-            }
-            // Normalize references
-            const currentTargetData = this.getCurrentTargetData();
-            const targetObject = this.currentTarget?.object || this.currentTarget;
-
-            // Derive radius from actual target geometry when possible
-            let radius = 1;
-            if (targetObject?.geometry) {
-                if (!targetObject.geometry.boundingSphere) {
-                    targetObject.geometry.computeBoundingSphere();
-                }
-                radius = targetObject.geometry.boundingSphere?.radius || radius;
-            }
-
-            // Determine target info (use same logic as updateTargetDisplay)
-        let info = null;
-       let wireframeColor = 0x44ffff; // default teal for unknown
-       let isEnemyShip = false;
-
-       // Determine target info, prioritizing Star Charts data over spatial manager data
-       const ship = this.viewManager?.getShip();
-       const targetComputer = ship?.getSystem('target_computer');
-       const enhancedTargetInfo = targetComputer?.getCurrentTargetInfo();
-
-       // Start with currentTargetData from Star Charts (has correct normalized types)
-       info = currentTargetData || {};
-
-       if (enhancedTargetInfo) {
-           // Merge enhanced info but preserve the correct type from Star Charts
-           info = {
-               ...enhancedTargetInfo,
-               type: currentTargetData?.type || enhancedTargetInfo.type,
-               name: currentTargetData?.name || enhancedTargetInfo.name
-           };
-       } else if (currentTargetData?.isShip) {
-           info = { type: 'enemy_ship' };
-           radius = Math.max(radius, 2);
-       } else if (!info.type) {
-           // Fallback to SolarSystemManager only if we don't have type info
-           const solarInfo = this.solarSystemManager?.getCelestialBodyInfo(targetObject);
-           if (solarInfo) {
-               info = { ...info, ...solarInfo };
-           }
-       }
-
-       // CRITICAL FIX: Update wireframe color and isEnemyShip based on diplomacy using consolidated logic
-       const diplomacy = this.getTargetDiplomacy(currentTargetData);
-
-       // DISCOVERY COLOR FIX: Clear cached discovery status to ensure fresh data
-       if (this.currentTarget) {
-           this.currentTarget._lastDiscoveryStatus = undefined;
-       }
-
-       // Check discovery status for wireframe color using proper discovery logic
-       const isDiscovered = currentTargetData?.isShip || this.isObjectDiscovered(currentTargetData);
-       
-       debug('TARGETING', `🎨 WIREFRAME COLOR: ${currentTargetData?.name} - isDiscovered: ${isDiscovered}, diplomacy: ${diplomacy}, faction: ${info?.faction}`);
-       
-       if (!isDiscovered) {
-           // Undiscovered objects use unknown faction color (cyan)
-           wireframeColor = 0x44ffff; // Cyan for unknown/undiscovered
-           debug('TARGETING', `🎨 Using CYAN wireframe for undiscovered: ${currentTargetData?.name}`);
-       } else {
-           // DISCOVERY COLOR FIX: Faction-based coloring for discovered objects
-           if (currentTargetData?.type === 'waypoint' || currentTargetData?.isVirtual) {
-               wireframeColor = 0xff00ff; // Magenta for waypoints
-           } else {
-               // Pure faction-based coloring
-               switch (diplomacy) {
-                   case 'enemy':
-                   case 'hostile':
-                       wireframeColor = 0xff3333; // Red for hostile
-                       isEnemyShip = currentTargetData?.isShip; // Set enemy ship flag
-                       break;
-                   case 'friendly':
-                   case 'ally':
-                       wireframeColor = 0x44ff44; // Green for friendly
-                       break;
-                   case 'neutral':
-                       wireframeColor = 0xffff44; // Yellow for neutral
-                       break;
-                   case 'unknown':
-                       wireframeColor = 0x44ffff; // Cyan for unknown faction
-                       break;
-                   default:
-                       // No diplomacy data - default to neutral
-                       wireframeColor = 0xffff44; // Yellow (neutral) as default
-                       break;
-               }
-           }
-           
-           debug('TARGETING', `🎨 Using faction-based wireframe for discovered: ${currentTargetData?.name} → ${diplomacy || 'default'}`);
-       }
-
-       // Override color for waypoints
-       if (this.currentTarget && this.currentTarget.isWaypoint) {
-           wireframeColor = 0xff00ff; // Magenta for waypoints
-           debug('WAYPOINTS', '🎨 Using magenta color for waypoint wireframe');
-       }
-
-            const wireframeMaterial = new this.THREE.LineBasicMaterial({
-                color: wireframeColor,
-                linewidth: 1,
-                transparent: true,
-                opacity: 0.8
-            });
-
-            // Check if object is discovered to determine wireframe type
-            if (!isDiscovered) {
-                // Undiscovered objects use a standard "unknown" wireframe shape
-                debug('INSPECTION', `🔍 Creating unknown wireframe for undiscovered object`);
-                const unknownGeometry = this.createUnknownWireframeGeometry(radius);
-                this.targetWireframe = new this.THREE.LineSegments(unknownGeometry, wireframeMaterial);
-            } else {
-                // Use centralized wireframe type mapping for discovered objects
-                const resolvedType = (currentTargetData?.type || '').toLowerCase();
-                const wireframeConfig = this.getWireframeConfig(resolvedType);
-
-                if (wireframeConfig.geometry === 'star') {
-                    const starGeometry = this.createStarGeometry(radius);
-                    this.targetWireframe = new this.THREE.LineSegments(starGeometry, wireframeMaterial);
-                } else {
-                    let baseGeometry = null;
-
-                    // Handle special cases that need additional logic
-                    if (wireframeConfig.geometry === 'box') {
-                        // Box geometry is only for enemy ships - verify this is actually an enemy ship
-                        if (info?.type === 'enemy_ship' || currentTargetData?.isShip) {
-                            baseGeometry = new this.THREE.BoxGeometry(radius, radius, radius);
-                        }
-                        // If not an enemy ship but config says 'box', baseGeometry stays null
-                        // and we'll fall through to the standard geometry creation
-                    } else if (wireframeConfig.geometry === 'torus') {
-                        // Space stations - use centralized configuration
-                        const ringR = Math.max(radius * 0.8, 1.0);
-                        const ringTube = Math.max(radius * 0.25, 0.3);
-                        baseGeometry = new this.THREE.TorusGeometry(ringR, ringTube, 8, 16);
-                    } else {
-                        // Standard geometries from centralized mapping
-                        baseGeometry = this.createGeometryFromConfig(wireframeConfig.geometry, radius);
-                    }
-
-                    // Create wireframe from base geometry if we have one
-                    if (baseGeometry) {
-                        const edgesGeometry = new this.THREE.EdgesGeometry(baseGeometry);
-                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                        // Dispose the temporary base geometry; keep edgesGeometry until clear
-                        baseGeometry.dispose();
-                    } else if (targetObject?.geometry && targetObject.geometry.isBufferGeometry) {
-                        // Fallback to actual target geometry if no base geometry was created
-                        const edgesGeometry = new this.THREE.EdgesGeometry(targetObject.geometry);
-                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                    } else {
-                        // Final fallback - create default icosahedron geometry
-                        const defaultGeometry = new this.THREE.IcosahedronGeometry(radius, 0);
-                        const edgesGeometry = new this.THREE.EdgesGeometry(defaultGeometry);
-                        this.targetWireframe = new this.THREE.LineSegments(edgesGeometry, wireframeMaterial);
-                        defaultGeometry.dispose();
-                    }
-                }
-            }
-
-            // Clear any existing sub-target indicators (they are disabled)
-            this.createSubTargetIndicators(0, 0);
-
-            // Ensure wireframe was created successfully before using it
-            if (!this.targetWireframe) {
-                debug('TARGETING', `🎯 WIREFRAME: ERROR - No wireframe created for ${currentTargetData?.name || 'unknown'}`);
-                return;
-            }
-
-            this.targetWireframe.position.set(0, 0, 0);
-            this.wireframeScene.add(this.targetWireframe);
-            
-            const finalChildren = this.wireframeScene.children.length;
-            const childTypes = this.wireframeScene.children.map(child => child.constructor.name).join(', ');
-
-            this.wireframeCamera.position.z = Math.max(radius * 3, 3);
-            this.targetWireframe.rotation.set(0.5, 0, 0.3);
-            
-            debug('TARGETING', `🖼️ Wireframe creation SUCCESS: target=${this.currentTarget?.name}, wireframeExists=${!!this.targetWireframe}, wireframeType=${this.targetWireframe?.constructor?.name}, sceneChildren=${this.wireframeScene.children.length}`);
-
-        } catch (error) {
-            debug('TARGETING', `🖼️ Wireframe creation ERROR: ${error.message}`);
-            debug('P1', `Error creating target wireframe: ${error}`);
-        }
+        this.targetWireframeCreator.createTargetWireframe();
     }
 
     /**
@@ -2042,6 +1812,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
         // Clean up TargetComputerToggle
         if (this.targetComputerToggle) {
             this.targetComputerToggle.dispose();
+        }
+
+        // Clean up TargetWireframeCreator
+        if (this.targetWireframeCreator) {
+            this.targetWireframeCreator.dispose();
         }
 
         // Clear target arrays
