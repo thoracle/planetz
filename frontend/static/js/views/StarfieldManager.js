@@ -21,6 +21,7 @@ import { SystemLifecycleManager } from '../managers/SystemLifecycleManager.js';
 import { HUDMessageManager } from '../managers/HUDMessageManager.js';
 import { CargoDeliveryHandler } from '../managers/CargoDeliveryHandler.js';
 import { WaypointTestManager } from '../managers/WaypointTestManager.js';
+import { CommandAudioManager } from '../managers/CommandAudioManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -471,6 +472,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Waypoint test manager (extracted)
         this.waypointTestManager = new WaypointTestManager(this);
+
+        // Command audio manager (extracted)
+        this.commandAudioManager = new CommandAudioManager(this);
     }
 
     /**
@@ -605,13 +609,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     ensureAudioContextRunning() {
-        if (this.listener && this.listener.context) {
-            if (this.listener.context.state === 'suspended') {
-                this.listener.context.resume().catch(error => {
-                    debug('P1', `Failed to resume AudioContext: ${error}`);
-                });
-            }
-        }
+        this.commandAudioManager.ensureAudioContextRunning();
     }
 
     // Starfield creation methods now delegated to StarfieldRenderer
@@ -1825,90 +1823,19 @@ debug('TARGETING', 'Target computer completely cleared - all state reset');
     }
 
     playCommandSound() {
-        // Delegate to audio manager
-        if (this.audioManager) {
-            this.audioManager.playCommandSound();
-        } else {
-            // Fallback if audio manager is not available
-            this.generateCommandSuccessBeep();
-        }
+        this.commandAudioManager.playCommandSound();
     }
 
     generateCommandSuccessBeep() {
-        try {
-            // Ensure AudioContext is running
-            this.ensureAudioContextRunning();
-            
-            if (!this.listener || !this.listener.context) {
-                debug('P1', 'No audio context available for command success beep');
-                return;
-            }
-
-            const audioContext = this.listener.context;
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            // Connect oscillator to gain to destination
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            // Configure the beep - higher frequency for success
-            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High frequency
-            oscillator.type = 'sine'; // Smooth sine wave for pleasant sound
-
-            // Configure volume envelope - quick attack, moderate decay
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01); // Quick attack
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15); // Moderate decay
-
-            // Play the beep for 0.15 seconds
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.15);
-
-        } catch (error) {
-            debug('P1', `Failed to generate command success beep: ${error}`);
-        }
+        this.commandAudioManager.generateCommandSuccessBeep();
     }
 
     playCommandFailedSound() {
-        // Delegate to audio manager
-        this.audioManager.playCommandFailedSound();
+        this.commandAudioManager.playCommandFailedSound();
     }
 
     generateCommandFailedBeep() {
-        try {
-            // Ensure AudioContext is running
-            this.ensureAudioContextRunning();
-            
-            if (!this.listener || !this.listener.context) {
-                debug('P1', 'No audio context available for command failed beep');
-                return;
-            }
-
-            const audioContext = this.listener.context;
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            // Connect oscillator to gain to destination
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            // Configure the beep - lower frequency than success sound
-            oscillator.frequency.setValueAtTime(200, audioContext.currentTime); // Low frequency
-            oscillator.type = 'square'; // Harsh square wave for error sound
-
-            // Configure volume envelope - quick attack, quick decay
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01); // Quick attack
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2); // Quick decay
-
-            // Play the beep for 0.2 seconds
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
-
-        } catch (error) {
-            debug('P1', `Failed to generate command failed beep: ${error}`);
-        }
+        this.commandAudioManager.generateCommandFailedBeep();
     }
 
     // Function to recreate the starfield with new density
