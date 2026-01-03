@@ -28,6 +28,7 @@ import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
 import { TargetHUDController } from '../ui/TargetHUDController.js';
 import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
 import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
+import { ClickCycleHandler } from '../ui/ClickCycleHandler.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -201,6 +202,9 @@ export class TargetComputerManager {
 
         // Initialize TargetWireframeCreator
         this.targetWireframeCreator = new TargetWireframeCreator(this);
+
+        // Initialize ClickCycleHandler
+        this.clickCycleHandler = new ClickCycleHandler(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -1819,6 +1823,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
             this.targetWireframeCreator.dispose();
         }
 
+        // Clean up ClickCycleHandler
+        if (this.clickCycleHandler) {
+            this.clickCycleHandler.dispose();
+        }
+
         // Clear target arrays
         this.targetObjects = [];
         this.validTargets = [];
@@ -2107,42 +2116,34 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Cycle to previous target (same as SHIFT-TAB)
+     * Delegates to ClickCycleHandler
      */
     cycleToPreviousTarget() {
-        if (this.viewManager?.starfieldManager) {
-            this.viewManager.starfieldManager.cycleTarget(false); // false = backward/previous
-            // Play the same sound as TAB key
-            this.viewManager.starfieldManager.playCommandSound();
-        }
+        return this.clickCycleHandler.cycleToPreviousTarget();
     }
 
     /**
      * Cycle to next target (same as TAB)
+     * Delegates to ClickCycleHandler
      */
     cycleToNextTarget() {
-        if (this.viewManager?.starfieldManager) {
-            this.viewManager.starfieldManager.cycleTarget(true); // true = forward/next
-            // Play the same sound as TAB key
-            this.viewManager.starfieldManager.playCommandSound();
-        }
+        return this.clickCycleHandler.cycleToNextTarget();
     }
 
     /**
      * Cycle to previous sub-target (same as Z key)
+     * Delegates to ClickCycleHandler
      */
     cycleToPreviousSubTarget() {
-        if (this.viewManager?.starfieldManager) {
-            this.viewManager.starfieldManager.handleSubTargetingKey('previous');
-        }
+        return this.clickCycleHandler.cycleToPreviousSubTarget();
     }
 
     /**
      * Cycle to next sub-target (same as X key)
+     * Delegates to ClickCycleHandler
      */
     cycleToNextSubTarget() {
-        if (this.viewManager?.starfieldManager) {
-            this.viewManager.starfieldManager.handleSubTargetingKey('next');
-        }
+        return this.clickCycleHandler.cycleToNextSubTarget();
     }
 
 }
