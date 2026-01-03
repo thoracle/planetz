@@ -13,6 +13,7 @@ import { DockingOperationsManager } from '../managers/DockingOperationsManager.j
 import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
 import { ShipMovementController } from '../managers/ShipMovementController.js';
 import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
+import { TargetDummyManager } from '../managers/TargetDummyManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -396,9 +397,17 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             hasTradeButton: false
         };
         
-        // Target dummy ships for sub-targeting practice
-        this.targetDummyShips = [];
-        this.dummyShipMeshes = [];
+        // Target dummy ships manager (extracted)
+        this.targetDummyManager = new TargetDummyManager(this);
+        // Expose arrays for backwards compatibility
+        Object.defineProperty(this, 'targetDummyShips', {
+            get: () => this.targetDummyManager.targetDummyShips,
+            set: (val) => { this.targetDummyManager.targetDummyShips = val; }
+        });
+        Object.defineProperty(this, 'dummyShipMeshes', {
+            get: () => this.targetDummyManager.dummyShipMeshes,
+            set: (val) => { this.targetDummyManager.dummyShipMeshes = val; }
+        });
         
         // WeaponEffectsManager initialization state
         this.weaponEffectsInitialized = false;
@@ -2152,267 +2161,11 @@ debug('UI', '📊 Ship status display restored and enabled');
 
     /**
      * Create target dummy ships for sub-targeting practice
+     * Delegated to TargetDummyManager
      * @param {number} count - Number of dummy ships to create
      */
     async createTargetDummyShips(count = 3) {
-debug('TARGETING', `🎯 Creating ${count} target dummy ships...`);
-        
-        // Store current target information for restoration BEFORE any changes
-        const previousTarget = this.targetComputerManager.currentTarget;
-        const previousTargetIndex = this.targetComputerManager.targetIndex;
-        const previousTargetData = this.targetComputerManager.getCurrentTargetData();
-        
-        // Store identifying characteristics to find the target after update
-        const targetIdentifier = previousTargetData ? {
-            name: previousTargetData.name,
-            type: previousTargetData.type,
-            shipName: previousTargetData.ship?.shipName,
-            position: previousTarget?.position ? {
-                x: Math.round(previousTarget.position.x * 1000) / 1000,
-                y: Math.round(previousTarget.position.y * 1000) / 1000, 
-                z: Math.round(previousTarget.position.z * 1000) / 1000
-            } : null
-        } : null;
-        
-        // Enable flag to prevent automatic target changes during dummy creation
-        this.targetComputerManager.preventTargetChanges = true;
-        
-        // Force complete wireframe cleanup before any target list changes
-        if (this.targetOutline) {
-            this.scene.remove(this.targetOutline);
-            if (this.targetOutline.geometry) this.targetOutline.geometry.dispose();
-            if (this.targetOutline.material) this.targetOutline.material.dispose();
-            this.targetOutline = null;
-            this.targetOutlineObject = null;
-        }
-        
-        if (this.targetComputerManager.targetWireframe) {
-            this.targetComputerManager.wireframeScene.remove(this.targetComputerManager.targetWireframe);
-            if (this.targetComputerManager.targetWireframe.geometry) {
-                this.targetComputerManager.targetWireframe.geometry.dispose();
-            }
-            if (this.targetComputerManager.targetWireframe.material) {
-                if (Array.isArray(this.targetComputerManager.targetWireframe.material)) {
-                    this.targetComputerManager.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetComputerManager.targetWireframe.material.dispose();
-                }
-            }
-            this.targetComputerManager.targetWireframe = null;
-        }
-        
-        // Import EnemyShip class
-        const { default: EnemyShip } = await import('../ship/EnemyShip.js');
-        
-        // Clear existing dummy ships
-        this.clearTargetDummyShips();
-        
-        const enemyShipTypes = ['enemy_fighter', 'enemy_interceptor', 'enemy_gunship'];
-        
-        for (let i = 0; i < count; i++) {
-            try {
-                // Create enemy ship with simplified systems
-                const enemyShipType = enemyShipTypes[i % enemyShipTypes.length];
-                const dummyShip = new EnemyShip(enemyShipType);
-                
-                // Wait for systems to initialize
-                await dummyShip.waitForSystemsInitialized();
-                
-                // Set ship name
-                dummyShip.shipName = `Target Dummy ${i + 1}`;
-                
-                // Mark as target dummy for classification purposes
-                dummyShip.isTargetDummy = true;
-                
-                // Set all target dummies as enemies for combat training
-                dummyShip.diplomacy = 'enemy'; // All target dummies are enemies (red crosshairs)
-                
-                // Add some random damage to systems for testing
-                this.addRandomDamageToShip(dummyShip);
-                
-                // Create 3D mesh for the dummy ship
-                const shipMesh = this.createDummyShipMesh(i);
-                
-                // Position the ship relative to player
-                let angle, distance, height;
-                
-                // Get player's current heading from camera rotation
-                const playerRotation = new THREE.Euler().setFromQuaternion(this.camera.quaternion);
-                const playerHeading = playerRotation.y; // Y rotation is heading in THREE.js
-                
-                if (i === 0) {
-                    // First dummy: place in VERY HIGH altitude bucket (>1000m above)
-                    angle = playerHeading + (Math.PI * 0.1); // 18° to the right of player heading
-                    distance = 80; // 80km away - using game units (1 unit = 1 km)
-                    height = 1.2; // 1.2km above player (very_high bucket: y=0.7, threshold=1000m)
-                    // console.log(`🎯 Target Dummy 1: VERY HIGH bucket - ${height*1000}m altitude, ${distance}km distance`);
-                } else if (i === 1) {
-                    // Second dummy: place in VERY LOW altitude bucket (<-1000m below)
-                    const relativeAngle = Math.PI * 0.6; // 108° to the left-back
-                    angle = playerHeading + relativeAngle;
-                    distance = 55; // 55km away - using game units (1 unit = 1 km)
-                    height = -1.5; // 1.5km below player (very_low bucket: y=-0.7, threshold=-Infinity)
-                    // console.log(`🎯 Target Dummy 2: VERY LOW bucket - ${height*1000}m altitude, ${distance}km distance`);
-                } else {
-                    // Third dummy: place in SOMEWHAT HIGH altitude bucket (100-500m above)
-                    const relativeAngle = -Math.PI * 0.4; // 72° to the left of player heading
-                    angle = playerHeading + relativeAngle;
-                    distance = 30; // 30km away - using game units (1 unit = 1 km)
-                    height = 0.3; // 300m above player (somewhat_high bucket: y=0.25, threshold=100m)
-                    // console.log(`🎯 Target Dummy 3: SOMEWHAT HIGH bucket - ${height*1000}m altitude, ${distance}km distance`);
-                }
-                
-                shipMesh.position.set(
-                    this.camera.position.x + Math.sin(angle) * distance,
-                    this.camera.position.y + height,
-                    this.camera.position.z + Math.cos(angle) * distance
-                );
-                
-                // Enhanced debug logging with full 3D coordinates
-                const targetPosition = shipMesh.position;
-                const playerPosition = this.camera.position;
-                const actualDistance = playerPosition.distanceTo(targetPosition);
-                const altitudeDifference = targetPosition.y - playerPosition.y;
-                
-                // DEBUG INFO (DISABLED to reduce console spam)
-                // console.log(`🎯 Target Dummy ${i + 1} FULL DEBUG INFO:`);
-                // console.log(`   Player Position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-                // console.log(`   Target Position: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
-                // console.log(`   Altitude Difference: ${(altitudeDifference*1000).toFixed(0)}m`);
-                // console.log(`   3D Distance: ${(actualDistance/1000).toFixed(1)}km`);
-                // console.log(`   Horizontal Distance: ${(distance/1000).toFixed(1)}km`);
-                // console.log(`   Expected Radar Bucket: ${i === 0 ? 'very_high (y=0.7)' : i === 1 ? 'very_low (y=-0.7)' : 'somewhat_high (y=0.25)'}`);
-                
-                // Store ship data in mesh
-                shipMesh.userData = {
-                    ship: dummyShip,
-                    shipType: enemyShipType,
-                    isTargetDummy: true,
-                    name: dummyShip.shipName
-                };
-                
-                // Add to scene and tracking arrays
-                this.scene.add(shipMesh);
-                this.targetDummyShips.push(dummyShip);
-                this.dummyShipMeshes.push(shipMesh);
-                
-                // Add to spatial tracking for collision detection
-                if (window.spatialManager && window.spatialManagerReady) {
-                    // Calculate actual mesh size: 1.0m base * 1.5 scale = 1.5m
-                    const baseMeshSize = 1.0; // REDUCED: 50% smaller target dummies (was 2.0)
-                    const meshScale = 1.5; // From createDummyShipMesh()
-                    const actualMeshSize = baseMeshSize * meshScale; // 1.5m visual size
-                    
-                    // Use collision size that matches visual mesh (what you see is what you get)
-                    const useRealistic = window.useRealisticCollision !== false; // Default to realistic
-                    const collisionSize = useRealistic ? actualMeshSize : 4.0; // Match visual or weapon-friendly
-                    
-                    window.spatialManager.addObject(shipMesh, {
-                        type: 'enemy_ship',
-                        name: `target_dummy_${i + 1}`,
-                        radius: collisionSize / 2, // Convert diameter to radius
-                        canCollide: true,
-                        isTargetable: true,
-                        layer: 'ships',
-                        entityType: 'enemy_ship',
-                        entityId: `target_dummy_${i + 1}`,
-                        health: dummyShip.currentHull || 100,
-                        ship: dummyShip
-                    });
-                    
-                    // Also add to collision manager's ship layer
-                    if (window.collisionManager) {
-                        window.collisionManager.addObjectToLayer(shipMesh, 'ships');
-                    }
-                    
-debug('TARGETING', `🎯 Target dummy added to spatial tracking: Visual=${actualMeshSize}m, Collision=${collisionSize}m (realistic=${useRealistic})`);
-debug('TARGETING', `🚀 Spatial tracking created for Target Dummy ${i + 1}`);
-                } else {
-                    debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for ships');
-                }
-                
-                // Additional debug log with intended vs calculated distance
-                const calculatedDistance = playerPosition.distanceTo(shipMesh.position);
-                // Position debug info (DISABLED to reduce console spam)
-                // console.log(`🎯 Target ${i + 1} positioned at ${(calculatedDistance / 1000).toFixed(1)}km (world coords: ${shipMesh.position.x.toFixed(1)}, ${shipMesh.position.y.toFixed(1)}, ${shipMesh.position.z.toFixed(1)})`);
-                // console.log(`🎯   Player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
-                // console.log(`🎯   Intended distance: ${(distance/1000).toFixed(1)}km, angle: ${(angle * 180 / Math.PI).toFixed(1)}°, height: ${(height*1000).toFixed(0)}m`);
-                // console.log(`🎯   Calculated distance: ${(calculatedDistance/1000).toFixed(1)}km`);
-                
-                // Note: No physics body position sync needed with Three.js-based system
-                // Spatial manager tracks objects directly by their Three.js positions
-                
-            } catch (error) {
-                debug('P1', `Failed to create target dummy ${i + 1}: ${error}`);
-            }
-        }
-        
-        // Update target list to include dummy ships
-        this.updateTargetList();
-        
-        // Try to restore previous target using the identifier or fallback methods
-        let foundIndex = -1;
-        let foundTarget = null;
-        
-        if (targetIdentifier) {
-            // Find target by identifying characteristics
-            for (let i = 0; i < this.targetComputerManager.targetObjects.length; i++) {
-                const targetData = this.targetComputerManager.targetObjects[i];
-                const target = targetData.object;
-                
-                // Match by name first (most reliable)
-                if (targetData.name === targetIdentifier.name) {
-                    // For ships, also check ship name if available
-                    if (targetIdentifier.shipName && targetData.ship?.shipName) {
-                        if (targetData.ship.shipName === targetIdentifier.shipName) {
-                            foundIndex = i;
-                            foundTarget = target;
-                            break;
-                        }
-                    } else {
-                        // For celestial bodies or when ship name not available, use position check
-                        const targetPos = this.getTargetPosition(target);
-                        if (targetIdentifier.position && targetPos) {
-                            const posMatch = (
-                                Math.abs(targetPos.x - targetIdentifier.position.x) < 0.01 &&
-                                Math.abs(targetPos.y - targetIdentifier.position.y) < 0.01 &&
-                                Math.abs(targetPos.z - targetIdentifier.position.z) < 0.01
-                            );
-                            if (posMatch) {
-                                foundIndex = i;
-                                foundTarget = target;
-                                break;
-                            }
-                        } else {
-                            // Fallback to name match only
-                            foundIndex = i;
-                            foundTarget = target;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (foundIndex >= 0 && foundTarget) {
-            this.targetComputerManager.targetIndex = foundIndex;
-            this.targetComputerManager.currentTarget = foundTarget;
-            
-            // Recreate wireframes for the restored target
-            this.targetComputerManager.createTargetWireframe();
-            this.targetComputerManager.updateTargetDisplay();
-            
-            // Force StarfieldManager outline recreation  
-            const currentTargetData = this.targetComputerManager.getCurrentTargetData();
-            if (currentTargetData) {
-                this.createTargetOutline(foundTarget, '#00ff41', currentTargetData);
-            }
-        }
-        
-        // Clear the flag to allow normal target changes again
-        this.targetComputerManager.preventTargetChanges = false;
-        
-debug('TARGETING', `✅ Target dummy ships created successfully - target preserved`);
+        return this.targetDummyManager.createTargetDummyShips(count);
     }
 
     /**
@@ -2498,133 +2251,42 @@ debug('TARGETING', `✅ Target dummy ships created successfully - target preserv
     }
 
     /**
-     * Create a visual mesh for a target dummy ship - simple wireframe cube
-     * 
-     * Visual Size: 1.0m base geometry × 1.5 scale = 1.5m × 1.5m × 1.5m final size
-     * Physics Collision: 1.5m (matches visual mesh exactly - what you see is what you get)
-     * 
+     * Create a visual mesh for a target dummy ship
+     * Delegated to TargetDummyManager
      * @param {number} index - Ship index for color variation
-     * @returns {THREE.Mesh} Simple wireframe cube mesh (1.5m actual size)
+     * @returns {THREE.Mesh} Simple wireframe cube mesh
      */
     createDummyShipMesh(index) {
-        // Create simple cube geometry - 50% smaller than before
-        const cubeGeometry = new this.THREE.BoxGeometry(1.0, 1.0, 1.0);
-        
-        // Use bright, vibrant colors that stand out in space
-        const cubeColors = [
-            0x9932cc, // Bright purple (was red)
-            0x00ff00, // Bright green
-            0x0080ff, // Bright blue
-            0xffff00, // Bright yellow
-            0xff00ff, // Bright magenta
-            0x00ffff, // Bright cyan
-            0xff8000, // Bright orange
-            0x8000ff, // Bright purple
-        ];
-        
-        const cubeColor = cubeColors[index % cubeColors.length];
-        
-        const cubeMaterial = new this.THREE.MeshBasicMaterial({ 
-            color: cubeColor,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        const cube = new this.THREE.Mesh(cubeGeometry, cubeMaterial);
-        
-        // Add slight random rotation for variation
-        cube.rotation.y = (index * 0.7) + (Math.random() * 0.4 - 0.2);
-        cube.rotation.x = (Math.random() * 0.2 - 0.1);
-        cube.rotation.z = (Math.random() * 0.2 - 0.1);
-        
-        // Scale the cube to match collision box size: 2.0m base * 1.5 scale = 3.0m final size
-        cube.scale.setScalar(1.5);
-        
-        return cube;
+        return this.targetDummyManager.createDummyShipMesh(index, this.THREE);
     }
 
     /**
      * Add random damage to ship systems for testing
+     * Delegated to TargetDummyManager
      * @param {EnemyShip} ship - Enemy ship to damage
      */
     addRandomDamageToShip(ship) {
-        const systemNames = Array.from(ship.systems.keys());
-        // Filter out core systems that shouldn't be damaged for testing
-        const damageableSystemNames = systemNames.filter(name => 
-            !['hull_plating', 'energy_reactor'].includes(name)
-        );
-        
-        const numSystemsToDamage = Math.floor(Math.random() * 2) + 1; // 1-2 systems
-        
-        for (let i = 0; i < numSystemsToDamage; i++) {
-            if (damageableSystemNames.length === 0) break;
-            
-            const randomSystem = damageableSystemNames[Math.floor(Math.random() * damageableSystemNames.length)];
-            const system = ship.getSystem(randomSystem);
-            
-            if (system) {
-                // Apply 10-50% damage (less than player ships for testing)
-                const damagePercent = 0.1 + Math.random() * 0.4;
-                const damage = system.maxHealth * damagePercent;
-                system.takeDamage(damage);
-
-                // Remove from list to avoid damaging the same system twice
-                const index = damageableSystemNames.indexOf(randomSystem);
-                if (index > -1) {
-                    damageableSystemNames.splice(index, 1);
-                }
-            }
-        }
+        this.targetDummyManager.addRandomDamageToShip(ship);
     }
 
     /**
      * Clear all target dummy ships
+     * Delegated to TargetDummyManager
      */
     clearTargetDummyShips() {
-        // Remove meshes from scene
-        this.dummyShipMeshes.forEach(mesh => {
-            this.scene.remove(mesh);
-            
-            // Remove from spatial tracking systems
-            if (window.spatialManager && typeof window.spatialManager.removeObject === 'function') {
-                window.spatialManager.removeObject(mesh);
-debug('TARGETING', '🧹 Object removed from spatial tracking');
-            } else if (mesh.userData?.physicsBody && window.physicsManager) {
-                // Fallback to physics manager if available (legacy support)
-                window.physicsManager.removeRigidBody(mesh);
-debug('TARGETING', '🧹 Physics body removed for target dummy ship');
-            }
-            
-            // Dispose of geometries and materials
-            mesh.traverse((child) => {
-                if (child.geometry) {
-                    child.geometry.dispose();
-                }
-                if (child.material) {
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(material => material.dispose());
-                    } else {
-                        child.material.dispose();
-                    }
-                }
-            });
-        });
-        
-        // Clear arrays
-        this.targetDummyShips = [];
-        this.dummyShipMeshes = [];
-        
+        this.targetDummyManager.clearTargetDummyShips();
     }
 
     /**
      * Get target dummy ship by mesh
+     * Delegated to TargetDummyManager
      * @param {THREE.Object3D} mesh - Ship mesh
      * @returns {Ship|null} Ship instance or null
      */
     getTargetDummyShip(mesh) {
-        return mesh.userData?.ship || null;
+        return this.targetDummyManager.getTargetDummyShip(mesh);
     }
+
     /**
      * Show a temporary ephemeral message in the HUD (errors, notifications, etc.)
      * @param {string} title - Message title
