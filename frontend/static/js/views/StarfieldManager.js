@@ -23,6 +23,7 @@ import { CargoDeliveryHandler } from '../managers/CargoDeliveryHandler.js';
 import { WaypointTestManager } from '../managers/WaypointTestManager.js';
 import { CommandAudioManager } from '../managers/CommandAudioManager.js';
 import { WeaponHUDManager } from '../managers/WeaponHUDManager.js';
+import { StatusBarManager } from '../managers/StatusBarManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -479,6 +480,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Weapon HUD manager (extracted)
         this.weaponHUDManager = new WeaponHUDManager(this);
+
+        // Status bar manager (extracted)
+        this.statusBarManager = new StatusBarManager(this);
     }
 
     /**
@@ -628,34 +632,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     createSpeedIndicator() {
-        // Create individual boxes for each stat in the correct order: Energy, View, Speed
-        const stats = ['Energy', 'View', 'Speed'].map((label, index) => {
-            const box = document.createElement('div');
-            box.style.cssText = `
-                position: fixed;
-                top: 10px;
-                color: #00ff41;
-                font-family: "Courier New", monospace;
-                font-size: 20px;
-                text-align: ${index === 0 ? 'left' : index === 1 ? 'center' : 'right'};
-                pointer-events: none;
-                z-index: 1000;
-                ${index === 0 ? 'left: 10px;' : index === 1 ? 'left: 50%; transform: translateX(-50%);' : 'right: 10px;'}
-                border: 1px solid #00ff41;
-                padding: 5px 10px;
-                min-width: 120px;
-                background: rgba(0, 0, 0, 0.5);
-            `;
-            return box;
-        });
-        
-        this.energyBox = stats[0];
-        this.viewBox = stats[1];
-        this.speedBox = stats[2];
-        
-        stats.forEach(box => document.body.appendChild(box));
-
-        this.updateSpeedIndicator();
+        this.statusBarManager.createSpeedIndicator();
     }
 
     /**
@@ -760,38 +737,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     updateSpeedIndicator() {
-        // Convert speed to impulse format
-        let speedText;
-        
-        if (this.isDocked) {
-            speedText = "DOCKED";
-        } else {
-            // Get actual speed from impulse engines system (accounts for clamping)
-            const ship = this.viewManager?.getShip();
-            const impulseEngines = ship?.getSystem('impulse_engines');
-            
-            if (impulseEngines) {
-                const actualSpeed = impulseEngines.getImpulseSpeed();
-                if (actualSpeed === 0) {
-                    speedText = "Full Stop";
-                } else {
-                    speedText = `Impulse ${actualSpeed}`;
-                }
-            } else {
-                // Fallback to internal speed if no impulse engines found
-                const currentSpeedLevel = Math.round(this.currentSpeed);
-                if (currentSpeedLevel === 0) {
-                    speedText = "Full Stop";
-                } else {
-                    speedText = `Impulse ${currentSpeedLevel}`;
-                }
-            }
-        }
-        
-        this.speedBox.textContent = `Speed: ${speedText}`;
-        // Connect Ship energy to existing energy display (using ship directly)
-        this.energyBox.textContent = `Energy: ${this.ship.currentEnergy.toFixed(2)}`;
-        this.viewBox.textContent = `View: ${this.view}`;
+        this.statusBarManager.updateSpeedIndicator();
     }
 
     // ========================================
