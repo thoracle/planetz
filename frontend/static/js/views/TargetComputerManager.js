@@ -25,6 +25,7 @@ import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
 import { TargetSectorManager } from '../ui/TargetSectorManager.js';
 import { TargetStateManager } from '../ui/TargetStateManager.js';
 import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
+import { TargetHUDController } from '../ui/TargetHUDController.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -189,6 +190,9 @@ export class TargetComputerManager {
 
         // Initialize DestroyedTargetHandler
         this.destroyedTargetHandler = new DestroyedTargetHandler(this);
+
+        // Initialize TargetHUDController
+        this.targetHUDController = new TargetHUDController(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -1863,33 +1867,26 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Refresh the current target and its wireframe
+     * Delegates to TargetHUDController
      */
     refreshCurrentTarget() {
-        if (this.currentTarget && this.targetComputerEnabled) {
-            // Update the wireframe display without cycling
-            this.updateTargetDisplay();
-        }
+        this.targetHUDController.refreshCurrentTarget();
     }
-    
+
     /**
      * Show the target HUD
+     * Delegates to TargetHUDController
      */
     showTargetHUD() {
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'block';
-        }
+        this.targetHUDController.showTargetHUD();
     }
-    
+
     /**
      * Hide the target HUD
+     * Delegates to TargetHUDController
      */
     hideTargetHUD() {
-        if (this.targetHUD) {
-            this.targetHUD.style.display = 'none';
-        }
-        
-        // Also hide the sub-system panel
-        this.hideSubSystemPanel();
+        this.targetHUDController.hideTargetHUD();
     }
     
     /**
@@ -1917,39 +1914,20 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     // Removed duplicate setVirtualTarget method - using the enhanced version below
 
+    /**
+     * Set the target HUD border color based on diplomacy
+     * Delegates to TargetHUDController
+     */
     setTargetHUDBorderColor(color) {
-        // Check if current target is a waypoint - preserve magenta color
-        if (this.currentTarget && this.currentTarget.isWaypoint) {
-            const waypointColor = '#ff00ff'; // Magenta
-            debug('WAYPOINTS', `🎨 Preserving waypoint color ${waypointColor} instead of ${color}`);
-            
-            if (this.targetHUD) {
-                this.targetHUD.style.borderColor = waypointColor;
-                this.targetHUD.style.color = waypointColor;
-            }
-            
-            // Update scan line color to match waypoint
-            this.updateScanLineColor(waypointColor);
-            return;
-        }
-        
-        // Normal target color handling
-        if (this.targetHUD) {
-            this.targetHUD.style.borderColor = color;
-            this.targetHUD.style.color = color;
-        }
-        
-        // Update scan line color to match faction
-        this.updateScanLineColor(color);
+        this.targetHUDController.setTargetHUDBorderColor(color);
     }
-    
+
     /**
      * Update scan line color to match faction
+     * Delegates to TargetHUDController
      */
     updateScanLineColor(color) {
-        if (this.animatedScanLine) {
-            this.animatedScanLine.style.background = `linear-gradient(90deg, transparent, ${color}, transparent)`;
-        }
+        this.targetHUDController.updateScanLineColor(color);
     }
     
     /**
@@ -1970,11 +1948,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Update the target info display with HTML content
+     * Delegates to TargetHUDController
      */
     updateTargetInfoDisplay(htmlContent) {
-        if (this.targetInfoDisplay) {
-            this.targetInfoDisplay.innerHTML = htmlContent;
-        }
+        this.targetHUDController.updateTargetInfoDisplay(htmlContent);
     }
 
     /**
@@ -2170,6 +2147,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
         // Clean up DestroyedTargetHandler
         if (this.destroyedTargetHandler) {
             this.destroyedTargetHandler.dispose();
+        }
+
+        // Clean up TargetHUDController
+        if (this.targetHUDController) {
+            this.targetHUDController.dispose();
         }
 
         // Clear target arrays
