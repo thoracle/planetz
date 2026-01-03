@@ -24,6 +24,7 @@ import { TargetDiplomacyManager } from '../ui/TargetDiplomacyManager.js';
 import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
 import { TargetSectorManager } from '../ui/TargetSectorManager.js';
 import { TargetStateManager } from '../ui/TargetStateManager.js';
+import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -185,6 +186,9 @@ export class TargetComputerManager {
 
         // Initialize TargetStateManager
         this.targetStateManager = new TargetStateManager(this);
+
+        // Initialize DestroyedTargetHandler
+        this.destroyedTargetHandler = new DestroyedTargetHandler(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -1851,114 +1855,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Remove destroyed target from target list and automatically cycle to next target
+     * Delegates to DestroyedTargetHandler
      */
     removeDestroyedTarget(destroyedShip) {
-        if (!destroyedShip) {
-            return;
-        }
-
-debug('TARGETING', `💥 removeDestroyedTarget called for: ${destroyedShip.shipName || 'unknown ship'}`);
-
-        // Get ship systems for proper cleanup
-        const ship = this.viewManager?.getShip();
-        const targetComputer = ship?.getSystem('target_computer');
-
-        // Check if the destroyed ship is currently targeted by any system
-        const isCurrentTarget = this.currentTarget === destroyedShip;
-        const isCurrentTargetData = this.getCurrentTargetData()?.ship === destroyedShip;
-        const isWeaponTarget = ship?.weaponSystem?.lockedTarget === destroyedShip;
-        const isTargetComputerTarget = targetComputer?.currentTarget === destroyedShip;
-
-        const anySystemTargeting = isCurrentTarget || isCurrentTargetData || isWeaponTarget || isTargetComputerTarget;
-
-debug('TARGETING', `🔍 Checking targeting systems for destroyed ship: ${destroyedShip.shipName}`);
-debug('TARGETING', `   • Current target: ${isCurrentTarget}`);
-debug('TARGETING', `   • Current target data: ${isCurrentTargetData}`);
-debug('TARGETING', `   • Weapon system target: ${isWeaponTarget}`);
-debug('TARGETING', `   • Target computer target: ${isTargetComputerTarget}`);
-debug('TARGETING', `   • Any system targeting: ${anySystemTargeting}`);
-
-        if (anySystemTargeting) {
-debug('TARGETING', 'Destroyed ship was targeted - performing full synchronization cleanup');
-
-            // Store the previous target index for smart target selection
-            const previousTargetIndex = this.targetIndex;
-
-            // Clear ALL targeting system references
-            this.currentTarget = null;
-            this.targetIndex = -1;
-
-            if (ship?.weaponSystem) {
-                ship.weaponSystem.setLockedTarget(null);
-            }
-
-            if (targetComputer) {
-                targetComputer.clearTarget();
-                targetComputer.clearSubTarget();
-            }
-
-            // ALWAYS clear 3D outline when a targeted ship is destroyed
-            // console.log('🎯 Clearing 3D outline for destroyed target');
-            this.clearTargetOutline();
-
-            // Update target list to remove destroyed ship
-            this.updateTargetList();
-
-            // Smart target selection after destruction
-            if (this.targetObjects && this.targetObjects.length > 0) {
-debug('TARGETING', `🔄 Selecting new target from ${this.targetObjects.length} available targets`);
-
-                // Prevent outlines from appearing automatically after destruction
-                if (this.viewManager?.starfieldManager) {
-                    this.viewManager.starfieldManager.outlineDisabledUntilManualCycle = true;
-                }
-
-                // Smart target index selection - try to stay close to previous position
-                let newTargetIndex = 0;
-                if (previousTargetIndex >= 0 && previousTargetIndex < this.targetObjects.length) {
-                    // Use the same index if still valid
-                    newTargetIndex = previousTargetIndex;
-                } else if (previousTargetIndex >= this.targetObjects.length) {
-                    // If previous index is now beyond array bounds, use the last target
-                    newTargetIndex = this.targetObjects.length - 1;
-                }
-
-                // Set the new target directly instead of cycling
-                this.targetIndex = newTargetIndex;
-                const targetData = this.targetObjects[this.targetIndex];
-                this.currentTarget = targetData?.object || null;
-
-                if (this.currentTarget) {
-                    // console.log(`🎯 Selected new target: ${targetData.name} (index ${this.targetIndex})`);
-                    
-                    // Update UI for new target
-                    this.updateTargetDisplay();
-                    this.updateReticleTargetInfo();
-                } else {
-debug('P1', '❌ Failed to select valid target after destruction');
-                    this.targetIndex = -1;
-                }
-
-                // console.log('🎯 Target selection complete - outline disabled until next manual cycle');
-            } else {
-debug('TARGETING', '📭 No targets remaining after destruction');
-
-                // CRITICAL: Force clear outline again when no targets remain
-                // console.log('🎯 Force-clearing outline - no targets remaining');
-                this.clearTargetOutline();
-
-                // Clear wireframe and hide UI
-                this.clearTargetWireframe();
-                this.hideTargetHUD();
-                this.hideTargetReticle();
-            }
-        } else {
-            
-            // Just update the target list without changing current target
-            this.updateTargetList();
-        }
-
-debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.shipName || 'unknown ship'}`);
+        this.destroyedTargetHandler.removeDestroyedTarget(destroyedShip);
     }
 
     /**
@@ -2265,6 +2165,11 @@ debug('TARGETING', `✅ removeDestroyedTarget complete for: ${destroyedShip.ship
         // Clean up TargetStateManager
         if (this.targetStateManager) {
             this.targetStateManager.dispose();
+        }
+
+        // Clean up DestroyedTargetHandler
+        if (this.destroyedTargetHandler) {
+            this.destroyedTargetHandler.dispose();
         }
 
         // Clear target arrays
