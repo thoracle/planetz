@@ -20,6 +20,7 @@ import { ReticleManager } from '../managers/ReticleManager.js';
 import { SystemLifecycleManager } from '../managers/SystemLifecycleManager.js';
 import { HUDMessageManager } from '../managers/HUDMessageManager.js';
 import { CargoDeliveryHandler } from '../managers/CargoDeliveryHandler.js';
+import { WaypointTestManager } from '../managers/WaypointTestManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -467,6 +468,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Cargo delivery handler (extracted)
         this.cargoDeliveryHandler = new CargoDeliveryHandler(this);
+
+        // Waypoint test manager (extracted)
+        this.waypointTestManager = new WaypointTestManager(this);
     }
 
     /**
@@ -2039,86 +2043,25 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         return this.targetDummyManager.createTargetDummyShips(count);
     }
 
+    // ========================================
+    // Waypoint Test Methods
+    // (Implementation moved to WaypointTestManager)
+    // ========================================
+
     /**
      * Handle waypoint creation asynchronously (called from keydown handler)
+     * Delegated to WaypointTestManager
      */
     async handleWaypointCreationAsync() {
-        try {
-            await this.createWaypointTestMission();
-        } catch (error) {
-            debug('P1', `❌ Error in handleWaypointCreationAsync: ${error}`);
-        }
+        return this.waypointTestManager.handleWaypointCreationAsync();
     }
 
     /**
      * Create a waypoint test mission for development/testing
+     * Delegated to WaypointTestManager
      */
     async createWaypointTestMission() {
-        debug('WAYPOINTS', '🎯 W key pressed - Creating waypoint test mission...');
-
-        // Check if waypoint manager is available
-        debug('WAYPOINTS', `🎯 Checking waypoint manager availability: ${!!window.waypointManager}`);
-        if (!window.waypointManager) {
-            debug('P1', '❌ Waypoint manager not available');
-            this.playCommandFailedSound();
-            this.showHUDEphemeral(
-                'WAYPOINT SYSTEM UNAVAILABLE',
-                'Waypoint manager not initialized'
-            );
-            return;
-        }
-        debug('WAYPOINTS', '✅ Waypoint manager is available');
-
-        try {
-            // Create the test mission
-            debug('WAYPOINTS', '🎯 Calling waypointManager.createTestMission()...');
-            const result = await window.waypointManager.createTestMission();
-            debug('WAYPOINTS', `🎯 createTestMission result: ${result ? 'success' : 'null/false'}`);
-
-            if (result) {
-                debug('WAYPOINTS', '✅ Test mission created successfully');
-                this.playCommandSound();
-                this.showHUDEphemeral(
-                    'TEST MISSION CREATED',
-                    `${result.mission.title} - ${result.waypoints.length} waypoints added`
-                );
-
-                debug('WAYPOINTS', `✅ Test mission created: ${result.mission.title}`);
-
-                // Show mission notification if available
-                if (window.missionNotificationHandler &&
-                    typeof window.missionNotificationHandler.showNotification === 'function') {
-                    window.missionNotificationHandler.showNotification(
-                        `Mission Available: ${result.mission.title}`,
-                        'info'
-                    );
-                } else {
-                    // Fallback notification using HUD
-                    this._setTimeout(() => {
-                        this.showHUDEphemeral(
-                            'MISSION AVAILABLE',
-                            `${result.mission.title} - Navigate to waypoints`
-                        );
-                    }, 2000);
-                }
-
-            } else {
-                debug('P1', '❌ Test mission creation returned null/false');
-                this.playCommandFailedSound();
-                this.showHUDEphemeral(
-                    'MISSION CREATION FAILED',
-                    'Unable to create waypoint test mission'
-                );
-            }
-
-        } catch (error) {
-            debug('P1', `❌ Failed to create waypoint test mission: ${error}`);
-            this.playCommandFailedSound();
-            this.showHUDEphemeral(
-                'MISSION CREATION ERROR',
-                'System error during mission creation'
-            );
-        }
+        return this.waypointTestManager.createWaypointTestMission();
     }
 
     /**
