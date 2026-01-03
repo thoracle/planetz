@@ -128,6 +128,46 @@ export class WeaponHUDManager {
     }
 
     /**
+     * Update weapon system during game loop
+     * Handles WeaponHUD connection retry, autofire, and display updates
+     * @param {number} deltaTime - Time since last frame
+     */
+    updateWeaponSystem(deltaTime) {
+        const ship = this.sfm.viewManager?.getShip();
+        if (!ship || !ship.weaponSystem) return;
+
+        // Ensure WeaponHUD is connected (retry if needed)
+        if (this.weaponHUD && !this.weaponHUDConnected) {
+            // Throttle connection attempts to reduce console spam
+            const now = Date.now();
+            if (!this.lastWeaponHUDConnectionAttempt || (now - this.lastWeaponHUDConnectionAttempt) > 5000) {
+                debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
+                this.connectWeaponHUDToSystem();
+                this.lastWeaponHUDConnectionAttempt = now;
+            }
+        }
+
+        ship.weaponSystem.updateAutofire(deltaTime);
+
+        // Update weapon HUD if available
+        if (this.weaponHUD && this.weaponHUDConnected) {
+            // Update the weapon slots display with current weapon system state
+            this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
+
+            // CRITICAL: Update cooldown displays (was missing!)
+            this.weaponHUD.updateCooldownDisplay(ship.weaponSystem.weaponSlots);
+
+            // Ensure the highlighting is correct
+            this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
+        }
+
+        // Update crosshair display to reflect active weapon range and target status
+        if (this.sfm.viewManager && typeof this.sfm.viewManager.updateCrosshairDisplay === 'function') {
+            this.sfm.viewManager.updateCrosshairDisplay();
+        }
+    }
+
+    /**
      * Dispose of resources
      */
     dispose() {

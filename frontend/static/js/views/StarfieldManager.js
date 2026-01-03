@@ -1109,39 +1109,8 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
             }
         }
         
-        // Update weapon system
-        const ship = this.viewManager?.getShip();
-        if (ship && ship.weaponSystem) {
-            // Ensure WeaponHUD is connected (retry if needed)
-            if (this.weaponHUD && !this.weaponHUDConnected) {
-                // Throttle connection attempts to reduce console spam
-                const now = Date.now();
-                if (!this.lastWeaponHUDConnectionAttempt || (now - this.lastWeaponHUDConnectionAttempt) > 5000) {
-debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
-                    this.connectWeaponHUDToSystem();
-                    this.lastWeaponHUDConnectionAttempt = now;
-                }
-            }
-            
-            ship.weaponSystem.updateAutofire(deltaTime);
-            
-            // Update weapon HUD if available
-            if (this.weaponHUD && this.weaponHUDConnected) {
-                // Update the weapon slots display with current weapon system state
-                this.weaponHUD.updateWeaponSlotsDisplay(ship.weaponSystem.weaponSlots, ship.weaponSystem.activeSlotIndex);
-                
-                // CRITICAL: Update cooldown displays (was missing!)
-                this.weaponHUD.updateCooldownDisplay(ship.weaponSystem.weaponSlots);
-                
-                // Ensure the highlighting is correct
-                this.weaponHUD.updateActiveWeaponHighlight(ship.weaponSystem.activeSlotIndex);
-            }
-            
-            // Update crosshair display to reflect active weapon range and target status
-            if (this.viewManager && typeof this.viewManager.updateCrosshairDisplay === 'function') {
-                this.viewManager.updateCrosshairDisplay();
-            }
-        }
+        // Update weapon system - delegate to WeaponHUDManager
+        this.weaponHUDManager.updateWeaponSystem(deltaTime);
 
         // Update 3D proximity detector
         if (this.proximityDetector3D) {
