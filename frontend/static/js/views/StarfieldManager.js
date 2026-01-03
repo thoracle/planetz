@@ -27,6 +27,7 @@ import { StatusBarManager } from '../managers/StatusBarManager.js';
 import { SubTargetDisplayManager } from '../managers/SubTargetDisplayManager.js';
 import { DebugCommandManager } from '../managers/DebugCommandManager.js';
 import { SectorManager } from '../managers/SectorManager.js';
+import { ViewStateManager } from '../managers/ViewStateManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -495,6 +496,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Sector manager (extracted)
         this.sectorManager = new SectorManager(this);
+
+        // ViewStateManager - handles view state changes (FORE, AFT, GALACTIC, LONG RANGE)
+        this.viewStateManager = new ViewStateManager(this);
     }
 
     /**
@@ -1422,69 +1426,7 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
 
     // Update the setView method to handle view changes
     setView(viewType) {
-debug('UTILITY', `🎯 StarfieldManager.setView('${viewType}') called`);
-        debug('TARGETING', '🎯 setView call stack');
-        
-        // Operations HUD is now an overlay and doesn't interfere with view changes
-
-        // Store previous view when switching to special views
-        if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
-            // Only store previous view if it's not a special view
-            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE') {
-                this.previousView = this.view;
-            }
-        }
-
-        // Don't allow view changes while docked (except for special views)
-        if (this.isDocked && viewType !== 'GALACTIC' && viewType !== 'SCANNER' && viewType !== 'LONG RANGE') {
-            return;
-        }
-
-        // When leaving special views while docked, restore to previous view or force FORE
-        if (this.isDocked && (this.view === 'GALACTIC' || this.view === 'LONG RANGE') && 
-            viewType !== 'GALACTIC' && viewType !== 'SCANNER') {
-            // Use previous view if it exists and is valid (FORE or AFT), otherwise default to FORE
-            const validView = this.previousView === 'FORE' || this.previousView === 'AFT' ? this.previousView : 'FORE';
-            this.view = validView;
-            this.camera.rotation.set(0, validView === 'AFT' ? Math.PI : 0, 0);
-            
-            // Always ensure crosshairs are hidden while docked
-            if (this.viewManager) {
-                this.viewManager.frontCrosshair.style.display = 'none';
-                this.viewManager.aftCrosshair.style.display = 'none';
-            }
-            
-            this.updateSpeedIndicator();
-            return;
-        }
-
-        // Set the view type, converting SCANNER to LONG RANGE for display
-        if (!this.isDocked) {
-            this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
-            
-            // Update camera rotation based on view (only for flight views)
-            if (this.view === 'AFT') {
-                this.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
-            } else if (this.view === 'FORE') {
-                this.camera.rotation.set(0, 0, 0); // Reset to forward
-            }
-        } else {
-            // If docked, allow special views
-            if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
-                this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
-            }
-        }
-
-        // Handle crosshair visibility
-        if (this.viewManager) {
-            // Hide crosshairs if docked or in special views
-            const showCrosshairs = !this.isDocked && this.view !== 'GALACTIC' && this.view !== 'LONG RANGE';
-            this.viewManager.frontCrosshair.style.display = showCrosshairs && this.view === 'FORE' ? 'block' : 'none';
-            this.viewManager.aftCrosshair.style.display = showCrosshairs && this.view === 'AFT' ? 'block' : 'none';
-        }
-
-        this.camera.updateMatrixWorld();
-        this.updateSpeedIndicator();
+        this.viewStateManager.setView(viewType);
     }
 
     resetStar(star) {
