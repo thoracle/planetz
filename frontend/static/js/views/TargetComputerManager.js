@@ -30,6 +30,7 @@ import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
 import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
 import { ClickCycleHandler } from '../ui/ClickCycleHandler.js';
 import { TargetHUDBuilder } from '../ui/TargetHUDBuilder.js';
+import { TargetUpdateLoop } from '../ui/TargetUpdateLoop.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -210,6 +211,9 @@ export class TargetComputerManager {
         // Initialize TargetHUDBuilder
         this.targetHUDBuilder = new TargetHUDBuilder(this);
 
+        // Initialize TargetUpdateLoop
+        this.targetUpdateLoop = new TargetUpdateLoop(this);
+
         // console.log('🎯 TargetComputerManager initialized');
     }
 
@@ -337,16 +341,6 @@ export class TargetComputerManager {
      */
     animateSubSystemWireframe() {
         this.subSystemPanelManager.animateSubSystemWireframe();
-    }
-
-    /**
-     * Update method called from StarfieldManager main loop
-     */
-    update(deltaTime) {
-        // Animate sub-system wireframe if visible
-        if (this.subSystemPanelManager.isPanelVisible()) {
-            this.animateSubSystemWireframe();
-        }
     }
 
     /**
@@ -1197,44 +1191,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
 
     /**
      * Update method called from StarfieldManager
+     * Delegates to TargetUpdateLoop
      */
     update(deltaTime) {
-        if (!this.targetComputerEnabled) {
-            return;
-        }
-
-        // Update reticle position if we have a target
-        if (this.currentTarget) {
-            this.updateReticlePosition();
-            this.updateReticleTargetInfo();
-        }
-
-        // Render wireframe if target computer is enabled and we have a target
-        if (this.targetWireframe && this.wireframeScene && this.wireframeRenderer) {
-            try {
-                // Rotate wireframe continuously
-                if (this.targetWireframe) {
-                    this.targetWireframe.rotation.y += deltaTime * 0.5; // Increased rotation speed
-                    this.targetWireframe.rotation.x = 0.5 + Math.sin(Date.now() * 0.001) * 0.2; // Increased oscillation
-                }
-                
-                // Update sub-target visual indicators
-                this.updateSubTargetIndicators();
-                
-                // Render the wireframe scene
-                this.wireframeRenderer.render(this.wireframeScene, this.wireframeCamera);
-            } catch (error) {
-                debug('P1', `Error rendering wireframe: ${error}`);
-            }
-        }
-
-        // Update direction arrow
-        if (this.currentTarget) {
-            this.updateDirectionArrow();
-        } else {
-            // Hide all arrows
-            this.hideAllDirectionArrows();
-        }
+        this.targetUpdateLoop.update(deltaTime);
     }
 
     /**
@@ -1645,6 +1605,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
         // Clean up TargetHUDBuilder
         if (this.targetHUDBuilder) {
             this.targetHUDBuilder.dispose();
+        }
+
+        // Clean up TargetUpdateLoop
+        if (this.targetUpdateLoop) {
+            this.targetUpdateLoop.dispose();
         }
 
         // Clear target arrays
