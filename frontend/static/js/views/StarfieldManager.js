@@ -12,6 +12,7 @@ import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
 import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
 import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
 import { ShipMovementController } from '../managers/ShipMovementController.js';
+import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -199,6 +200,9 @@ export class StarfieldManager {
         this.lastButtonStateLog = null;
 
         // Smooth rotation state is now managed by ShipMovementController
+
+        // Initialize Ship Systems HUD Manager
+        this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
 
         // Create starfield renderer with quintuple density
         this.starCount = STARFIELD.STAR_COUNT;
@@ -606,503 +610,103 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
     /**
      * Create ship systems HUD with integrated damage control
+     * Delegates to ShipSystemsHUDManager
      */
     createShipSystemsHUD() {
-        // Create ship systems status container
-        this.shipSystemsHUD = document.createElement('div');
-        this.shipSystemsHUD.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #00ff41;
-            font-family: "Courier New", monospace;
-            font-size: 16px;
-            pointer-events: auto;
-            z-index: 1000;
-            border: 2px solid #00ff41;
-            padding: 12px 16px;
-            background: rgba(0, 0, 0, 0.85);
-            width: 540px;
-            max-height: 70vh;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: #00ff41 #333;
-        `;
-
-        // Create the close button
-        this.damageControlCloseButton = document.createElement('div');
-        this.damageControlCloseButton.innerHTML = 'X';
-        this.damageControlCloseButton.style.cssText = `
-            position: absolute;
-            top: 2px;
-            right: 10px;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #00ff41;
-            border: 1px solid #00ff41;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(0, 20, 0, 0.5);
-            z-index: 1;
-            pointer-events: auto;
-        `;
-        this.shipSystemsHUD.appendChild(this.damageControlCloseButton);
-
-        // Add close button hover effect and click handler (with abort signal for cleanup)
-        this.damageControlCloseButton.addEventListener('mouseenter', () => {
-            this.damageControlCloseButton.style.background = '#00ff41';
-            this.damageControlCloseButton.style.color = '#000';
-        }, { signal: this._abortController.signal });
-
-        this.damageControlCloseButton.addEventListener('mouseleave', () => {
-            this.damageControlCloseButton.style.background = 'rgba(0, 20, 0, 0.5)';
-            this.damageControlCloseButton.style.color = '#00ff41';
-        }, { signal: this._abortController.signal });
-
-        this.damageControlCloseButton.addEventListener('click', () => {
-            this.toggleDamageControl();
-        }, { signal: this._abortController.signal });
-
-        // Add custom scrollbar styles for webkit browsers
-        const style = document.createElement('style');
-        style.textContent = `
-            .damage-control-hud::-webkit-scrollbar {
-                width: 8px;
-            }
-            .damage-control-hud::-webkit-scrollbar-track {
-                background: #333;
-                border-radius: 4px;
-            }
-            .damage-control-hud::-webkit-scrollbar-thumb {
-                background: #00ff41;
-                border-radius: 4px;
-            }
-            .damage-control-hud::-webkit-scrollbar-thumb:hover {
-                background: #00cc33;
-            }
-        `;
-        document.head.appendChild(style);
-        this.shipSystemsHUD.className = 'damage-control-hud';
-
-        // Create systems list container
-        this.systemsList = document.createElement('div');
-        this.systemsList.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            pointer-events: none;
-        `;
-
-        this.shipSystemsHUD.appendChild(this.systemsList);
-        document.body.appendChild(this.shipSystemsHUD);
-
-        // Update the systems display
-        this.updateShipSystemsDisplay();
+        this.shipSystemsHUDManager.createShipSystemsHUD();
     }
 
     /**
      * Update ship systems display
+     * Delegates to ShipSystemsHUDManager
      */
     updateShipSystemsDisplay() {
-        // Get ship status using card filtering (only show systems for installed cards)
-        const shipStatus = this.ship.getCardFilteredStatus();
-        
-        // Clear existing display
-        this.systemsList.innerHTML = '';
-        
-        // Use the new DamageControlHUD system instead of deprecated method
-        // The damage control display is now handled by the DamageControlHUD component
+        this.shipSystemsHUDManager.updateShipSystemsDisplay();
     }
 
     /**
      * Legacy damage control display - DEPRECATED
-     * This method is kept for compatibility but the new DamageControlHUD is preferred
+     * Delegates to ShipSystemsHUDManager
      */
     updateDamageControlDisplay(shipStatus) {
-        // This method is now deprecated in favor of the new DamageControlHUD
-        // Keeping it for backward compatibility but it's no longer used
-        debug('P1', 'updateDamageControlDisplay is deprecated - using new DamageControlHUD');
-        return;
+        this.shipSystemsHUDManager.updateDamageControlDisplay(shipStatus);
     }
 
     /**
      * Update manual repair system progress
+     * Delegates to ShipSystemsHUDManager
      */
     updateManualRepairSystem() {
-        if (!this.manualRepairSystem || !this.manualRepairSystem.isRepairing) {
-            return;
-        }
-
-        const elapsed = Date.now() - this.manualRepairSystem.repairStartTime;
-        const progress = Math.min(elapsed / this.manualRepairSystem.repairDuration, 1.0);
-        
-        // Update progress bar
-        if (this.manualRepairSystem.cooldownElement) {
-            this.manualRepairSystem.cooldownElement.progress.style.width = `${progress * 100}%`;
-        }
-
-        // Check if repair is complete
-        if (progress >= 1.0) {
-            this.completeManualRepair();
-        }
+        this.shipSystemsHUDManager.updateManualRepairSystem();
     }
 
     /**
      * Start manual repair for a system
+     * Delegates to ShipSystemsHUDManager
      * @param {string} systemName - Name of the system to repair
      */
     startManualRepair(systemName) {
-        debug('UTILITY', `startManualRepair called for: ${systemName}`);
-        
-        if (this.manualRepairSystem.isRepairing) {
-            debug('UTILITY', `Manual repair system already repairing: ${this.manualRepairSystem.repairTarget}`);
-            return;
-        }
-
-        // Check if system exists and is damaged
-        const system = this.ship.getSystem(systemName);
-        if (!system) {
-            debug('P1', `🚫 REPAIR: System not found: ${systemName}`);
-            return;
-        }
-
-        debug('UTILITY', `System found: ${systemName}, health: ${system.currentHealth}/${system.maxHealth}, healthPercentage: ${system.healthPercentage}`);
-
-        if (system.healthPercentage >= 100) {
-            debug('UTILITY', `System ${systemName} is already fully repaired (${system.healthPercentage}%)`);
-            return;
-        }
-
-        debug('UTILITY', `Starting repair for ${systemName} (${system.healthPercentage}% health)`);
-        
-        this.manualRepairSystem.isRepairing = true;
-        this.manualRepairSystem.repairTarget = systemName;
-        this.manualRepairSystem.repairStartTime = Date.now();
-
-        // Update cooldown display
-        if (this.manualRepairSystem.cooldownElement) {
-            this.manualRepairSystem.cooldownElement.label.textContent = `Repairing ${systemName}...`;
-            this.manualRepairSystem.cooldownElement.progress.style.backgroundColor = '#00aa00';
-        }
-
-        // Disable all repair buttons without recreating the entire display
-        this.updateRepairButtonStates();
+        this.shipSystemsHUDManager.startManualRepair(systemName);
     }
 
     /**
      * Complete manual repair
+     * Delegates to ShipSystemsHUDManager
      */
     completeManualRepair() {
-        if (!this.manualRepairSystem.isRepairing) {
-            return;
-        }
-
-        const systemName = this.manualRepairSystem.repairTarget;
-        const system = this.ship.getSystem(systemName);
-        
-        if (system) {
-            // Repair the system to full health
-            system.currentHealth = system.maxHealth;
-        }
-
-        // Reset repair system state
-        this.manualRepairSystem.isRepairing = false;
-        this.manualRepairSystem.repairTarget = null;
-        this.manualRepairSystem.repairStartTime = 0;
-
-        // Update cooldown display
-        if (this.manualRepairSystem.cooldownElement) {
-            this.manualRepairSystem.cooldownElement.label.textContent = 'Manual Repair System';
-            this.manualRepairSystem.cooldownElement.progress.style.backgroundColor = '#555';
-            this.manualRepairSystem.cooldownElement.progress.style.width = '0%';
-        }
-
-        // Re-enable repair buttons for damaged systems without recreating entire display
-        this.updateRepairButtonStates();
-
-        // Only refresh display if damage control is visible to show updated health
-        if (this.damageControlVisible) {
-            this.shouldUpdateDamageControl = true; // Mark for update instead of immediate update
-        }
+        this.shipSystemsHUDManager.completeManualRepair();
     }
 
     /**
      * Update repair button states (enable/disable based on repair status)
+     * Delegates to ShipSystemsHUDManager
      */
     updateRepairButtonStates() {
-        const repairButtons = this.systemsList.querySelectorAll('.repair-button');
-        const isRepairing = this.manualRepairSystem.isRepairing;
-        
-        repairButtons.forEach(button => {
-            button.disabled = isRepairing;
-            button.style.opacity = isRepairing ? '0.5' : '1';
-            button.style.cursor = isRepairing ? 'not-allowed' : 'pointer';
-        });
+        this.shipSystemsHUDManager.updateRepairButtonStates();
     }
     /**
      * Display individual weapons from the weapons system
+     * Delegates to ShipSystemsHUDManager
      * @param {Object} weaponsSystemData - The weapons system data
      * @param {Object} autoRepair - Auto-repair system
      * @returns {number} Number of weapons displayed
      */
     displayIndividualWeapons(weaponsSystemData, autoRepair) {
-        let weaponsShown = 0;
-        
-        if (!this.ship.weaponSystem || !this.ship.weaponSystem.weaponSlots) {
-            return this.displayRegularSystem('weapons', weaponsSystemData, autoRepair);
-        }
-
-        // Display each equipped weapon individually
-        for (const weaponSlot of this.ship.weaponSystem.weaponSlots) {
-            if (!weaponSlot.isEmpty && weaponSlot.equippedWeapon) {
-                const weapon = weaponSlot.equippedWeapon;
-                
-                const weaponDiv = document.createElement('div');
-                weaponDiv.setAttribute('data-system', `weapon_slot_${weaponSlot.slotIndex}`);
-                weaponDiv.style.cssText = `
-                    margin-bottom: 8px;
-                    padding: 8px;
-                    border: 1px solid #444;
-                    border-radius: 4px;
-                    background-color: rgba(0, 0, 0, 0.3);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                `;
-
-                // Left side - weapon info
-                const weaponInfo = document.createElement('div');
-                weaponInfo.style.cssText = `
-                    flex: 1;
-                `;
-
-                // Weapon name and status
-                const nameDiv = document.createElement('div');
-                nameDiv.style.cssText = `
-                    font-weight: bold;
-                    margin-bottom: 4px;
-                `;
-                
-                const displayName = weapon.name || `Slot ${weaponSlot.slotIndex + 1} Weapon`;
-                // Convert decimal health (0.0-1.0) to percentage (0-100)
-                const healthPercentage = Math.round(weaponsSystemData.health * 100);
-                const isOperational = weaponsSystemData.canBeActivated && !weaponSlot.isInCooldown();
-                const isDamaged = healthPercentage < 100;
-                const statusColor = isDamaged ? '#ff6b6b' : 
-                                   isOperational ? '#00ff41' : '#ffaa00';
-                
-                nameDiv.innerHTML = `<span style="color: ${statusColor}">${displayName}</span>`;
-                weaponInfo.appendChild(nameDiv);
-
-                // Weapon details
-                const detailsDiv = document.createElement('div');
-                detailsDiv.style.cssText = `
-                    font-size: 12px;
-                    color: #aaa;
-                    margin-bottom: 4px;
-                `;
-                
-                let statusText = isOperational ? 'OPERATIONAL' : 'OFFLINE';
-                if (isDamaged) statusText = 'DAMAGED';
-                
-                detailsDiv.innerHTML = `
-                    Status: <span style="color: ${statusColor}">${statusText}</span><br>
-                    Health: ${healthPercentage}%<br>
-                    Type: ${weapon.weaponType || 'Unknown'}
-                `;
-                weaponInfo.appendChild(detailsDiv);
-
-                // Auto-repair progress if weapons system is damaged
-                if (isDamaged && autoRepair.repairQueue.some(repair => repair.systemName === 'weapons')) {
-                    const repair = autoRepair.repairQueue.find(repair => repair.systemName === 'weapons');
-                    const progressDiv = document.createElement('div');
-                    progressDiv.style.cssText = `
-                        font-size: 11px;
-                        color: #00aa00;
-                        margin-top: 4px;
-                    `;
-                    const progress = Math.round((repair.timeElapsed / repair.repairTime) * 100);
-                    progressDiv.textContent = `Auto-repair: ${progress}% complete`;
-                    weaponInfo.appendChild(progressDiv);
-                }
-
-                weaponDiv.appendChild(weaponInfo);
-
-                // Right side - repair button for individual weapon
-                const weaponSlotName = `weapon_slot_${weaponSlot.slotIndex}`;
-                const repairButton = this.createRepairButton(weaponSlotName, isDamaged, healthPercentage);
-                weaponDiv.appendChild(repairButton);
-
-                this.systemsList.appendChild(weaponDiv);
-                weaponsShown++;
-            }
-        }
-
-        // If no weapons are equipped, show the unified weapons system
-        if (weaponsShown === 0) {
-            return this.displayRegularSystem('weapons', weaponsSystemData, autoRepair);
-        }
-
-        return weaponsShown;
+        return this.shipSystemsHUDManager.displayIndividualWeapons(weaponsSystemData, autoRepair);
     }
 
     /**
      * Display a regular (non-weapons) system
+     * Delegates to ShipSystemsHUDManager
      * @param {string} systemName - Name of the system
      * @param {Object} systemData - System data
      * @param {Object} autoRepair - Auto-repair system
      * @returns {number} Number of systems displayed (always 1)
      */
     displayRegularSystem(systemName, systemData, autoRepair) {
-        const systemDiv = document.createElement('div');
-        systemDiv.setAttribute('data-system', systemName);
-        systemDiv.style.cssText = `
-            margin-bottom: 8px;
-            padding: 8px;
-            border: 1px solid #444;
-            border-radius: 4px;
-            background-color: rgba(0, 0, 0, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
-
-        // Left side - system info
-        const systemInfo = document.createElement('div');
-        systemInfo.style.cssText = `
-            flex: 1;
-        `;
-
-        // System name and status
-        const nameDiv = document.createElement('div');
-        nameDiv.style.cssText = `
-            font-weight: bold;
-            margin-bottom: 4px;
-        `;
-        
-        const displayName = this.formatSystemName(systemName);
-        // Convert decimal health (0.0-1.0) to percentage (0-100)
-        const healthPercentage = Math.round(systemData.health * 100);
-        const isDamaged = healthPercentage < 100;
-        const isOperational = systemData.canBeActivated;
-        const statusColor = isDamaged ? '#ff6b6b' : 
-                           isOperational ? '#00ff41' : '#ffaa00';
-        
-        nameDiv.innerHTML = `<span style="color: ${statusColor}">${displayName}</span>`;
-        systemInfo.appendChild(nameDiv);
-
-        // System details - properly format health as percentage
-        const detailsDiv = document.createElement('div');
-        detailsDiv.style.cssText = `
-            font-size: 12px;
-            color: #aaa;
-            margin-bottom: 4px;
-        `;
-        
-        let statusText = isOperational ? 'OPERATIONAL' : 'OFFLINE';
-        if (isDamaged) statusText = 'DAMAGED';
-        
-        detailsDiv.innerHTML = `
-            Status: <span style="color: ${statusColor}">${statusText}</span><br>
-            Health: ${healthPercentage}%<br>
-            Energy: ${systemData.energyConsumption || 0}/sec
-        `;
-        systemInfo.appendChild(detailsDiv);
-
-        // Auto-repair progress if system is damaged
-        if (isDamaged && autoRepair.repairQueue.some(repair => repair.systemName === systemName)) {
-            const repair = autoRepair.repairQueue.find(repair => repair.systemName === systemName);
-            const progressDiv = document.createElement('div');
-            progressDiv.style.cssText = `
-                font-size: 11px;
-                color: #00aa00;
-                margin-top: 4px;
-            `;
-            const progress = Math.round((repair.timeElapsed / repair.repairTime) * 100);
-            progressDiv.textContent = `Auto-repair: ${progress}% complete`;
-            systemInfo.appendChild(progressDiv);
-        }
-
-        systemDiv.appendChild(systemInfo);
-
-        // Right side - repair button
-        const repairButton = this.createRepairButton(systemName, isDamaged, healthPercentage);
-        systemDiv.appendChild(repairButton);
-
-        this.systemsList.appendChild(systemDiv);
-        return 1;
+        return this.shipSystemsHUDManager.displayRegularSystem(systemName, systemData, autoRepair);
     }
 
     /**
      * Create a repair button for a system
+     * Delegates to ShipSystemsHUDManager
      * @param {string} systemName - Name of the system (or weapon_slot_X for individual weapons)
      * @param {boolean} isDamaged - Whether the system is damaged
      * @param {number} health - System health percentage
      * @returns {HTMLElement} Repair button element
      */
     createRepairButton(systemName, isDamaged, health) {
-        const repairButton = document.createElement('button');
-        repairButton.className = 'repair-button';
-        repairButton.setAttribute('data-system-name', systemName); // Add this for event delegation
-        repairButton.style.cssText = `
-            padding: 6px 12px;
-            border: 1px solid #555;
-            border-radius: 3px;
-            background-color: ${isDamaged ? '#2a4a2a' : '#4a4a4a'};
-            color: ${isDamaged ? '#00ff41' : '#bbb'};
-            font-size: 11px;
-            cursor: ${isDamaged ? 'pointer' : 'default'};
-            opacity: ${isDamaged ? '1' : '1'};
-            transition: all 0.2s ease;
-            min-width: 50px;
-        `;
-        
-        repairButton.textContent = isDamaged ? 'REPAIR' : 'OK';
-        repairButton.disabled = !isDamaged || this.manualRepairSystem?.isRepairing;
-        
-        // Only add hover effects for damaged, enabled buttons
-        if (isDamaged && !repairButton.disabled) {
-            repairButton.addEventListener('mouseenter', () => {
-                repairButton.style.backgroundColor = '#3a5a3a';
-                repairButton.style.borderColor = '#00ff41';
-            });
-            
-            repairButton.addEventListener('mouseleave', () => {
-                repairButton.style.backgroundColor = '#2a4a2a';
-                repairButton.style.borderColor = '#555';
-            });
-        }
-
-        // Update button state if repair system is active
-        if (this.manualRepairSystem?.isRepairing) {
-            repairButton.disabled = true;
-            repairButton.style.opacity = '0.6';
-            repairButton.style.cursor = 'not-allowed';
-            repairButton.style.backgroundColor = '#333';
-            repairButton.style.color = '#888';
-        }
-
-        return repairButton;
+        return this.shipSystemsHUDManager.createRepairButton(systemName, isDamaged, health);
     }
 
+    /**
+     * Format system name for display
+     * Delegates to ShipSystemsHUDManager
+     * @param {string} systemName - Raw system name
+     * @returns {string} Formatted display name
+     */
     formatSystemName(systemName) {
-        // Special handling for weapons - get the actual weapon type
-        if (systemName === 'weapons' && this.ship) {
-            const weaponsSystem = this.ship.getSystem('weapons');
-            if (weaponsSystem && weaponsSystem.levelStats && weaponsSystem.level) {
-                const levelStats = weaponsSystem.levelStats[weaponsSystem.level];
-                if (levelStats && levelStats.weaponType) {
-                    return levelStats.weaponType.toUpperCase();
-                }
-            }
-        }
-        
-        // Use the standardized display name function
-        return getSystemDisplayName(systemName).toUpperCase();
+        return this.shipSystemsHUDManager.formatSystemName(systemName);
     }
 
     updateSpeedIndicator() {
