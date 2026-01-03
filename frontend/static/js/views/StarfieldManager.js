@@ -25,6 +25,7 @@ import { CommandAudioManager } from '../managers/CommandAudioManager.js';
 import { WeaponHUDManager } from '../managers/WeaponHUDManager.js';
 import { StatusBarManager } from '../managers/StatusBarManager.js';
 import { SubTargetDisplayManager } from '../managers/SubTargetDisplayManager.js';
+import { DebugCommandManager } from '../managers/DebugCommandManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -487,6 +488,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Sub-target display manager (extracted)
         this.subTargetDisplayManager = new SubTargetDisplayManager(this);
+
+        // Debug command manager (extracted)
+        this.debugCommandManager = new DebugCommandManager(this);
     }
 
     /**
@@ -1259,108 +1263,21 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
         return sector;
     }
 
-    // Debug methods for testing damage and repair functionality
+    // Debug methods delegated to DebugCommandManager
     debugDamageRandomSystems() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            return;
-        }
-
-        const systemNames = Array.from(ship.systems.keys());
-        
-        // Damage 2-4 random systems
-        const numToDamage = Math.floor(Math.random() * 3) + 2;
-        const systemsToDamage = [];
-        
-        for (let i = 0; i < numToDamage && i < systemNames.length; i++) {
-            const randomIndex = Math.floor(Math.random() * systemNames.length);
-            const systemName = systemNames[randomIndex];
-            if (!systemsToDamage.includes(systemName)) {
-                systemsToDamage.push(systemName);
-            }
-        }
-        
-        // Apply damage to selected systems
-        systemsToDamage.forEach(systemName => {
-            const system = this.ship.getSystem(systemName);
-            if (system && system.takeDamage) {
-                const damageAmount = (0.3 + Math.random() * 0.5) * system.maxHealth; // 30-80% damage
-                system.takeDamage(damageAmount);
-            }
-        });
-
-        // Notify damage control HUD to update
-        if (this.damageControlHUD) {
-            this.damageControlHUD.markForUpdate();
-        }
-
-        this.updateShipSystemsDisplay();
+        this.debugCommandManager.debugDamageRandomSystems();
     }
 
     debugDamageHull() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            return;
-        }
-
-        // Damage hull to 30-70%
-        const damagePercent = Math.random() * 0.4 + 0.3; // 30-70%
-        const newHull = Math.floor(ship.maxHull * (1 - damagePercent));
-        ship.currentHull = Math.max(1, newHull); // Ensure at least 1 hull
-
-        // Update the damage control display if it's currently visible
-        if (this.damageControlVisible) {
-            this.updateShipSystemsDisplay();
-        }
+        this.debugCommandManager.debugDamageHull();
     }
 
     debugDrainEnergy() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            return;
-        }
-        
-        const drainAmount = 0.3 + Math.random() * 0.5; // 30-80% energy drain
-        const originalEnergy = ship.currentEnergy;
-        ship.currentEnergy = Math.max(0, ship.currentEnergy - (ship.maxEnergy * drainAmount));
-        
-        const actualDrain = originalEnergy - ship.currentEnergy;
-        const drainPercentage = (actualDrain / ship.maxEnergy) * 100;
-
-        // Update the damage control display if it's currently visible
-        if (this.damageControlVisible) {
-            this.updateShipSystemsDisplay();
-        }
+        this.debugCommandManager.debugDrainEnergy();
     }
 
     debugRepairAllSystems() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            return;
-        }
-
-        // Repair hull to full
-        ship.currentHull = ship.maxHull;
-        
-        // Repair all systems to full health
-        const systemNames = Array.from(ship.systems.keys());
-        let repairedCount = 0;
-        
-        for (const systemName of systemNames) {
-            const system = ship.getSystem(systemName);
-            if (system && system.repair) {
-                system.repair(1.0); // Full repair
-                repairedCount++;
-            }
-        }
-        
-        // Recharge energy
-        ship.currentEnergy = ship.maxEnergy;
-
-        // Update the damage control display if it's currently visible
-        if (this.damageControlVisible) {
-            this.updateShipSystemsDisplay();
-        }
+        this.debugCommandManager.debugRepairAllSystems();
     }
 
     dispose() {
