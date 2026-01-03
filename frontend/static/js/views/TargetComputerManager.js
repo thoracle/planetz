@@ -31,6 +31,7 @@ import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
 import { ClickCycleHandler } from '../ui/ClickCycleHandler.js';
 import { TargetHUDBuilder } from '../ui/TargetHUDBuilder.js';
 import { TargetUpdateLoop } from '../ui/TargetUpdateLoop.js';
+import { TCMResourceCleaner } from '../ui/TCMResourceCleaner.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -213,6 +214,9 @@ export class TargetComputerManager {
 
         // Initialize TargetUpdateLoop
         this.targetUpdateLoop = new TargetUpdateLoop(this);
+
+        // Initialize TCMResourceCleaner
+        this.resourceCleaner = new TCMResourceCleaner(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -1445,189 +1449,10 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
     
     /**
      * Clean up resources
+     * Delegates to TCMResourceCleaner
      */
     dispose() {
-        debug('TARGETING', '⚡ TargetComputerManager disposal started...');
-
-        // Abort all event listeners registered with AbortController
-        if (this._abortController) {
-            this._abortController.abort();
-            this._abortController = null;
-        }
-
-        // Stop wireframe animation
-        this.stopWireframeAnimation();
-
-        // Clean up TargetingFeedbackManager (handles timers and audio)
-        if (this.targetingFeedbackManager) {
-            this.targetingFeedbackManager.dispose();
-        }
-
-        // Clean up TargetOutlineManager
-        if (this.targetOutlineManager) {
-            this.targetOutlineManager.dispose();
-        }
-
-        // Clean up HUDStatusManager
-        if (this.hudStatusManager) {
-            this.hudStatusManager.dispose();
-        }
-
-        // Clean up TargetIdManager
-        if (this.targetIdManager) {
-            this.targetIdManager.dispose();
-        }
-
-        // Clean up wireframe renderer
-        if (this.wireframeRenderer) {
-            this.wireframeRenderer.dispose();
-            this.wireframeRenderer = null;
-        }
-
-        // Clean up sub-system wireframe renderer
-        if (this.subSystemWireframeRenderer) {
-            this.subSystemWireframeRenderer.dispose();
-            this.subSystemWireframeRenderer = null;
-        }
-
-        // Clean up target wireframe
-        if (this.targetWireframe) {
-            if (this.wireframeScene) {
-                this.wireframeScene.remove(this.targetWireframe);
-            }
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                if (Array.isArray(this.targetWireframe.material)) {
-                    this.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetWireframe.material.dispose();
-                }
-            }
-            this.targetWireframe = null;
-        }
-
-        // Clean up wireframe scene children
-        if (this.wireframeScene) {
-            while (this.wireframeScene.children.length > 0) {
-                const child = this.wireframeScene.children[0];
-                this.wireframeScene.remove(child);
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(m => m.dispose());
-                    } else {
-                        child.material.dispose();
-                    }
-                }
-            }
-            this.wireframeScene = null;
-        }
-
-        // Clean up sub-system wireframe scene
-        if (this.subSystemWireframeScene) {
-            while (this.subSystemWireframeScene.children.length > 0) {
-                const child = this.subSystemWireframeScene.children[0];
-                this.subSystemWireframeScene.remove(child);
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(m => m.dispose());
-                    } else {
-                        child.material.dispose();
-                    }
-                }
-            }
-            this.subSystemWireframeScene = null;
-        }
-
-        // Clean up UI elements
-        if (this.targetHUD && this.targetHUD.parentNode) {
-            this.targetHUD.parentNode.removeChild(this.targetHUD);
-            this.targetHUD = null;
-        }
-        if (this.targetReticle && this.targetReticle.parentNode) {
-            this.targetReticle.parentNode.removeChild(this.targetReticle);
-            this.targetReticle = null;
-        }
-        if (this.subSystemPanel && this.subSystemPanel.parentNode) {
-            this.subSystemPanel.parentNode.removeChild(this.subSystemPanel);
-            this.subSystemPanel = null;
-        }
-
-        // Clean up direction arrows
-        Object.values(this.directionArrows).forEach(arrow => {
-            if (arrow && arrow.parentNode) {
-                arrow.parentNode.removeChild(arrow);
-            }
-        });
-        this.directionArrows = {};
-
-        // Clean up target outline
-        this.clearTargetOutline();
-
-        // Clear known targets cache (delegated to TargetListManager)
-        if (this.targetListManager) {
-            this.targetListManager.dispose();
-        }
-
-        // Clean up TargetStateManager
-        if (this.targetStateManager) {
-            this.targetStateManager.dispose();
-        }
-
-        // Clean up DestroyedTargetHandler
-        if (this.destroyedTargetHandler) {
-            this.destroyedTargetHandler.dispose();
-        }
-
-        // Clean up TargetHUDController
-        if (this.targetHUDController) {
-            this.targetHUDController.dispose();
-        }
-
-        // Clean up TargetComputerToggle
-        if (this.targetComputerToggle) {
-            this.targetComputerToggle.dispose();
-        }
-
-        // Clean up TargetWireframeCreator
-        if (this.targetWireframeCreator) {
-            this.targetWireframeCreator.dispose();
-        }
-
-        // Clean up ClickCycleHandler
-        if (this.clickCycleHandler) {
-            this.clickCycleHandler.dispose();
-        }
-
-        // Clean up TargetHUDBuilder
-        if (this.targetHUDBuilder) {
-            this.targetHUDBuilder.dispose();
-        }
-
-        // Clean up TargetUpdateLoop
-        if (this.targetUpdateLoop) {
-            this.targetUpdateLoop.dispose();
-        }
-
-        // Clear target arrays
-        this.targetObjects = [];
-        this.validTargets = [];
-        this.subTargetIndicators = [];
-        this.targetableAreas = [];
-
-        // Null out references
-        this.currentTarget = null;
-        this.previousTarget = null;
-        this.targetedObject = null;
-        this.scene = null;
-        this.camera = null;
-        this.viewManager = null;
-        this.solarSystemManager = null;
-
-        debug('TARGETING', '✅ TargetComputerManager disposal complete');
+        this.resourceCleaner.dispose();
     }
 
     /**
