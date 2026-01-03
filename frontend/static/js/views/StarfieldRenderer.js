@@ -412,4 +412,43 @@ debug('UTILITY', '🌟 Starfield initialized and added to scene');
     destroy() {
         this.dispose();
     }
+
+    /**
+     * Update starfield positions based on camera movement
+     * Respawns stars that are too far from the camera
+     * @param {THREE.Vector3} cameraPosition - Current camera position
+     * @param {string} view - Current view ('FORE' or 'AFT')
+     */
+    updateStarfieldPositions(cameraPosition, view) {
+        if (!this.starfield) return;
+
+        const positions = this.starfield.geometry.attributes.position;
+        const maxDistance = 1000;
+        const minDistance = 100;
+
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.array[i * 3];
+            const y = positions.array[i * 3 + 1];
+            const z = positions.array[i * 3 + 2];
+
+            // Calculate distance from camera
+            const starPos = new this.THREE.Vector3(x, y, z);
+            const distanceToCamera = starPos.distanceTo(cameraPosition);
+
+            // If star is too far, respawn it closer to the camera
+            if (distanceToCamera > maxDistance) {
+                // Generate new position relative to camera
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const radius = minDistance + Math.random() * (maxDistance - minDistance);
+
+                // Apply position based on view direction
+                const moveDirection = view === 'AFT' ? -1 : 1;
+                positions.array[i * 3] = cameraPosition.x + radius * Math.sin(phi) * Math.cos(theta) * moveDirection;
+                positions.array[i * 3 + 1] = cameraPosition.y + radius * Math.sin(phi) * Math.sin(theta);
+                positions.array[i * 3 + 2] = cameraPosition.z + radius * Math.cos(phi) * moveDirection;
+            }
+        }
+        positions.needsUpdate = true;
+    }
 } 
