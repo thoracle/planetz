@@ -128,6 +128,11 @@ export class TCMResourceCleaner {
         if (this.tcm.targetUpdateLoop) {
             this.tcm.targetUpdateLoop.dispose();
         }
+
+        // Clean up TargetDisplayUpdater
+        if (this.tcm.targetDisplayUpdater) {
+            this.tcm.targetDisplayUpdater.dispose();
+        }
     }
 
     /**
