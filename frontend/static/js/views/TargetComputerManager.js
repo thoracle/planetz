@@ -29,6 +29,7 @@ import { TargetHUDController } from '../ui/TargetHUDController.js';
 import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
 import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
 import { ClickCycleHandler } from '../ui/ClickCycleHandler.js';
+import { TargetHUDBuilder } from '../ui/TargetHUDBuilder.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -206,6 +207,9 @@ export class TargetComputerManager {
         // Initialize ClickCycleHandler
         this.clickCycleHandler = new ClickCycleHandler(this);
 
+        // Initialize TargetHUDBuilder
+        this.targetHUDBuilder = new TargetHUDBuilder(this);
+
         // console.log('🎯 TargetComputerManager initialized');
     }
 
@@ -247,200 +251,10 @@ export class TargetComputerManager {
 
     /**
      * Create the target computer HUD with sliding sub-system panel
+     * Delegates to TargetHUDBuilder
      */
     createTargetComputerHUD() {
-        // Create main target HUD container - match original position and styling
-        this.targetHUD = document.createElement('div');
-        this.targetHUD.style.cssText = `
-            position: fixed;
-            bottom: 50px;
-            left: 10px;
-            width: 200px;
-            height: auto;
-            border: 2px solid #D0D0D0;
-            background: rgba(0, 0, 0, 0.7);
-            color: #D0D0D0;
-            font-family: "Courier New", monospace;
-            font-size: 14px;
-            padding: 10px;
-            display: none;
-            pointer-events: auto;
-            z-index: 1000;
-            transition: border-color 0.3s ease;
-            overflow: visible;
-            cursor: pointer;
-        `;
-
-        // Create wireframe display - delegates to WireframeRenderer
-        this.wireframeRendererManager.createWireframeDisplay();
-        // Expose elements for backwards compatibility
-        this.wireframeContainer = this.wireframeRendererManager.wireframeContainer;
-        this.wireframeRenderer = this.wireframeRendererManager.wireframeRenderer;
-        this.wireframeScene = this.wireframeRendererManager.wireframeScene;
-        this.wireframeCamera = this.wireframeRendererManager.wireframeCamera;
-
-        // Create target info display with click zones for TAB/SHIFT-TAB functionality
-        this.targetInfoDisplay = document.createElement('div');
-        this.targetInfoDisplay.style.cssText = `
-            width: 100%;
-            text-align: left;
-            margin-bottom: 10px;
-            pointer-events: auto;
-            position: relative;
-            z-index: 10000;
-            cursor: pointer;
-        `;
-        
-        // Ensure all child elements don't block clicks by setting pointer-events: none on children
-        const targetInfoStyle = document.createElement('style');
-        targetInfoStyle.textContent = `
-            .target-info-display * {
-                pointer-events: none;
-            }
-            .status-icons-container * {
-                pointer-events: none;
-            }
-            .action-buttons-container * {
-                pointer-events: none;
-            }
-        `;
-        document.head.appendChild(targetInfoStyle);
-        this.targetInfoDisplay.className = 'target-info-display';
-        
-        // Add click handler for left/right half targeting (with abort signal for cleanup)
-
-        // Forward any clicks on the main container to the targetInfoDisplay for seamless interaction
-        this.targetHUD.addEventListener('click', (event) => {
-            // Always forward clicks to targetInfoDisplay for consistent behavior
-            // This handles clicks on child elements within the info display
-            const newEvent = new MouseEvent('click', {
-                bubbles: true,
-                cancelable: true,
-                clientX: event.clientX,
-                clientY: event.clientY
-            });
-            this.targetInfoDisplay.dispatchEvent(newEvent);
-        }, { signal: this._abortController.signal });
-
-        this.targetInfoDisplay.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const rect = this.targetInfoDisplay.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const halfWidth = rect.width / 2;
-
-            if (clickX < halfWidth) {
-                // Left half - same as SHIFT-TAB (previous target)
-                this.cycleToPreviousTarget();
-            } else {
-                // Right half - same as TAB (next target)
-                this.cycleToNextTarget();
-            }
-        }, { signal: this._abortController.signal });
-        
-
-        // Create status icons container
-        this.statusIconsContainer = document.createElement('div');
-        this.statusIconsContainer.style.cssText = `
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            font-size: 16px;
-            position: relative;
-            z-index: 1003;
-            cursor: pointer;
-        `;
-        this.statusIconsContainer.className = 'status-icons-container';
-
-        // Create icons with tooltips - match original (with abort signal for cleanup)
-        const createIcon = (symbol, tooltip) => {
-            const icon = document.createElement('div');
-            icon.style.cssText = `
-                cursor: help;
-                opacity: 0.8;
-                transition: all 0.2s ease;
-                position: relative;
-                width: 24px;
-                height: 24px;
-                border: 1px solid #D0D0D0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: "Courier New", monospace;
-                font-size: 14px;
-                text-shadow: 0 0 4px #D0D0D0;
-                box-shadow: 0 0 4px rgba(208, 208, 208, 0.4);
-            `;
-            icon.innerHTML = symbol;
-            icon.title = tooltip;
-
-            // Add hover effects (with abort signal for cleanup)
-            icon.addEventListener('mouseenter', () => {
-                icon.style.opacity = '1';
-                icon.style.transform = 'scale(1.1)';
-                // Box shadow will be updated by updateStatusIcons with diplomacy color
-            }, { signal: this._abortController.signal });
-
-            icon.addEventListener('mouseleave', () => {
-                icon.style.opacity = '0.8';
-                icon.style.transform = 'scale(1)';
-                // Box shadow will be updated by updateStatusIcons with diplomacy color
-            }, { signal: this._abortController.signal });
-
-            return icon;
-        };
-
-        // New station service icons (5):
-        this.serviceIcons = {
-            // Combine Repair & Refuel with Energy Recharge: keep name of former, icon of latter
-            repairRefuel: createIcon('⚡', 'Repair & Refuel'),
-            shipRefit: createIcon('🛠️', 'Ship Refitting'),
-            tradeExchange: createIcon('💰', 'Trade Exchange'),
-            missionBoard: createIcon('📋', 'Mission Board')
-        };
-        Object.values(this.serviceIcons).forEach(icon => this.statusIconsContainer.appendChild(icon));
-
-        // Create action buttons container
-        this.actionButtonsContainer = document.createElement('div');
-        this.actionButtonsContainer.style.cssText = `
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            position: relative;
-            z-index: 1004;
-            cursor: pointer;
-        `;
-        this.actionButtonsContainer.className = 'action-buttons-container';
-
-        // Create direction arrows for off-screen targets
-        this.createDirectionArrows();
-
-        // Add scan line effects to sync with comm HUD
-        this.addTargetScanLineEffects();
-
-        // Assemble the HUD - match original order
-        this.targetHUD.appendChild(this.wireframeContainer);
-        this.targetHUD.appendChild(this.targetInfoDisplay);
-        this.targetHUD.appendChild(this.statusIconsContainer);
-        this.targetHUD.appendChild(this.actionButtonsContainer);
-        
-        // Create and add sub-system panel to main HUD (positioned absolutely to the right)
-        // Delegates to SubSystemPanelManager
-        this.subSystemPanelManager.createSubSystemPanel(this.targetHUD, this._abortController);
-        // Expose DOM elements for backwards compatibility
-        this.subSystemPanel = this.subSystemPanelManager.subSystemPanel;
-        this.subSystemWireframeContainer = this.subSystemPanelManager.subSystemWireframeContainer;
-        this.subSystemWireframeRenderer = this.subSystemPanelManager.subSystemWireframeRenderer;
-        this.subSystemWireframeScene = this.subSystemPanelManager.subSystemWireframeScene;
-        this.subSystemWireframeCamera = this.subSystemPanelManager.subSystemWireframeCamera;
-        this.subSystemContent = this.subSystemPanelManager.subSystemContent;
-
-        document.body.appendChild(this.targetHUD);
+        this.targetHUDBuilder.buildTargetComputerHUD();
     }
 
     /**
@@ -1826,6 +1640,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
         // Clean up ClickCycleHandler
         if (this.clickCycleHandler) {
             this.clickCycleHandler.dispose();
+        }
+
+        // Clean up TargetHUDBuilder
+        if (this.targetHUDBuilder) {
+            this.targetHUDBuilder.dispose();
         }
 
         // Clear target arrays
