@@ -26,6 +26,7 @@ import { TargetSectorManager } from '../ui/TargetSectorManager.js';
 import { TargetStateManager } from '../ui/TargetStateManager.js';
 import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
 import { TargetHUDController } from '../ui/TargetHUDController.js';
+import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -193,6 +194,9 @@ export class TargetComputerManager {
 
         // Initialize TargetHUDController
         this.targetHUDController = new TargetHUDController(this);
+
+        // Initialize TargetComputerToggle
+        this.targetComputerToggle = new TargetComputerToggle(this);
 
         // console.log('🎯 TargetComputerManager initialized');
     }
@@ -563,129 +567,10 @@ export class TargetComputerManager {
 
     /**
      * Toggle target computer on/off
+     * Delegates to TargetComputerToggle
      */
     toggleTargetComputer() {
-        const ship = this.viewManager?.getShip();
-        if (!ship) {
-            debug('P1', 'No ship available for target computer control');
-            return;
-        }
-
-        const targetComputer = ship.getSystem('target_computer');
-        if (!targetComputer) {
-            debug('P1', 'No target computer system found on ship');
-            return;
-        }
-        
-        // Toggle the target computer system
-        if (targetComputer.isActive) {
-            // Clear target BEFORE deactivating the system
-            if (targetComputer.setTarget) {
-                targetComputer.setTarget(null);
-            }
-            targetComputer.deactivate();
-            this.targetComputerEnabled = false;
-            debug('TARGETING', 'Target computer deactivated');
-        } else {
-            debug('TARGETING', 'Attempting to activate target computer...');
-            debug('TARGETING', 'Target computer canActivate result:', targetComputer.canActivate ? targetComputer.canActivate() : 'canActivate method not available');
-            debug('TARGETING', 'Target computer isOperational result:', targetComputer.isOperational ? targetComputer.isOperational() : 'isOperational method not available');
-
-            if (targetComputer.activate(ship)) {
-                this.targetComputerEnabled = true;
-                debug('TARGETING', 'Target computer activated successfully');
-            } else {
-                this.targetComputerEnabled = false;
-                debug('P1', 'Failed to activate target computer - check system status and energy');
-                debug('TARGETING', `Target computer activation failed. isActive: ${targetComputer.isActive}, health: ${targetComputer.healthPercentage}, state: ${targetComputer.state}`);
-                return;
-            }
-        }
-        
-        if (!this.targetComputerEnabled) {
-            this.targetHUD.style.display = 'none';
-            this.targetReticle.style.display = 'none';
-            
-            // Clear target info display to prevent "unknown target" flash
-            this.targetInfoDisplay.innerHTML = '';
-            
-            // Clear current target to ensure clean reactivation
-            this.currentTarget = null;
-            this.targetIndex = -1;
-            
-            
-            // Stop all monitoring when target computer is disabled
-            this.stopNoTargetsMonitoring();
-            this.stopRangeMonitoring();
-            
-            // Clear wireframe if it exists
-            if (this.targetWireframe) {
-                this.wireframeScene.remove(this.targetWireframe);
-                this.targetWireframe.geometry.dispose();
-                this.targetWireframe.material.dispose();
-                this.targetWireframe = null;
-            }
-            
-            // Clear 3D outline when target computer is disabled
-            this.clearTargetOutline();
-        } else {
-            // Show the HUD immediately when target computer is enabled
-            this.targetHUD.style.display = 'block';
-            
-            // Show "Powering up" animation while initializing
-            this.showPowerUpAnimation();
-            
-            this.updateTargetList();
-            
-            // Use a longer delay to allow for power-up animation and target initialization
-            setTimeout(() => {
-                // Hide the power-up animation
-                this.hidePowerUpAnimation();
-                
-                // Only auto-select target if no manual selection exists
-                if (!this.preventTargetChanges) {
-                    this.targetIndex = -1;
-                    if (this.targetObjects.length > 0) {
-                        // console.log(`🎯 Target Computer activation: Auto-selecting nearest target (no manual selection)`);
-                        // Call cycleTarget directly and then sync with StarfieldManager
-                        this.cycleTarget(); // Auto-select first target
-                        
-                        // Stop no targets monitoring since we have a target
-                        this.stopNoTargetsMonitoring();
-                        
-                        // Play audio feedback for target acquisition on startup
-                        this.playAudio('frontend/static/audio/blurb.mp3');
-                        
-                        // Start monitoring the selected target's range
-                        this.startRangeMonitoring();
-                        
-                        // Manually sync with StarfieldManager to ensure UI updates
-                        if (this.viewManager?.starfieldManager) {
-                            this.viewManager.starfieldManager.currentTarget = this.currentTarget?.object || this.currentTarget;
-                            this.viewManager.starfieldManager.targetIndex = this.targetIndex;
-                            this.viewManager.starfieldManager.targetObjects = this.targetObjects;
-                            
-                            // Update 3D outline for automatic cycle (if enabled)
-                            if (this.currentTarget && this.viewManager.starfieldManager.outlineEnabled && 
-                                !this.viewManager.starfieldManager.outlineDisabledUntilManualCycle) {
-                                this.viewManager.starfieldManager.updateTargetOutline(this.currentTarget?.object || this.currentTarget, 0);
-                            }
-                        }
-                        
-                        // Force direction arrow update when target changes
-                        this.updateDirectionArrow();
-
-                    } else {
-                        // console.log('🎯 No targets available for initial selection');
-                        this.showNoTargetsDisplay(); // Show special "No targets in range" display
-                    }
-                } else {
-                    // Preserve existing selection without blocking future manual cycling
-                    // console.log(`🎯 Target Computer activation: Preserving existing selection - ${this.currentTarget?.name || 'unknown'}`);
-                    this.updateTargetDisplay();
-                }
-            }, 800); // Longer delay for power-up animation (0.8 seconds)
-        }
+        this.targetComputerToggle.toggleTargetComputer();
     }
 
     /**
@@ -2152,6 +2037,11 @@ if (window?.DEBUG_TCM) debug('TARGETING', `🎯 DEBUG: targetInfoDisplay.innerHT
         // Clean up TargetHUDController
         if (this.targetHUDController) {
             this.targetHUDController.dispose();
+        }
+
+        // Clean up TargetComputerToggle
+        if (this.targetComputerToggle) {
+            this.targetComputerToggle.dispose();
         }
 
         // Clear target arrays
