@@ -26,6 +26,7 @@ import { WeaponHUDManager } from '../managers/WeaponHUDManager.js';
 import { StatusBarManager } from '../managers/StatusBarManager.js';
 import { SubTargetDisplayManager } from '../managers/SubTargetDisplayManager.js';
 import { DebugCommandManager } from '../managers/DebugCommandManager.js';
+import { SectorManager } from '../managers/SectorManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -491,6 +492,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Debug command manager (extracted)
         this.debugCommandManager = new DebugCommandManager(this);
+
+        // Sector manager (extracted)
+        this.sectorManager = new SectorManager(this);
     }
 
     /**
@@ -1174,93 +1178,11 @@ debug('COMBAT', 'Attempting WeaponHUD connection during game loop...');
     }
 
     updateCurrentSector() {
-        if (!this.solarSystemManager) return;
-
-        // Calculate current sector based on position
-        const currentSector = this.calculateCurrentSector();
-        
-        // Get the current sector from the solar system manager
-        const currentSystemSector = this.solarSystemManager.currentSector;
-        
-        // Only update if we've moved to a new sector
-        if (currentSector !== currentSystemSector) {
-            // Reset target computer state before sector change
-            if (this.targetComputerEnabled) {
-                this.currentTarget = null;
-                this.targetIndex = -1;
-                this.targetComputerManager.hideTargetHUD();
-                this.targetComputerManager.hideTargetReticle();
-                
-                // Clear any existing wireframe
-                if (this.targetWireframe) {
-                    this.wireframeScene.remove(this.targetWireframe);
-                    this.targetWireframe.geometry.dispose();
-                    this.targetWireframe.material.dispose();
-                    this.targetWireframe = null;
-                }
-            }
-            
-            // CRITICAL FIX: Reset proximity radar state before sector change (like target computer)
-            if (this.proximityDetector3D && this.proximityDetector3D.isVisible) {
-                debug('UTILITY', '🎯 Sector change: Deactivating proximity radar');
-                this.proximityDetector3D.toggle(); // Deactivate proximity radar
-            }
-            
-            // CRITICAL FIX: Update Star Charts current sector before generating new system
-            if (this.starChartsManager) {
-                debug('UTILITY', `🗺️ Sector change: Updating Star Charts from ${this.starChartsManager.currentSector} to ${currentSector}`);
-                this.starChartsManager.currentSector = currentSector;
-            }
-            
-            this.solarSystemManager.setCurrentSector(currentSector);
-            // Generate new star system for the sector
-            this.solarSystemManager.generateStarSystem(currentSector);
-            
-            // Update target list after sector change if target computer is enabled
-            if (this.targetComputerEnabled) {
-                this._setTimeout(() => {
-                    this.updateTargetList();
-                    this.cycleTarget();
-                }, 100); // Small delay to ensure new system is fully generated
-            }
-
-            // Update galactic chart with new sector
-            const galacticChart = this.viewManager.getGalacticChart();
-            if (galacticChart) {
-                // Convert sector to index (e.g., 'A0' -> 0, 'B1' -> 10, etc.)
-                const row = currentSector.charCodeAt(0) - 65; // Convert A-J to 0-9
-                const col = parseInt(currentSector[1]);
-                const systemIndex = row * 9 + col;
-                galacticChart.setShipLocation(systemIndex);
-            }
-        }
+        this.sectorManager.updateCurrentSector();
     }
 
     calculateCurrentSector() {
-        if (!this.solarSystemManager) return 'A0';
-
-        // Get camera position
-        const pos = this.camera.position;
-        
-        // Define sector grid size (in game units)
-        const SECTOR_SIZE = 100000; // Much larger sectors for vast space
-        
-        // Calculate grid coordinates
-        // Adjust offsets to ensure (0,0,0) is in sector A0
-        const x = Math.floor(pos.x / SECTOR_SIZE);
-        const z = Math.floor(pos.z / SECTOR_SIZE);
-        
-        // Convert to sector notation (A0-J8)
-        // Clamp x between 0-8 for sectors 0-8
-        const col = Math.max(0, Math.min(8, x + 4)); // +4 to center around origin
-        
-        // Clamp z between 0-9 for sectors A-J
-        const row = Math.max(0, Math.min(9, z + 5)); // +5 to center around origin
-        const rowLetter = String.fromCharCode(65 + row); // 65 is ASCII for 'A'
-        
-        const sector = `${rowLetter}${col}`;
-        
-        return sector;
+        return this.sectorManager.calculateCurrentSector();
     }
 
     // Debug methods delegated to DebugCommandManager
