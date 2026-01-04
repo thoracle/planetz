@@ -2,7 +2,6 @@
 import { HUDInitializer } from '../managers/HUDInitializer.js';
 import { InputSystemsInitializer } from '../managers/InputSystemsInitializer.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
-import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { UIManagersInitializer } from '../managers/UIManagersInitializer.js';
 import { InfrastructureInitializer } from '../managers/InfrastructureInitializer.js';
@@ -129,10 +128,6 @@ export class StarfieldManager {
         this.bindKeyEvents();
         // Bind mouse events
         this.bindMouseEvents();
-
-        // AudioInitManager - handles audio listener and StarfieldAudioManager
-        this.audioInitManager = new AudioInitManager(this);
-        this.audioInitManager.initializeAudio();
 
         // UtilityManagersInitializer - consolidates 14 utility managers
         this.utilityManagersInitializer = new UtilityManagersInitializer(this);

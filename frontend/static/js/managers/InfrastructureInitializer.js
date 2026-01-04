@@ -5,7 +5,7 @@
  * Handles initialization of infrastructure/utility systems.
  *
  * Features:
- * - Consolidates 3 infrastructure manager instantiations
+ * - Consolidates 4 infrastructure manager instantiations
  * - Provides centralized access to infrastructure managers
  * - Provides cleanup on disposal
  */
@@ -13,6 +13,7 @@
 import { TimeoutManager } from './TimeoutManager.js';
 import { GlobalReferencesManager } from './GlobalReferencesManager.js';
 import { ButtonStateManager } from './ButtonStateManager.js';
+import { AudioInitManager } from './AudioInitManager.js';
 import { debug } from '../debug.js';
 
 export class InfrastructureInitializer {
@@ -27,6 +28,7 @@ export class InfrastructureInitializer {
         this.timeoutManager = null;
         this.globalReferencesManager = null;
         this.buttonStateManager = null;
+        this.audioInitManager = null;
     }
 
     /**
@@ -44,13 +46,25 @@ export class InfrastructureInitializer {
         this.buttonStateManager = new ButtonStateManager(this.sfm);
         this.buttonStateManager.injectDockButtonCSS();
 
-        debug('UTILITY', 'InfrastructureInitializer: 3 infrastructure managers initialized');
+        // AudioInitManager - handles audio listener and StarfieldAudioManager
+        this.audioInitManager = new AudioInitManager(this.sfm);
+        this.audioInitManager.initializeAudio();
+
+        debug('UTILITY', 'InfrastructureInitializer: 4 infrastructure managers initialized');
     }
 
     /**
      * Dispose of all infrastructure managers
      */
     dispose() {
+        // Dispose AudioInitManager
+        if (this.audioInitManager) {
+            if (typeof this.audioInitManager.dispose === 'function') {
+                this.audioInitManager.dispose();
+            }
+            this.audioInitManager = null;
+        }
+
         // Dispose ButtonStateManager
         if (this.buttonStateManager) {
             if (typeof this.buttonStateManager.dispose === 'function') {

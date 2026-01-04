@@ -699,6 +699,10 @@ export class PropertyProxyInitializer {
             get: () => sfm.infrastructureInitializer.buttonStateManager,
             set: (val) => { sfm.infrastructureInitializer.buttonStateManager = val; }
         });
+        Object.defineProperty(sfm, 'audioInitManager', {
+            get: () => sfm.infrastructureInitializer.audioInitManager,
+            set: (val) => { sfm.infrastructureInitializer.audioInitManager = val; }
+        });
     }
 
     /**

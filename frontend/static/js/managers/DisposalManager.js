@@ -159,12 +159,6 @@ export class DisposalManager {
             this.sfm.wireframeRenderer = null;
         }
 
-        // Clean up AudioInitManager (handles audioManager and listener)
-        if (this.sfm.audioInitManager) {
-            this.sfm.audioInitManager.dispose();
-            this.sfm.audioInitManager = null;
-        }
-
     }
 
     /**
