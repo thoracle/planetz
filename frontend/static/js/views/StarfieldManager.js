@@ -32,6 +32,7 @@ import { TargetValidationManager } from '../managers/TargetValidationManager.js'
 import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.js';
 import { UIToggleManager } from '../managers/UIToggleManager.js';
 import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
+import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -515,6 +516,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // TargetCyclingManager - handles target list updates and cycling
         this.targetCyclingManager = new TargetCyclingManager(this);
+
+        // TargetDisplayManager - handles target display updates and formatting
+        this.targetDisplayManager = new TargetDisplayManager(this);
     }
 
     /**
@@ -1439,195 +1443,15 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     sortTargetsByDistance() {
-        const cameraPosition = this.camera.position;
-        
-        this.targetObjects.sort((a, b) => {
-            const distA = Math.sqrt(
-                Math.pow(a.position[0] - cameraPosition.x, 2) +
-                Math.pow(a.position[1] - cameraPosition.y, 2) +
-                Math.pow(a.position[2] - cameraPosition.z, 2)
-            );
-            const distB = Math.sqrt(
-                Math.pow(b.position[0] - cameraPosition.x, 2) +
-                Math.pow(b.position[1] - cameraPosition.y, 2) +
-                Math.pow(b.position[2] - cameraPosition.z, 2)
-            );
-            return distA - distB;
-        });
-        
-        // Add distance to each target
-        this.targetObjects = this.targetObjects.map(target => {
-            const distance = Math.sqrt(
-                Math.pow(target.position[0] - cameraPosition.x, 2) +
-                Math.pow(target.position[1] - cameraPosition.y, 2) +
-                Math.pow(target.position[2] - cameraPosition.z, 2)
-            );
-            return {
-                ...target,
-                distance: this.formatDistance(distance)
-            };
-        });
+        this.targetDisplayManager.sortTargetsByDistance();
     }
 
     formatDistance(distanceInKm) {
-        // Helper function to add commas to numbers
-        const addCommas = (num) => {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        };
-
-        if (distanceInKm >= 1e15) {
-            // Convert to exameters (1 Em = 1e15 km)
-            const distanceInEm = distanceInKm / 1e15;
-            return `${addCommas(distanceInEm.toFixed(2))} Em`;
-        } else if (distanceInKm >= 1e12) {
-            // Convert to petameters (1 Pm = 1e12 km)
-            const distanceInPm = distanceInKm / 1e12;
-            return `${addCommas(distanceInPm.toFixed(2))} Pm`;
-        } else if (distanceInKm >= 1e9) {
-            // Convert to terameters (1 Tm = 1e9 km)
-            const distanceInTm = distanceInKm / 1e9;
-            return `${addCommas(distanceInTm.toFixed(2))} Tm`;
-        } else if (distanceInKm >= 1e6) {
-            // Convert to gigameters (1 Gm = 1e6 km)
-            const distanceInGm = distanceInKm / 1e6;
-            return `${addCommas(distanceInGm.toFixed(2))} Gm`;
-        } else if (distanceInKm >= 1e3) {
-            // Convert to megameters (1 Mm = 1e3 km)
-            const distanceInMm = distanceInKm / 1e3;
-            return `${addCommas(distanceInMm.toFixed(2))} Mm`;
-        } else {
-            return `${addCommas(distanceInKm.toFixed(2))} Km`;
-        }
+        return this.targetDisplayManager.formatDistance(distanceInKm);
     }
 
     updateTargetDisplay() {
-        // Don't show anything if targeting is completely disabled
-        if (!this.targetComputerEnabled) {
-            this.targetComputerManager.hideTargetHUD();
-            this.targetComputerManager.hideTargetReticle();
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            return;
-        }
-
-        // Handle galactic view
-        if (this.viewManager.currentView === 'galactic') {
-            this.targetComputerManager.hideTargetHUD();
-            return;
-        }
-
-        // Keep target HUD visible as long as targeting is enabled
-        this.targetComputerManager.showTargetHUD();
-
-        // Handle case where there's no current target
-        if (!this.currentTarget) {
-            this.targetComputerManager.hideTargetReticle();
-            // Clear any existing action buttons to prevent stale dock buttons
-            this.targetComputerManager.clearActionButtons();
-            // Reset button state
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            // Hide intel when no target
-            if (this.intelVisible) {
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-            }
-            this.updateIntelIconDisplay();
-            return;
-        }
-
-        // Get the current target data
-        const currentTargetData = this.getCurrentTargetData();
-        if (!currentTargetData) {
-            this.targetComputerManager.hideTargetReticle();
-            // Clear any existing action buttons to prevent stale dock buttons
-            this.targetComputerManager.clearActionButtons();
-            // Reset button state
-            this.currentButtonState = {
-                hasDockButton: false,
-                isDocked: false,
-                hasScanButton: false,
-                hasTradeButton: false
-            };
-            return;
-        }
-
-        // Check if target has changed and dismiss intel if so
-        if (this.previousTarget !== this.currentTarget) {
-            if (this.intelVisible) {
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-            }
-            this.previousTarget = this.currentTarget;
-        }
-
-        // Calculate distance to target
-        const distance = this.calculateDistance(this.camera.position, this.currentTarget.position);
-        
-        // Check intel availability based on scan range and long range scanner
-        this.updateIntelAvailability(distance);
-        
-        // Get target info for diplomacy status and actions
-        let info = null;
-        let isEnemyShip = false;
-        
-        // Check if this is an enemy ship
-        if (currentTargetData.isShip && currentTargetData.ship) {
-            isEnemyShip = true;
-            info = {
-                type: 'enemy_ship',
-                diplomacy: currentTargetData.ship.diplomacy || 'enemy',
-                name: currentTargetData.ship.shipName,
-                shipType: currentTargetData.ship.shipType
-            };
-        } else {
-            // Get celestial body info
-            info = this.solarSystemManager.getCelestialBodyInfo(this.currentTarget);
-        }
-        
-        // Update HUD border color based on diplomacy
-        let diplomacyColor = '#44ffff'; // Default teal for unknown
-        if (isEnemyShip) {
-            diplomacyColor = '#ff3333'; // Enemy ships are darker neon red
-        } else if (info?.type === 'star') {
-            diplomacyColor = '#ffff00'; // Stars are neutral yellow
-        } else {
-            // Convert faction to diplomacy if needed
-            let diplomacy = info?.diplomacy?.toLowerCase();
-            if (!diplomacy && info?.faction) {
-                diplomacy = this.getFactionDiplomacy(info.faction).toLowerCase();
-            }
-            
-            if (diplomacy === 'enemy') {
-                diplomacyColor = '#ff3333'; // Enemy red
-            } else if (diplomacy === 'neutral') {
-                diplomacyColor = '#ffff00'; // Neutral yellow
-            } else if (diplomacy === 'friendly') {
-                diplomacyColor = '#00ff41'; // Friendly green
-            }
-        }
-        this.targetComputerManager.setTargetHUDBorderColor(diplomacyColor);
-        
-        // Update wireframe container border color to match
-        if (this.wireframeContainer) {
-            this.wireframeContainer.style.borderColor = diplomacyColor;
-        }
-
-        // Delegate full Target CPU HUD rendering to TargetComputerManager to avoid double-rendering
-        // and accidental overwrites (especially for space stations' sub-target UI)
-        this.targetComputerManager.updateTargetDisplay();
-
-        // Display the reticle if we have a valid target
-        this.targetComputerManager.showTargetReticle();
-        this.updateReticlePosition();
+        this.targetDisplayManager.updateTargetDisplay();
     }
 
     /**
@@ -1647,18 +1471,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     getCurrentTargetData() {
-        if (!this.currentTarget || !this.targetObjects || this.targetIndex === -1) {
-            return null;
-        }
-        
-        // Use the target data from TargetComputerManager which has the most up-to-date information
-        const targetComputerData = this.targetComputerManager.getCurrentTargetData();
-        if (targetComputerData) {
-            return targetComputerData;
-        }
-        
-        // Fallback to local target objects array
-        return this.targetObjects[this.targetIndex];
+        return this.targetDisplayManager.getCurrentTargetData();
     }
 
     calculateDistance(point1, point2) {
@@ -1667,29 +1480,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     getParentPlanetName(moon) {
-        // Get all celestial bodies
-        const bodies = this.solarSystemManager.getCelestialBodies();
-        
-        // Find the parent planet by checking which planet's position is closest to the moon
-        let closestPlanet = null;
-        let minDistance = Infinity;
-        
-        for (const [key, body] of bodies.entries()) {
-            if (!key.startsWith('moon_')) {
-                const distance = body.position.distanceTo(moon.position);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPlanet = body;
-                }
-            }
-        }
-        
-        if (closestPlanet) {
-            const info = this.solarSystemManager.getCelestialBodyInfo(closestPlanet);
-            return info.name;
-        }
-        
-        return 'Unknown';
+        return this.targetDisplayManager.getParentPlanetName(moon);
     }
 
     updateDirectionArrow() {
