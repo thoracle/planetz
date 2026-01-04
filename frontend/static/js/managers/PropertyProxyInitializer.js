@@ -73,6 +73,9 @@ export class PropertyProxyInitializer {
 
         // Core managers proxies
         PropertyProxyInitializer.initializeCoreManagersProxies(sfm);
+
+        // State managers proxies
+        PropertyProxyInitializer.initializeStateManagersProxies(sfm);
     }
 
     /**
@@ -589,6 +592,24 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'miscSystemManager', {
             get: () => sfm.coreManagersInitializer.miscSystemManager,
             set: (val) => { sfm.coreManagersInitializer.miscSystemManager = val; }
+        });
+    }
+
+    /**
+     * State managers property proxies
+     */
+    static initializeStateManagersProxies(sfm) {
+        Object.defineProperty(sfm, 'cameraStateManager', {
+            get: () => sfm.stateManagersInitializer.cameraStateManager,
+            set: (val) => { sfm.stateManagersInitializer.cameraStateManager = val; }
+        });
+        Object.defineProperty(sfm, 'targetStateManager', {
+            get: () => sfm.stateManagersInitializer.targetStateManager,
+            set: (val) => { sfm.stateManagersInitializer.targetStateManager = val; }
+        });
+        Object.defineProperty(sfm, 'damageControlStateManager', {
+            get: () => sfm.stateManagersInitializer.damageControlStateManager,
+            set: (val) => { sfm.stateManagersInitializer.damageControlStateManager = val; }
         });
     }
 }

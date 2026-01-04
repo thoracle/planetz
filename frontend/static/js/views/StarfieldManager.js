@@ -10,9 +10,6 @@ import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
-import { TargetStateManager } from '../managers/TargetStateManager.js';
-import { CameraStateManager } from '../managers/CameraStateManager.js';
-import { DamageControlStateManager } from '../managers/DamageControlStateManager.js';
 import { HUDContainerManager } from '../managers/HUDContainerManager.js';
 import { DockingUIManager } from '../managers/DockingUIManager.js';
 import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
@@ -22,6 +19,7 @@ import { RenderingInitManager } from '../managers/RenderingInitManager.js';
 import { AIInitManager } from '../managers/AIInitManager.js';
 import { UtilityManagersInitializer } from '../managers/UtilityManagersInitializer.js';
 import { CoreManagersInitializer } from '../managers/CoreManagersInitializer.js';
+import { StateManagersInitializer } from '../managers/StateManagersInitializer.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
@@ -74,8 +72,9 @@ export class StarfieldManager {
             this.ship.setStarfieldManager(this);
         }
 
-        // Initialize Camera State Manager (holds camera vectors and mouse look state)
-        this.cameraStateManager = new CameraStateManager(this);
+        // StateManagersInitializer - consolidates 3 state managers
+        this.stateManagersInitializer = new StateManagersInitializer(this);
+        this.stateManagersInitializer.initialize();
 
         // ViewStateManager will be initialized later, but we need solarSystemManager reference early
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
@@ -88,9 +87,6 @@ export class StarfieldManager {
 
         // Initialize Ship Movement Controller
         this.shipMovementController = new ShipMovementController(this);
-
-        // Initialize Target State Manager (holds targeting-related state)
-        this.targetStateManager = new TargetStateManager(this);
 
         // Initialize Ship Systems HUD Manager
         this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
@@ -105,9 +101,6 @@ export class StarfieldManager {
         // Create ship systems HUD (initially hidden)
         this.createShipSystemsHUD();
         this.shipSystemsHUD.style.display = 'none'; // Hide by default
-
-        // Initialize Damage Control State Manager
-        this.damageControlStateManager = new DamageControlStateManager(this);
 
         // TargetingInitManager - handles targeting system initialization
         // (targetComputerManager, starChartsManager, proximityDetector3D)
