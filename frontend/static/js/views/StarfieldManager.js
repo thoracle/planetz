@@ -35,6 +35,7 @@ import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
 import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
 import { CommunicationManager } from '../managers/CommunicationManager.js';
+import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -527,45 +528,22 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // CommunicationManager - handles communication HUD display
         this.communicationManagerDelegate = new CommunicationManager(this);
+
+        // FactionDiplomacyManager - handles faction relationship lookups
+        this.factionDiplomacyManager = new FactionDiplomacyManager(this);
     }
 
-    /**
-     * Convert faction name to diplomacy status
-     * @param {string} faction - Faction name
-     * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
-     */
+    // ========================================
+    // Faction Diplomacy Methods
+    // (Implementation moved to FactionDiplomacyManager)
+    // ========================================
+
     getFactionDiplomacy(faction) {
-        if (!faction) return 'neutral';
-        
-        // Faction relationship mappings (matches AmbientShipManager.js)
-        const factionRelations = {
-            'Terran Republic Alliance': 'friendly',
-            'Zephyrian Collective': 'friendly', 
-            'Scientists Consortium': 'friendly',
-            'Free Trader Consortium': 'neutral',
-            'Nexus Corporate Syndicate': 'neutral',
-            'Ethereal Wanderers': 'neutral',
-            'Draconis Imperium': 'neutral',
-            'Crimson Raider Clans': 'enemy',
-            'Shadow Consortium': 'enemy',
-            'Void Cult': 'enemy'
-        };
-        
-        return factionRelations[faction] || 'neutral';
+        return this.factionDiplomacyManager.getFactionDiplomacy(faction);
     }
-    
-    /**
-     * Initialize the enemy AI manager
-     */
+
     async initializeAIManager() {
-        try {
-            if (this.enemyAIManager) {
-                await this.enemyAIManager.initialize();
-                debug('UTILITY', 'Enemy AI system ready');
-            }
-        } catch (error) {
-            debug('P1', `❌ Failed to initialize AI manager: ${error}`);
-        }
+        return this.factionDiplomacyManager.initializeAIManager();
     }
     
     /**

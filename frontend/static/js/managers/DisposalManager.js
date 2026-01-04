@@ -157,6 +157,12 @@ export class DisposalManager {
             this.sfm.communicationManagerDelegate.dispose();
             this.sfm.communicationManagerDelegate = null;
         }
+
+        // Clean up FactionDiplomacyManager
+        if (this.sfm.factionDiplomacyManager) {
+            this.sfm.factionDiplomacyManager.dispose();
+            this.sfm.factionDiplomacyManager = null;
+        }
     }
 
     /**
