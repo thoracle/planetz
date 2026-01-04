@@ -188,6 +188,12 @@ export class DisposalManager {
             this.sfm.targetStateManager.dispose();
             this.sfm.targetStateManager = null;
         }
+
+        // Clean up CameraStateManager
+        if (this.sfm.cameraStateManager) {
+            this.sfm.cameraStateManager.dispose();
+            this.sfm.cameraStateManager = null;
+        }
     }
 
     /**

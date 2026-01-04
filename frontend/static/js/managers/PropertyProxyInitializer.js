@@ -37,6 +37,9 @@ export class PropertyProxyInitializer {
 
         // Target state proxies
         PropertyProxyInitializer.initializeTargetStateProxies(sfm);
+
+        // Camera state proxies
+        PropertyProxyInitializer.initializeCameraStateProxies(sfm);
     }
 
     /**
@@ -239,6 +242,44 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'lastButtonStateLog', {
             get: () => sfm.targetStateManager.lastButtonStateLog,
             set: (val) => { sfm.targetStateManager.lastButtonStateLog = val; }
+        });
+    }
+
+    /**
+     * Camera state property proxies
+     */
+    static initializeCameraStateProxies(sfm) {
+        Object.defineProperty(sfm, 'velocity', {
+            get: () => sfm.cameraStateManager.velocity,
+            set: (val) => { sfm.cameraStateManager.velocity = val; }
+        });
+        Object.defineProperty(sfm, 'rotationSpeed', {
+            get: () => sfm.cameraStateManager.rotationSpeed,
+            set: (val) => { sfm.cameraStateManager.rotationSpeed = val; }
+        });
+        Object.defineProperty(sfm, 'cameraDirection', {
+            get: () => sfm.cameraStateManager.cameraDirection,
+            set: (val) => { sfm.cameraStateManager.cameraDirection = val; }
+        });
+        Object.defineProperty(sfm, 'cameraRight', {
+            get: () => sfm.cameraStateManager.cameraRight,
+            set: (val) => { sfm.cameraStateManager.cameraRight = val; }
+        });
+        Object.defineProperty(sfm, 'cameraUp', {
+            get: () => sfm.cameraStateManager.cameraUp,
+            set: (val) => { sfm.cameraStateManager.cameraUp = val; }
+        });
+        Object.defineProperty(sfm, 'mouseSensitivity', {
+            get: () => sfm.cameraStateManager.mouseSensitivity,
+            set: (val) => { sfm.cameraStateManager.mouseSensitivity = val; }
+        });
+        Object.defineProperty(sfm, 'mouseRotation', {
+            get: () => sfm.cameraStateManager.mouseRotation,
+            set: (val) => { sfm.cameraStateManager.mouseRotation = val; }
+        });
+        Object.defineProperty(sfm, 'isMouseLookEnabled', {
+            get: () => sfm.cameraStateManager.isMouseLookEnabled,
+            set: (val) => { sfm.cameraStateManager.isMouseLookEnabled = val; }
         });
     }
 }

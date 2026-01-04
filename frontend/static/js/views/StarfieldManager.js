@@ -43,6 +43,7 @@ import { MiscSystemManager } from '../managers/MiscSystemManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { TargetStateManager } from '../managers/TargetStateManager.js';
+import { CameraStateManager } from '../managers/CameraStateManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -104,17 +105,11 @@ export class StarfieldManager {
         if (this.ship && typeof this.ship.setStarfieldManager === 'function') {
             this.ship.setStarfieldManager(this);
         }
-        
-        // Movement state is now managed by ShipMovementController
-        // Keeping camera-related vectors here
-        this.velocity = new this.THREE.Vector3();
-        this.rotationSpeed = SHIP_MOVEMENT.ROTATION_SPEED;
-        this.cameraDirection = new this.THREE.Vector3();
-        this.cameraRight = new this.THREE.Vector3();
-        this.cameraUp = new this.THREE.Vector3();
-        this.mouseSensitivity = SHIP_MOVEMENT.MOUSE_SENSITIVITY;
-        this.mouseRotation = new this.THREE.Vector2();
-        this.isMouseLookEnabled = false; // Disable mouse look to match thoralexander.com
+
+        // Initialize Camera State Manager (holds camera vectors and mouse look state)
+        this.cameraStateManager = new CameraStateManager(this);
+
+        // View state
         this.view = 'FORE'; // Initialize with FORE view
         this.previousView = 'FORE'; // Add previous view tracking
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
