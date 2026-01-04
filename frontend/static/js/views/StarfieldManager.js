@@ -30,6 +30,7 @@ import { SectorManager } from '../managers/SectorManager.js';
 import { ViewStateManager } from '../managers/ViewStateManager.js';
 import { TargetValidationManager } from '../managers/TargetValidationManager.js';
 import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.js';
+import { UIToggleManager } from '../managers/UIToggleManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -507,6 +508,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // WeaponEffectsInitManager - handles WeaponEffectsManager initialization and connection
         this.weaponEffectsInitManager = new WeaponEffectsInitManager(this);
+
+        // UIToggleManager - handles UI toggle operations
+        this.uiToggleManager = new UIToggleManager(this);
     }
 
     /**
@@ -762,51 +766,11 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     toggleDamageControl() {
-        this.damageControlVisible = !this.damageControlVisible;
-
-        if (this.damageControlVisible) {
-            // Operations HUD is an overlay, don't change the view
-            this.isDamageControlOpen = true; // Set the state flag
-            
-            debug('COMBAT', 'Showing operations report HUD...');
-            
-            // SIMPLIFIED: Just show the HUD - no card system refresh needed
-            // The ship systems should already be initialized from launch/undocking
-            this.damageControlHUD.show();
-            debug('COMBAT', 'Operations report HUD shown');
-            
-            this.updateSpeedIndicator(); // Update the view indicator
-        } else {
-            // Operations HUD is an overlay, don't change the view when closing
-            this.isDamageControlOpen = false; // Clear the state flag
-            
-            // Clean up all debug hit spheres when operations report is turned off
-            WeaponSlot.cleanupAllDebugSpheres(this);
-            
-            // Hide the operations report HUD
-            this.damageControlHUD.hide();
-            
-            this.updateSpeedIndicator(); // Update the view indicator
-        }
+        this.uiToggleManager.toggleDamageControl();
     }
 
     toggleHelp() {
-        debug('P1', '🔄 toggleHelp() called - using HelpInterface');
-        if (this.helpInterface) {
-            try {
-                if (this.helpInterface.isVisible) {
-                    this.helpInterface.hide();
-                    debug('P1', '✅ Help screen closed');
-                } else {
-                    this.helpInterface.show();
-                    debug('P1', '✅ Help screen opened');
-                }
-            } catch (error) {
-                debug('P1', `❌ Failed to toggle help screen: ${error}`);
-            }
-        } else {
-            debug('P1', '❌ HelpInterface not available - cannot toggle help');
-        }
+        this.uiToggleManager.toggleHelp();
     }
 
     updateTargetList() {
@@ -1827,26 +1791,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     toggleDebugMode() {
-        this.debugMode = !this.debugMode;
-        
-        if (this.debugMode) {
-            this.playCommandSound();
-debug('COMBAT', '🐛 DEBUG MODE ENABLED - Weapon hit detection spheres will be shown');
-            this.showHUDEphemeral(
-                'DEBUG MODE ENABLED',
-                'Weapon hit detection spheres will be visible'
-            );
-        } else {
-            this.playCommandSound();
-debug('INSPECTION', '🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
-            this.showHUDEphemeral(
-                'DEBUG MODE DISABLED',
-                'Debug spheres cleared'
-            );
-            
-            // Clean up all existing debug spheres
-            WeaponSlot.cleanupAllDebugSpheres(this);
-        }
+        this.uiToggleManager.toggleDebugMode();
     }
 
     /**
