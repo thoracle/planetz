@@ -52,6 +52,9 @@ export class PropertyProxyInitializer {
 
         // HUD container proxies
         PropertyProxyInitializer.initializeHUDContainerProxies(sfm);
+
+        // Docking UI proxies
+        PropertyProxyInitializer.initializeDockingUIProxies(sfm);
     }
 
     /**
@@ -386,6 +389,28 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'diplomacyHUD', {
             get: () => sfm.hudContainerManager.diplomacyHUD,
             set: (val) => { sfm.hudContainerManager.diplomacyHUD = val; }
+        });
+    }
+
+    /**
+     * Docking UI property proxies
+     */
+    static initializeDockingUIProxies(sfm) {
+        Object.defineProperty(sfm, 'dockingInterface', {
+            get: () => sfm.dockingUIManager.dockingInterface,
+            set: (val) => { sfm.dockingUIManager.dockingInterface = val; }
+        });
+        Object.defineProperty(sfm, 'dockingSystemManager', {
+            get: () => sfm.dockingUIManager.dockingSystemManager,
+            set: (val) => { sfm.dockingUIManager.dockingSystemManager = val; }
+        });
+        Object.defineProperty(sfm, 'dockingModal', {
+            get: () => sfm.dockingUIManager.dockingModal,
+            set: (val) => { sfm.dockingUIManager.dockingModal = val; }
+        });
+        Object.defineProperty(sfm, 'physicsDockingManager', {
+            get: () => sfm.dockingUIManager.physicsDockingManager,
+            set: (val) => { sfm.dockingUIManager.physicsDockingManager = val; }
         });
     }
 }

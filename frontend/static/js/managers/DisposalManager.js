@@ -212,18 +212,19 @@ export class DisposalManager {
             this.sfm.hudContainerManager.dispose();
             this.sfm.hudContainerManager = null;
         }
+
+        // Clean up DockingUIManager
+        if (this.sfm.dockingUIManager) {
+            this.sfm.dockingUIManager.dispose();
+            this.sfm.dockingUIManager = null;
+        }
     }
 
     /**
      * Dispose UI components (modals, HUDs)
      */
     disposeUIComponents() {
-        // Clean up docking modal
-        if (this.sfm.dockingModal) {
-            this.sfm.dockingModal.destroy();
-            this.sfm.dockingModal = null;
-        }
-
+        // Note: dockingModal is now cleaned up by DockingUIManager.dispose() in disposeManagers()
         // Note: damageControlHUD and damageControlContainer are now cleaned up
         // by HUDContainerManager.dispose() in disposeManagers()
 

@@ -1,7 +1,5 @@
 // THREE is handled dynamically in constructor
-import { DockingInterface } from '../ui/DockingInterface.js';
 import { HelpInterface } from '../ui/HelpInterface.js';
-import DockingSystemManager from '../ship/DockingSystemManager.js';
 import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
@@ -44,6 +42,7 @@ import { TargetStateManager } from '../managers/TargetStateManager.js';
 import { CameraStateManager } from '../managers/CameraStateManager.js';
 import { DamageControlStateManager } from '../managers/DamageControlStateManager.js';
 import { HUDContainerManager } from '../managers/HUDContainerManager.js';
+import { DockingUIManager } from '../managers/DockingUIManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -62,7 +61,6 @@ const TESTING_CONFIG = {
 };
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
-import DockingModal from '../ui/DockingModal.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { TargetComputerManager } from './TargetComputerManager.js';
 import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
@@ -183,15 +181,9 @@ export class StarfieldManager {
         debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
         this.createWeaponHUD();
 
-        // Create station menu interface and system manager
-        this.dockingInterface = new DockingInterface(this);
-        this.dockingSystemManager = new DockingSystemManager();
-        
-        // Initialize physics-based docking manager (will be activated when physics is ready)
-        this.physicsDockingManager = null;
-        
-        // Create docking modal for popup-based docking
-        this.dockingModal = new DockingModal(this);
+        // Docking UI Manager - handles docking interface, system manager, and modal
+        this.dockingUIManager = new DockingUIManager(this);
+        this.dockingUIManager.initialize();
         
         // Create help interface
         try {
