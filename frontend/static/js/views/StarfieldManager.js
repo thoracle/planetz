@@ -1,6 +1,4 @@
 // THREE is handled dynamically in constructor
-import SimpleDockingManager from '../SimpleDockingManager.js';
-import { getSystemDisplayName } from '../ship/System.js';
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
 import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
@@ -59,13 +57,10 @@ const TESTING_CONFIG = {
     // RESET_CREDITS: true,
     // RESET_FACTION_STANDINGS: true
 };
-import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
-import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { TargetComputerManager } from './TargetComputerManager.js';
 import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
 import { EnemyAIManager } from '../ai/EnemyAIManager.js';
-// SimplifiedDamageControl removed - damage control integrated into ship systems HUD
 
 // Constants
 import { SHIP_MOVEMENT, DOCKING } from '../constants/ShipConstants.js';
@@ -126,9 +121,8 @@ export class StarfieldManager {
         this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
 
         // Create starfield renderer with quintuple density
-        this.starCount = STARFIELD.STAR_COUNT;
-        this.starfieldRenderer = new StarfieldRenderer(this.scene, this.THREE, this.starCount);
-        this.starfield = this.starfieldRenderer.initialize();
+        this.starfieldRenderer = new StarfieldRenderer(this.scene, this.THREE, STARFIELD.STAR_COUNT);
+        this.starfieldRenderer.initialize();
         
         // Create speed indicator
         this.createSpeedIndicator();
