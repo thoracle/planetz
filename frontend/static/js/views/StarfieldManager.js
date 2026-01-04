@@ -31,6 +31,7 @@ import { ViewStateManager } from '../managers/ViewStateManager.js';
 import { TargetValidationManager } from '../managers/TargetValidationManager.js';
 import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.js';
 import { UIToggleManager } from '../managers/UIToggleManager.js';
+import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -511,6 +512,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // UIToggleManager - handles UI toggle operations
         this.uiToggleManager = new UIToggleManager(this);
+
+        // TargetCyclingManager - handles target list updates and cycling
+        this.targetCyclingManager = new TargetCyclingManager(this);
     }
 
     /**
@@ -774,76 +778,11 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     updateTargetList() {
-        // console.log(`🎯 StarfieldManager.updateTargetList() called`); // Reduce spam
-        const targetBeforeUpdate = this.targetComputerManager.currentTarget;
-        const indexBeforeUpdate = this.targetComputerManager.targetIndex;
-        
-        // Delegate to target computer manager
-        this.targetComputerManager.updateTargetList();
-        
-        const targetAfterUpdate = this.targetComputerManager.currentTarget;
-        const indexAfterUpdate = this.targetComputerManager.targetIndex;
-        
-        if (targetBeforeUpdate !== targetAfterUpdate || indexBeforeUpdate !== indexAfterUpdate) {
-debug('TARGETING', `🎯 WARNING: Target changed during updateTargetList!`);
-debug('TARGETING', `🎯   Before: target=${targetBeforeUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexBeforeUpdate}`);
-debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.shipName || 'unknown'}, index=${indexAfterUpdate}`);
-        }
-        
-        // Update local state to match
-        this.targetObjects = this.targetComputerManager.targetObjects;
-        this.targetIndex = this.targetComputerManager.targetIndex;
-        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
-        
-        // Clear targeting cache when target list changes to prevent stale crosshair results
-        if (window.targetingService) {
-            window.targetingService.clearCache();
-        }
+        this.targetCyclingManager.updateTargetList();
     }
 
     cycleTarget(forward = true) {
-        debug('TARGETING', `🎯 StarfieldManager.cycleTarget called (forward=${forward})`);
-        
-        if (!this.targetComputerManager) {
-            debug('TARGETING', '🎯 ERROR: targetComputerManager is null/undefined');
-            return;
-        }
-        if (!this.targetComputerManager.cycleTarget) {
-            debug('TARGETING', '🎯 ERROR: targetComputerManager.cycleTarget method does not exist');
-            return;
-        }
-        
-        // Delegate to target computer manager
-        debug('TARGETING', '🎯 StarfieldManager: Delegating to targetComputerManager.cycleTarget');
-        this.targetComputerManager.cycleTarget(forward);
-        debug('TARGETING', '🎯 StarfieldManager: Delegation complete');
-
-        // Update local state to match
-        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
-        this.targetIndex = this.targetComputerManager.targetIndex;
-        this.targetObjects = this.targetComputerManager.targetObjects;
-
-        // DEBUG: Log target info for wireframe debugging
-        this._setTimeout(() => {
-            const currentTarget = this.targetComputerManager.currentTarget;
-            debug('TARGETING', `Target object details: name=${currentTarget?.name}, id=${currentTarget?.id}, type=${currentTarget?.type}, hasObject=${!!currentTarget?.object}, objType=${currentTarget?.object?.type}, geometry=${currentTarget?.object?.geometry?.type}`);
-        }, 100);
-        
-        // Update target display to reflect the new target in the UI
-        if (this.targetComputerManager.updateTargetDisplay) {
-            this.targetComputerManager.updateTargetDisplay();
-        }
-        
-        // Handle outline suppression logic
-        if (this.currentTarget && this.outlineEnabled && !this.outlineDisabledUntilManualCycle) {
-            this.updateTargetOutline(this.currentTarget, 0);
-        }
-
-        // Update weapon system target
-        const ship = this.viewManager?.getShip();
-        if (ship && ship.weaponSystem) {
-            ship.weaponSystem.setLockedTarget(this.currentTarget);
-        }
+        this.targetCyclingManager.cycleTarget(forward);
     }
 
     /**
@@ -851,24 +790,7 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
      * @param {Object} targetData - Target data from long-range scanner
      */
     setTargetFromScanner(targetData) {
-        // Delegate to target computer manager
-        this.targetComputerManager.setTargetFromScanner(targetData);
-        
-        // Update local state to match
-        this.currentTarget = this.targetComputerManager.currentTarget?.object || this.targetComputerManager.currentTarget;
-        this.targetIndex = this.targetComputerManager.targetIndex;
-        this.targetObjects = this.targetComputerManager.targetObjects;
-        
-        // Handle outline for scanner targets
-        if (this.currentTarget && this.outlineEnabled) {
-            this.updateTargetOutline(this.currentTarget, 0);
-        }
-
-        // Update weapon system target
-        const ship = this.viewManager?.getShip();
-        if (ship && ship.weaponSystem) {
-            ship.weaponSystem.setLockedTarget(this.currentTarget);
-        }
+        this.targetCyclingManager.setTargetFromScanner(targetData);
     }
 
     setSolarSystemManager(manager) {
