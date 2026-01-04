@@ -119,6 +119,12 @@ export class DisposalManager {
             this.sfm.hudInitializer = null;
         }
 
+        // Clean up UIManagersInitializer (handles 3 UI managers)
+        if (this.sfm.uiManagersInitializer) {
+            this.sfm.uiManagersInitializer.dispose();
+            this.sfm.uiManagersInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {
@@ -166,23 +172,6 @@ export class DisposalManager {
             this.sfm.buttonStateManager = null;
         }
 
-        // Clean up HUDContainerManager
-        if (this.sfm.hudContainerManager) {
-            this.sfm.hudContainerManager.dispose();
-            this.sfm.hudContainerManager = null;
-        }
-
-        // Clean up DockingUIManager
-        if (this.sfm.dockingUIManager) {
-            this.sfm.dockingUIManager.dispose();
-            this.sfm.dockingUIManager = null;
-        }
-
-        // Clean up InterfaceInitManager
-        if (this.sfm.interfaceInitManager) {
-            this.sfm.interfaceInitManager.dispose();
-            this.sfm.interfaceInitManager = null;
-        }
     }
 
     /**

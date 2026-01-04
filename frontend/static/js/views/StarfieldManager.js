@@ -7,9 +7,7 @@ import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
-import { HUDContainerManager } from '../managers/HUDContainerManager.js';
-import { DockingUIManager } from '../managers/DockingUIManager.js';
-import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
+import { UIManagersInitializer } from '../managers/UIManagersInitializer.js';
 import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
@@ -120,13 +118,9 @@ export class StarfieldManager {
         debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
         this.createWeaponHUD();
 
-        // Docking UI Manager - handles docking interface, system manager, and modal
-        this.dockingUIManager = new DockingUIManager(this);
-        this.dockingUIManager.initialize();
-
-        // Interface Init Manager - handles help interface and communication HUD
-        this.interfaceInitManager = new InterfaceInitManager(this);
-        this.interfaceInitManager.initialize();
+        // UIManagersInitializer - consolidates 3 UI managers
+        this.uiManagersInitializer = new UIManagersInitializer(this);
+        this.uiManagersInitializer.initialize();
 
         // Create mission system coordinator (handles all mission-related functionality)
         // Mission components (missionAPI, missionEventService, etc.) are exposed via PropertyProxyInitializer
@@ -140,11 +134,7 @@ export class StarfieldManager {
         this._setTimeout(() => {
             this.missionCoordinator.initializeMissionSystem();
         }, 2000);
-        
-        // HUD Container Manager - handles damage control and diplomacy HUD creation
-        this.hudContainerManager = new HUDContainerManager(this);
-        this.hudContainerManager.initialize();
-        
+
         // Bind keyboard events
         this.bindKeyEvents();
         // Bind mouse events
