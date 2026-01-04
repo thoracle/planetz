@@ -1,5 +1,4 @@
 // THREE is handled dynamically in constructor
-import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { HUDInitializer } from '../managers/HUDInitializer.js';
 import { InputSystemsInitializer } from '../managers/InputSystemsInitializer.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
@@ -7,9 +6,9 @@ import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { UIManagersInitializer } from '../managers/UIManagersInitializer.js';
 import { InfrastructureInitializer } from '../managers/InfrastructureInitializer.js';
+import { GameLogicInitializer } from '../managers/GameLogicInitializer.js';
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
-import { AIInitManager } from '../managers/AIInitManager.js';
 import { UtilityManagersInitializer } from '../managers/UtilityManagersInitializer.js';
 import { CoreManagersInitializer } from '../managers/CoreManagersInitializer.js';
 import { StateManagersInitializer } from '../managers/StateManagersInitializer.js';
@@ -117,17 +116,13 @@ export class StarfieldManager {
         this.uiManagersInitializer = new UIManagersInitializer(this);
         this.uiManagersInitializer.initialize();
 
-        // Create mission system coordinator (handles all mission-related functionality)
-        // Mission components (missionAPI, missionEventService, etc.) are exposed via PropertyProxyInitializer
-        this.missionCoordinator = new MissionSystemCoordinator(this);
-
-        // AIInitManager - handles enemy AI initialization
-        this.aiInitManager = new AIInitManager(this);
-        this.aiInitManager.initialize();
+        // GameLogicInitializer - consolidates 2 game logic managers
+        this.gameLogicInitializer = new GameLogicInitializer(this);
+        this.gameLogicInitializer.initialize();
 
         // Initialize mission system after a short delay to ensure all systems are ready
         this._setTimeout(() => {
-            this.missionCoordinator.initializeMissionSystem();
+            this.gameLogicInitializer.initializeMissionSystem();
         }, 2000);
 
         // Bind keyboard events

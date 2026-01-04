@@ -83,12 +83,6 @@ export class DisposalManager {
             this.sfm.targetingInitManager = null;
         }
 
-        // Clean up AIInitManager (handles enemyAIManager)
-        if (this.sfm.aiInitManager) {
-            this.sfm.aiInitManager.dispose();
-            this.sfm.aiInitManager = null;
-        }
-
         // Clean up UtilityManagersInitializer (handles 14 utility managers)
         if (this.sfm.utilityManagersInitializer) {
             this.sfm.utilityManagersInitializer.dispose();
@@ -131,6 +125,12 @@ export class DisposalManager {
             this.sfm.infrastructureInitializer = null;
         }
 
+        // Clean up GameLogicInitializer (handles 2 game logic managers)
+        if (this.sfm.gameLogicInitializer) {
+            this.sfm.gameLogicInitializer.dispose();
+            this.sfm.gameLogicInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {
@@ -145,12 +145,6 @@ export class DisposalManager {
                 this.sfm.helpInterface.dispose();
             }
             this.sfm.helpInterface = null;
-        }
-
-        // Clean up MissionSystemCoordinator (handles all mission components)
-        if (this.sfm.missionCoordinator) {
-            this.sfm.missionCoordinator.dispose();
-            this.sfm.missionCoordinator = null;
         }
 
         // Clean up RenderingInitManager (handles starfieldRenderer)

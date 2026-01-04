@@ -88,6 +88,9 @@ export class PropertyProxyInitializer {
 
         // Infrastructure managers proxies
         PropertyProxyInitializer.initializeInfrastructureProxies(sfm);
+
+        // Game logic managers proxies
+        PropertyProxyInitializer.initializeGameLogicProxies(sfm);
     }
 
     /**
@@ -695,6 +698,20 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, '_buttonStateManager', {
             get: () => sfm.infrastructureInitializer.buttonStateManager,
             set: (val) => { sfm.infrastructureInitializer.buttonStateManager = val; }
+        });
+    }
+
+    /**
+     * Game logic managers property proxies
+     */
+    static initializeGameLogicProxies(sfm) {
+        Object.defineProperty(sfm, 'missionCoordinator', {
+            get: () => sfm.gameLogicInitializer.missionCoordinator,
+            set: (val) => { sfm.gameLogicInitializer.missionCoordinator = val; }
+        });
+        Object.defineProperty(sfm, 'aiInitManager', {
+            get: () => sfm.gameLogicInitializer.aiInitManager,
+            set: (val) => { sfm.gameLogicInitializer.aiInitManager = val; }
         });
     }
 }
