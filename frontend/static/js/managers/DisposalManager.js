@@ -275,13 +275,12 @@ export class DisposalManager {
     }
 
     /**
-     * Clear all pending timeouts
+     * Clear all pending timeouts via TimeoutManager
      */
     disposeTimeouts() {
-        if (this.sfm._pendingTimeouts) {
-            this.sfm._pendingTimeouts.forEach(id => clearTimeout(id));
-            this.sfm._pendingTimeouts.clear();
-            this.sfm._pendingTimeouts = null;
+        if (this.sfm.timeoutManager) {
+            this.sfm.timeoutManager.dispose();
+            this.sfm.timeoutManager = null;
         }
     }
 }

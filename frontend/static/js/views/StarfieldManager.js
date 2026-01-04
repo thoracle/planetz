@@ -40,6 +40,7 @@ import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
 import { MiscSystemManager } from '../managers/MiscSystemManager.js';
+import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -261,8 +262,8 @@ export class StarfieldManager {
         // AbortController for centralized event listener cleanup
         this._abortController = new AbortController();
 
-        // Track pending timeouts for cleanup on dispose
-        this._pendingTimeouts = new Set();
+        // TimeoutManager - handles timeout tracking and cleanup
+        this.timeoutManager = new TimeoutManager(this);
 
         // Expose target computer manager globally for waypoints integration
         window.targetComputerManager = this.targetComputerManager;
@@ -770,21 +771,10 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
     /**
      * Wrapped setTimeout that tracks the timeout ID for cleanup on dispose
-     * @param {Function} callback - The function to call after the delay
-     * @param {number} delay - The delay in milliseconds
-     * @returns {number} The timeout ID
+     * Delegated to TimeoutManager
      */
     _setTimeout(callback, delay) {
-        const id = setTimeout(() => {
-            if (this._pendingTimeouts) {
-                this._pendingTimeouts.delete(id);
-            }
-            callback();
-        }, delay);
-        if (this._pendingTimeouts) {
-            this._pendingTimeouts.add(id);
-        }
-        return id;
+        return this.timeoutManager.setTimeout(callback, delay);
     }
 
     // Star sprite creation delegated to StarfieldRenderer
@@ -1337,7 +1327,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     async delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return this.timeoutManager.delay(ms);
     }
 
     testMissionUI() {
