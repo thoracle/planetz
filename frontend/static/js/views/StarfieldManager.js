@@ -44,6 +44,7 @@ import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { TargetStateManager } from '../managers/TargetStateManager.js';
 import { CameraStateManager } from '../managers/CameraStateManager.js';
+import { DamageControlStateManager } from '../managers/DamageControlStateManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -140,10 +141,10 @@ export class StarfieldManager {
         // Create ship systems HUD (initially hidden)
         this.createShipSystemsHUD();
         this.shipSystemsHUD.style.display = 'none'; // Hide by default
-        this.damageControlVisible = false; // Track damage control visibility
-        this.isDamageControlOpen = false; // Track if damage control is currently open
-        this.shouldUpdateDamageControl = false; // Flag to control when to update
-        
+
+        // Initialize Damage Control State Manager
+        this.damageControlStateManager = new DamageControlStateManager(this);
+
         // Create target computer manager
         this.targetComputerManager = new TargetComputerManager(
             this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
@@ -180,15 +181,11 @@ export class StarfieldManager {
         
         // Initialize Intel Display Manager
         this.intelDisplayManager = new IntelDisplayManager(this);
-        this.previousTarget = null; // Track previous target for intel dismissal
-        
+
         // Create weapon HUD
-debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
+        debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
         this.createWeaponHUD();
-        
-        // Weapon HUD connection state
-        this.weaponHUDConnected = false;
-        
+
         // Create station menu interface and system manager
         this.dockingInterface = new DockingInterface(this);
         this.dockingSystemManager = new DockingSystemManager();
@@ -260,13 +257,6 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Target dummy ships manager (extracted)
         this.targetDummyManager = new TargetDummyManager(this);
 
-        // WeaponEffectsManager initialization state
-        this.weaponEffectsInitialized = false;
-        this.weaponEffectsManager = null;
-        this.weaponEffectsInitFailed = false;
-        this.weaponEffectsRetryCount = 0;
-        this.maxWeaponEffectsRetries = 5; // Limit retries to prevent infinite loops
-        
         // Try to initialize WeaponEffectsManager after a short delay
         // This ensures THREE.js is fully loaded and available
         this._setTimeout(() => {
@@ -274,12 +264,8 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
             this.initializeAIManager();
         }, 100);
 
-        // Debug mode for weapon hit detection (independent of damage control)
-        this.debugMode = false; // Toggled with Ctrl-O
-
         // Target outline manager (extracted)
         this.targetOutlineManager = new TargetOutlineManager(this);
-        this.lastOutlineUpdate = 0; // Throttling for outline updates
 
         // Destroyed target handler (extracted)
         this.destroyedTargetHandler = new DestroyedTargetHandler(this);

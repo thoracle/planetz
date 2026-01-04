@@ -40,6 +40,9 @@ export class PropertyProxyInitializer {
 
         // Camera state proxies
         PropertyProxyInitializer.initializeCameraStateProxies(sfm);
+
+        // Damage control state proxies
+        PropertyProxyInitializer.initializeDamageControlStateProxies(sfm);
     }
 
     /**
@@ -280,6 +283,40 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'isMouseLookEnabled', {
             get: () => sfm.cameraStateManager.isMouseLookEnabled,
             set: (val) => { sfm.cameraStateManager.isMouseLookEnabled = val; }
+        });
+    }
+
+    /**
+     * Damage control state property proxies
+     */
+    static initializeDamageControlStateProxies(sfm) {
+        Object.defineProperty(sfm, 'damageControlVisible', {
+            get: () => sfm.damageControlStateManager.damageControlVisible,
+            set: (val) => { sfm.damageControlStateManager.damageControlVisible = val; }
+        });
+        Object.defineProperty(sfm, 'isDamageControlOpen', {
+            get: () => sfm.damageControlStateManager.isDamageControlOpen,
+            set: (val) => { sfm.damageControlStateManager.isDamageControlOpen = val; }
+        });
+        Object.defineProperty(sfm, 'shouldUpdateDamageControl', {
+            get: () => sfm.damageControlStateManager.shouldUpdateDamageControl,
+            set: (val) => { sfm.damageControlStateManager.shouldUpdateDamageControl = val; }
+        });
+        Object.defineProperty(sfm, 'weaponHUDConnected', {
+            get: () => sfm.damageControlStateManager.weaponHUDConnected,
+            set: (val) => { sfm.damageControlStateManager.weaponHUDConnected = val; }
+        });
+        Object.defineProperty(sfm, 'debugMode', {
+            get: () => sfm.damageControlStateManager.debugMode,
+            set: (val) => { sfm.damageControlStateManager.debugMode = val; }
+        });
+        Object.defineProperty(sfm, 'lastOutlineUpdate', {
+            get: () => sfm.damageControlStateManager.lastOutlineUpdate,
+            set: (val) => { sfm.damageControlStateManager.lastOutlineUpdate = val; }
+        });
+        Object.defineProperty(sfm, 'previousTarget', {
+            get: () => sfm.damageControlStateManager.previousTarget,
+            set: (val) => { sfm.damageControlStateManager.previousTarget = val; }
         });
     }
 }
