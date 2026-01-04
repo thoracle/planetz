@@ -95,6 +95,12 @@ export class DisposalManager {
             this.sfm.utilityManagersInitializer = null;
         }
 
+        // Clean up CoreManagersInitializer (handles 10 core managers)
+        if (this.sfm.coreManagersInitializer) {
+            this.sfm.coreManagersInitializer.dispose();
+            this.sfm.coreManagersInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {
@@ -140,35 +146,11 @@ export class DisposalManager {
             this.sfm.intelDisplayManager.destroy();
         }
 
-        // Clean up CommunicationManager
-        if (this.sfm.communicationManagerDelegate) {
-            this.sfm.communicationManagerDelegate.dispose();
-            this.sfm.communicationManagerDelegate = null;
-        }
-
-        // Clean up FactionDiplomacyManager
-        if (this.sfm.factionDiplomacyManager) {
-            this.sfm.factionDiplomacyManager.dispose();
-            this.sfm.factionDiplomacyManager = null;
-        }
-
         // Clean up ButtonStateManager
         if (this.sfm._buttonStateManager) {
             this.sfm._buttonStateManager.dispose();
             this.sfm._buttonStateManager = null;
             this.sfm.buttonStateManager = null;
-        }
-
-        // Clean up UpdateLoopManager
-        if (this.sfm.updateLoopManager) {
-            this.sfm.updateLoopManager.dispose();
-            this.sfm.updateLoopManager = null;
-        }
-
-        // Clean up MiscSystemManager
-        if (this.sfm.miscSystemManager) {
-            this.sfm.miscSystemManager.dispose();
-            this.sfm.miscSystemManager = null;
         }
 
         // Clean up TargetStateManager
@@ -187,12 +169,6 @@ export class DisposalManager {
         if (this.sfm.damageControlStateManager) {
             this.sfm.damageControlStateManager.dispose();
             this.sfm.damageControlStateManager = null;
-        }
-
-        // Clean up ViewStateManager
-        if (this.sfm.viewStateManager) {
-            this.sfm.viewStateManager.dispose();
-            this.sfm.viewStateManager = null;
         }
 
         // Clean up HUDContainerManager

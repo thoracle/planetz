@@ -70,6 +70,9 @@ export class PropertyProxyInitializer {
 
         // Utility managers proxies
         PropertyProxyInitializer.initializeUtilityManagersProxies(sfm);
+
+        // Core managers proxies
+        PropertyProxyInitializer.initializeCoreManagersProxies(sfm);
     }
 
     /**
@@ -540,6 +543,52 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'sectorManager', {
             get: () => sfm.utilityManagersInitializer.sectorManager,
             set: (val) => { sfm.utilityManagersInitializer.sectorManager = val; }
+        });
+    }
+
+    /**
+     * Core managers property proxies
+     */
+    static initializeCoreManagersProxies(sfm) {
+        Object.defineProperty(sfm, 'viewStateManager', {
+            get: () => sfm.coreManagersInitializer.viewStateManager,
+            set: (val) => { sfm.coreManagersInitializer.viewStateManager = val; }
+        });
+        Object.defineProperty(sfm, 'targetValidationManager', {
+            get: () => sfm.coreManagersInitializer.targetValidationManager,
+            set: (val) => { sfm.coreManagersInitializer.targetValidationManager = val; }
+        });
+        Object.defineProperty(sfm, 'weaponEffectsInitManager', {
+            get: () => sfm.coreManagersInitializer.weaponEffectsInitManager,
+            set: (val) => { sfm.coreManagersInitializer.weaponEffectsInitManager = val; }
+        });
+        Object.defineProperty(sfm, 'uiToggleManager', {
+            get: () => sfm.coreManagersInitializer.uiToggleManager,
+            set: (val) => { sfm.coreManagersInitializer.uiToggleManager = val; }
+        });
+        Object.defineProperty(sfm, 'targetCyclingManager', {
+            get: () => sfm.coreManagersInitializer.targetCyclingManager,
+            set: (val) => { sfm.coreManagersInitializer.targetCyclingManager = val; }
+        });
+        Object.defineProperty(sfm, 'targetDisplayManager', {
+            get: () => sfm.coreManagersInitializer.targetDisplayManager,
+            set: (val) => { sfm.coreManagersInitializer.targetDisplayManager = val; }
+        });
+        Object.defineProperty(sfm, 'communicationManagerDelegate', {
+            get: () => sfm.coreManagersInitializer.communicationManagerDelegate,
+            set: (val) => { sfm.coreManagersInitializer.communicationManagerDelegate = val; }
+        });
+        Object.defineProperty(sfm, 'factionDiplomacyManager', {
+            get: () => sfm.coreManagersInitializer.factionDiplomacyManager,
+            set: (val) => { sfm.coreManagersInitializer.factionDiplomacyManager = val; }
+        });
+        Object.defineProperty(sfm, 'updateLoopManager', {
+            get: () => sfm.coreManagersInitializer.updateLoopManager,
+            set: (val) => { sfm.coreManagersInitializer.updateLoopManager = val; }
+        });
+        Object.defineProperty(sfm, 'miscSystemManager', {
+            get: () => sfm.coreManagersInitializer.miscSystemManager,
+            set: (val) => { sfm.coreManagersInitializer.miscSystemManager = val; }
         });
     }
 }

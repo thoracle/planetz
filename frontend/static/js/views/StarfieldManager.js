@@ -5,19 +5,9 @@ import { DockingOperationsManager } from '../managers/DockingOperationsManager.j
 import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
 import { ShipMovementController } from '../managers/ShipMovementController.js';
 import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
-import { ViewStateManager } from '../managers/ViewStateManager.js';
-import { TargetValidationManager } from '../managers/TargetValidationManager.js';
-import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.js';
-import { UIToggleManager } from '../managers/UIToggleManager.js';
-import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
-import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
-import { CommunicationManager } from '../managers/CommunicationManager.js';
-import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js';
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
-import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
-import { MiscSystemManager } from '../managers/MiscSystemManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { TargetStateManager } from '../managers/TargetStateManager.js';
@@ -31,6 +21,7 @@ import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
 import { AIInitManager } from '../managers/AIInitManager.js';
 import { UtilityManagersInitializer } from '../managers/UtilityManagersInitializer.js';
+import { CoreManagersInitializer } from '../managers/CoreManagersInitializer.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
@@ -196,42 +187,16 @@ export class StarfieldManager {
             this.initializeAIManager();
         }, 100);
 
-        // ViewStateManager - handles view state changes (FORE, AFT, GALACTIC, LONG RANGE)
-        this.viewStateManager = new ViewStateManager(this);
-
-        // TargetValidationManager - handles target validation and sub-target updates
-        this.targetValidationManager = new TargetValidationManager(this);
-
-        // WeaponEffectsInitManager - handles WeaponEffectsManager initialization and connection
-        this.weaponEffectsInitManager = new WeaponEffectsInitManager(this);
-
-        // UIToggleManager - handles UI toggle operations
-        this.uiToggleManager = new UIToggleManager(this);
-
-        // TargetCyclingManager - handles target list updates and cycling
-        this.targetCyclingManager = new TargetCyclingManager(this);
-
-        // TargetDisplayManager - handles target display updates and formatting
-        this.targetDisplayManager = new TargetDisplayManager(this);
+        // CoreManagersInitializer - consolidates 10 core managers
+        this.coreManagersInitializer = new CoreManagersInitializer(this);
+        this.coreManagersInitializer.initialize();
 
         // DisposalManager - handles cleanup and resource disposal
         this.disposalManager = new DisposalManager(this);
 
-        // CommunicationManager - handles communication HUD display
-        this.communicationManagerDelegate = new CommunicationManager(this);
-
-        // FactionDiplomacyManager - handles faction relationship lookups
-        this.factionDiplomacyManager = new FactionDiplomacyManager(this);
-
         // ButtonStateManager already created earlier for CSS injection
         // Alias for consistency with other managers
         this.buttonStateManager = this._buttonStateManager;
-
-        // UpdateLoopManager - handles main game loop coordination
-        this.updateLoopManager = new UpdateLoopManager(this);
-
-        // MiscSystemManager - handles miscellaneous system operations
-        this.miscSystemManager = new MiscSystemManager(this);
 
         // Initialize property proxies for backwards compatibility
         // All Object.defineProperty calls are centralized in PropertyProxyInitializer
