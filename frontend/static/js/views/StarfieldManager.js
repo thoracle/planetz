@@ -743,34 +743,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
     // Keyboard event handling moved to KeyboardInputManager.js
     toggleTargetComputer() {
-        // Store the current state before toggling
-        const wasEnabled = this.targetComputerEnabled;
-
-        // Delegate to target computer manager
-        this.targetComputerManager.toggleTargetComputer();
-
-        // Update local state to match
-        this.targetComputerEnabled = this.targetComputerManager.targetComputerEnabled;
-        this.currentTarget = this.targetComputerManager.currentTarget;
-        this.targetIndex = this.targetComputerManager.targetIndex;
-        this.targetObjects = this.targetComputerManager.targetObjects;
-
-        // Log the state change
-        debug('TARGETING', `StarfieldManager target computer toggle: ${wasEnabled} → ${this.targetComputerEnabled}`);
-
-        // Handle intel visibility
-        if (!this.targetComputerEnabled) {
-            if (this.intelVisible) {
-                this.intelVisible = false;
-                this.intelHUD.style.display = 'none';
-            }
-            this.updateIntelIconDisplay();
-        }
-
-        // If we were trying to enable but it's still disabled, the activation failed
-        if (wasEnabled === false && this.targetComputerEnabled === false) {
-            debug('P1', 'Target computer activation failed - staying disabled');
-        }
+        this.targetCyclingManager.toggleTargetComputer();
     }
 
     toggleDamageControl() {
@@ -1152,51 +1125,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
      * Clear target computer state completely - removes all target data and UI elements
      */
     clearTargetComputer() {
-        // Reset ALL target state variables
-        this.currentTarget = null;
-        this.previousTarget = null;
-        this.targetedObject = null;
-        this.lastTargetedObjectId = null;
-        this.targetIndex = -1;
-        this.targetObjects = [];
-        this.validTargets = [];
-        this.lastTargetCycleTime = 0;
-        
-        // Clear target computer system state if available
-        const ship = this.viewManager?.getShip();
-        const targetComputerSystem = ship?.getSystem('target_computer');
-        if (targetComputerSystem) {
-            targetComputerSystem.clearTarget();
-            targetComputerSystem.deactivate();
-        }
-        
-        // Hide intel when target computer is cleared
-        if (this.intelVisible) {
-            this.intelVisible = false;
-            this.intelHUD.style.display = 'none';
-        }
-        this.updateIntelIconDisplay();
-        
-        // Hide HUD elements
-        this.targetComputerManager.hideTargetHUD();
-        this.targetComputerManager.hideTargetReticle();
-        this.targetComputerManager.hideAllDirectionArrows();
-        
-        // Clear wireframe
-        this.targetComputerManager.clearTargetWireframe();
-        
-        // Clear 3D outline
-        this.clearTargetOutline();
-        
-        // Clear any targeting displays
-        if (this.updateTargetingDisplay) {
-            this.updateTargetingDisplay();
-        }
-        
-        // Disable target computer
-        this.targetComputerEnabled = false;
-        
-debug('TARGETING', 'Target computer completely cleared - all state reset');
+        this.targetCyclingManager.clearTargetComputer();
     }
 
     playEngineStartup(targetVolume) {

@@ -128,6 +128,93 @@ export class TargetCyclingManager {
     }
 
     /**
+     * Toggle target computer on/off
+     * Handles state synchronization and intel visibility
+     */
+    toggleTargetComputer() {
+        // Store the current state before toggling
+        const wasEnabled = this.sfm.targetComputerEnabled;
+
+        // Delegate to target computer manager
+        this.sfm.targetComputerManager.toggleTargetComputer();
+
+        // Update local state to match
+        this.sfm.targetComputerEnabled = this.sfm.targetComputerManager.targetComputerEnabled;
+        this.sfm.currentTarget = this.sfm.targetComputerManager.currentTarget;
+        this.sfm.targetIndex = this.sfm.targetComputerManager.targetIndex;
+        this.sfm.targetObjects = this.sfm.targetComputerManager.targetObjects;
+
+        // Log the state change
+        debug('TARGETING', `StarfieldManager target computer toggle: ${wasEnabled} → ${this.sfm.targetComputerEnabled}`);
+
+        // Handle intel visibility
+        if (!this.sfm.targetComputerEnabled) {
+            if (this.sfm.intelVisible) {
+                this.sfm.intelVisible = false;
+                this.sfm.intelHUD.style.display = 'none';
+            }
+            this.sfm.updateIntelIconDisplay();
+        }
+
+        // If we were trying to enable but it's still disabled, the activation failed
+        if (wasEnabled === false && this.sfm.targetComputerEnabled === false) {
+            debug('P1', 'Target computer activation failed - staying disabled');
+        }
+    }
+
+    /**
+     * Clear target computer completely
+     * Resets all target state and hides UI elements
+     */
+    clearTargetComputer() {
+        // Reset ALL target state variables
+        this.sfm.currentTarget = null;
+        this.sfm.previousTarget = null;
+        this.sfm.targetedObject = null;
+        this.sfm.lastTargetedObjectId = null;
+        this.sfm.targetIndex = -1;
+        this.sfm.targetObjects = [];
+        this.sfm.validTargets = [];
+        this.sfm.lastTargetCycleTime = 0;
+
+        // Clear target computer system state if available
+        const ship = this.sfm.viewManager?.getShip();
+        const targetComputerSystem = ship?.getSystem('target_computer');
+        if (targetComputerSystem) {
+            targetComputerSystem.clearTarget();
+            targetComputerSystem.deactivate();
+        }
+
+        // Hide intel when target computer is cleared
+        if (this.sfm.intelVisible) {
+            this.sfm.intelVisible = false;
+            this.sfm.intelHUD.style.display = 'none';
+        }
+        this.sfm.updateIntelIconDisplay();
+
+        // Hide HUD elements
+        this.sfm.targetComputerManager.hideTargetHUD();
+        this.sfm.targetComputerManager.hideTargetReticle();
+        this.sfm.targetComputerManager.hideAllDirectionArrows();
+
+        // Clear wireframe
+        this.sfm.targetComputerManager.clearTargetWireframe();
+
+        // Clear 3D outline
+        this.sfm.clearTargetOutline();
+
+        // Clear any targeting displays
+        if (this.sfm.updateTargetingDisplay) {
+            this.sfm.updateTargetingDisplay();
+        }
+
+        // Disable target computer
+        this.sfm.targetComputerEnabled = false;
+
+        debug('TARGETING', 'Target computer completely cleared - all state reset');
+    }
+
+    /**
      * Dispose of resources
      */
     dispose() {
