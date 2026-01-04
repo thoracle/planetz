@@ -41,6 +41,7 @@ import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
 import { MiscSystemManager } from '../managers/MiscSystemManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
+import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -120,93 +121,11 @@ export class StarfieldManager {
         // Initialize Docking Operations Manager
         this.dockingOperationsManager = new DockingOperationsManager(this);
 
-        // Expose docking state for backwards compatibility
-        Object.defineProperty(this, 'isDocked', {
-            get: () => this.dockingOperationsManager.isDocked,
-            set: (val) => { this.dockingOperationsManager.isDocked = val; }
-        });
-        Object.defineProperty(this, 'dockedTo', {
-            get: () => this.dockingOperationsManager.dockedTo,
-            set: (val) => { this.dockingOperationsManager.dockedTo = val; }
-        });
-        Object.defineProperty(this, 'orbitRadius', {
-            get: () => this.dockingOperationsManager.orbitRadius,
-            set: (val) => { this.dockingOperationsManager.orbitRadius = val; }
-        });
-        Object.defineProperty(this, 'orbitAngle', {
-            get: () => this.dockingOperationsManager.orbitAngle,
-            set: (val) => { this.dockingOperationsManager.orbitAngle = val; }
-        });
-        Object.defineProperty(this, 'orbitSpeed', {
-            get: () => this.dockingOperationsManager.orbitSpeed,
-            set: (val) => { this.dockingOperationsManager.orbitSpeed = val; }
-        });
-        Object.defineProperty(this, 'dockingRange', {
-            get: () => this.dockingOperationsManager.dockingRange,
-            set: (val) => { this.dockingOperationsManager.dockingRange = val; }
-        });
-        Object.defineProperty(this, 'undockCooldown', {
-            get: () => this.dockingOperationsManager.undockCooldown,
-            set: (val) => { this.dockingOperationsManager.undockCooldown = val; }
-        });
-
         // Initialize Keyboard Input Manager
         this.keyboardInputManager = new KeyboardInputManager(this);
 
-        // Expose keys state for backwards compatibility (used by updateSmoothRotation)
-        Object.defineProperty(this, 'keys', {
-            get: () => this.keyboardInputManager.keys,
-            set: (val) => { this.keyboardInputManager.keys = val; }
-        });
-
         // Initialize Ship Movement Controller
         this.shipMovementController = new ShipMovementController(this);
-
-        // Expose movement state for backwards compatibility
-        Object.defineProperty(this, 'targetSpeed', {
-            get: () => this.shipMovementController.targetSpeed,
-            set: (val) => { this.shipMovementController.targetSpeed = val; }
-        });
-        Object.defineProperty(this, 'currentSpeed', {
-            get: () => this.shipMovementController.currentSpeed,
-            set: (val) => { this.shipMovementController.currentSpeed = val; }
-        });
-        Object.defineProperty(this, 'maxSpeed', {
-            get: () => this.shipMovementController.maxSpeed,
-            set: (val) => { this.shipMovementController.maxSpeed = val; }
-        });
-        Object.defineProperty(this, 'acceleration', {
-            get: () => this.shipMovementController.acceleration,
-            set: (val) => { this.shipMovementController.acceleration = val; }
-        });
-        Object.defineProperty(this, 'deceleration', {
-            get: () => this.shipMovementController.deceleration,
-            set: (val) => { this.shipMovementController.deceleration = val; }
-        });
-        Object.defineProperty(this, 'decelerating', {
-            get: () => this.shipMovementController.decelerating,
-            set: (val) => { this.shipMovementController.decelerating = val; }
-        });
-        Object.defineProperty(this, 'rotationVelocity', {
-            get: () => this.shipMovementController.rotationVelocity,
-            set: (val) => { this.shipMovementController.rotationVelocity = val; }
-        });
-        Object.defineProperty(this, 'rotationAcceleration', {
-            get: () => this.shipMovementController.rotationAcceleration,
-            set: (val) => { this.shipMovementController.rotationAcceleration = val; }
-        });
-        Object.defineProperty(this, 'rotationDeceleration', {
-            get: () => this.shipMovementController.rotationDeceleration,
-            set: (val) => { this.shipMovementController.rotationDeceleration = val; }
-        });
-        Object.defineProperty(this, 'maxRotationSpeed', {
-            get: () => this.shipMovementController.maxRotationSpeed,
-            set: (val) => { this.shipMovementController.maxRotationSpeed = val; }
-        });
-        Object.defineProperty(this, 'shipHeading', {
-            get: () => this.shipMovementController.shipHeading,
-            set: (val) => { this.shipMovementController.shipHeading = val; }
-        });
 
         // Target computer state
         this.targetComputerEnabled = false;
@@ -282,19 +201,6 @@ export class StarfieldManager {
         
         // Initialize Intel Display Manager
         this.intelDisplayManager = new IntelDisplayManager(this);
-
-        // Expose intel state for backwards compatibility
-        Object.defineProperty(this, 'intelVisible', {
-            get: () => this.intelDisplayManager.intelVisible,
-            set: (val) => { this.intelDisplayManager.intelVisible = val; }
-        });
-        Object.defineProperty(this, 'intelAvailable', {
-            get: () => this.intelDisplayManager.intelAvailable,
-            set: (val) => { this.intelDisplayManager.intelAvailable = val; }
-        });
-        Object.defineProperty(this, 'intelHUD', {
-            get: () => this.intelDisplayManager.intelHUD
-        });
         this.previousTarget = null; // Track previous target for intel dismissal
         
         // Create weapon HUD
@@ -372,24 +278,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         this._buttonStateManager = new ButtonStateManager(this);
         this._buttonStateManager.injectDockButtonCSS();
 
-        // Expose currentButtonState for backwards compatibility
-        Object.defineProperty(this, 'currentButtonState', {
-            get: () => this._buttonStateManager.currentButtonState,
-            set: (val) => { this._buttonStateManager.currentButtonState = val; }
-        });
-        
         // Target dummy ships manager (extracted)
         this.targetDummyManager = new TargetDummyManager(this);
-        // Expose arrays for backwards compatibility
-        Object.defineProperty(this, 'targetDummyShips', {
-            get: () => this.targetDummyManager.targetDummyShips,
-            set: (val) => { this.targetDummyManager.targetDummyShips = val; }
-        });
-        Object.defineProperty(this, 'dummyShipMeshes', {
-            get: () => this.targetDummyManager.dummyShipMeshes,
-            set: (val) => { this.targetDummyManager.dummyShipMeshes = val; }
-        });
-        
+
         // WeaponEffectsManager initialization state
         this.weaponEffectsInitialized = false;
         this.weaponEffectsManager = null;
@@ -409,23 +300,6 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // Target outline manager (extracted)
         this.targetOutlineManager = new TargetOutlineManager(this);
-        // Expose properties for backwards compatibility
-        Object.defineProperty(this, 'outlineEnabled', {
-            get: () => this.targetOutlineManager.outlineEnabled,
-            set: (val) => { this.targetOutlineManager.outlineEnabled = val; }
-        });
-        Object.defineProperty(this, 'targetOutline', {
-            get: () => this.targetOutlineManager.targetOutline,
-            set: (val) => { this.targetOutlineManager.targetOutline = val; }
-        });
-        Object.defineProperty(this, 'targetOutlineObject', {
-            get: () => this.targetOutlineManager.targetOutlineObject,
-            set: (val) => { this.targetOutlineManager.targetOutlineObject = val; }
-        });
-        Object.defineProperty(this, 'outlineDisabledUntilManualCycle', {
-            get: () => this.targetOutlineManager.outlineDisabledUntilManualCycle,
-            set: (val) => { this.targetOutlineManager.outlineDisabledUntilManualCycle = val; }
-        });
         this.lastOutlineUpdate = 0; // Throttling for outline updates
 
         // Destroyed target handler (extracted)
@@ -500,6 +374,10 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // MiscSystemManager - handles miscellaneous system operations
         this.miscSystemManager = new MiscSystemManager(this);
+
+        // Initialize property proxies for backwards compatibility
+        // All Object.defineProperty calls are centralized in PropertyProxyInitializer
+        PropertyProxyInitializer.initialize(this);
     }
 
     // ========================================
