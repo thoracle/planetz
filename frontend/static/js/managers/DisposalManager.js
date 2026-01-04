@@ -170,6 +170,12 @@ export class DisposalManager {
             this.sfm._buttonStateManager = null;
             this.sfm.buttonStateManager = null;
         }
+
+        // Clean up UpdateLoopManager
+        if (this.sfm.updateLoopManager) {
+            this.sfm.updateLoopManager.dispose();
+            this.sfm.updateLoopManager = null;
+        }
     }
 
     /**

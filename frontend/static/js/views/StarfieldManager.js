@@ -38,6 +38,7 @@ import { CommunicationManager } from '../managers/CommunicationManager.js';
 import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js';
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
+import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -491,6 +492,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // ButtonStateManager already created earlier for CSS injection
         // Alias for consistency with other managers
         this.buttonStateManager = this._buttonStateManager;
+
+        // UpdateLoopManager - handles main game loop coordination
+        this.updateLoopManager = new UpdateLoopManager(this);
     }
 
     // ========================================
@@ -732,60 +736,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         this.shipMovementController.updateSmoothRotation(deltaTime);
     }
     update(deltaTime) {
-        if (!deltaTime) deltaTime = 1/60;
-
-        // If docked, update orbit instead of normal movement
-        if (this.isDocked) {
-            this.updateOrbit(deltaTime);
-            this.updateSpeedIndicator();
-            return;
-        }
-
-        // Handle smooth rotation from arrow keys
-        this.updateSmoothRotation(deltaTime);
-
-        // Handle speed changes with acceleration/deceleration
-        this.shipMovementController.updateSpeedState(deltaTime);
-
-        this.updateSpeedIndicator();
-        
-        // Only update ship systems display when damage control is open
-        // and when systems have actually changed (not every frame)
-        if (this.isDamageControlOpen && this.shouldUpdateDamageControl) {
-            this.updateShipSystemsDisplay();
-            this.shouldUpdateDamageControl = false;
-        }
-        
-        // Update weapon effects manager for visual effects animation
-        const weaponEffectsManager = this.ensureWeaponEffectsManager();
-        if (weaponEffectsManager) {
-            weaponEffectsManager.update(deltaTime);
-        }
-
-        // Ensure weapon effects manager is connected to ship
-        this.ensureWeaponEffectsConnection();
-
-        // Forward/backward movement based on view
-        this.shipMovementController.applyMovement(deltaTime);
-
-        // Update starfield positions - delegate to StarfieldRenderer
-        this.starfieldRenderer.updateStarfieldPositions(this.camera.position, this.view);
-
-        // Update targeting system - delegate to TargetValidationManager
-        this.targetValidationManager.updateTargetingState(deltaTime);
-
-        // Update weapon system - delegate to WeaponHUDManager
-        this.weaponHUDManager.updateWeaponSystem(deltaTime);
-
-        // Update 3D proximity detector
-        if (this.proximityDetector3D) {
-            this.proximityDetector3D.update(deltaTime);
-        }
-        
-        // Update enemy AI manager
-        if (this.enemyAIManager) {
-            this.enemyAIManager.update(deltaTime);
-        }
+        this.updateLoopManager.update(deltaTime);
     }
 
     updateCurrentSector() {
