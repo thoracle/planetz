@@ -168,6 +168,28 @@ export class WeaponHUDManager {
     }
 
     /**
+     * Handle weapon system ready notification
+     * Called when ship's weapon system is fully initialized
+     * Attempts immediate WeaponHUD connection
+     */
+    onWeaponSystemReady() {
+        debug('COMBAT', '🔫 WeaponHUDManager: Weapon system ready notification received');
+
+        // Try to connect WeaponHUD immediately
+        if (this.weaponHUD && !this.weaponHUDConnected) {
+            debug('COMBAT', 'Attempting immediate WeaponHUD connection...');
+            this.connectWeaponHUDToSystem();
+
+            // If connection successful, clear the retry interval
+            if (this.weaponHUDConnected && this.weaponHUDRetryInterval) {
+                clearInterval(this.weaponHUDRetryInterval);
+                this.weaponHUDRetryInterval = null;
+                debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
+            }
+        }
+    }
+
+    /**
      * Dispose of resources
      */
     dispose() {

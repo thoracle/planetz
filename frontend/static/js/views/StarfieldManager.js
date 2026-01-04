@@ -1345,14 +1345,6 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         this.destroyedTargetHandler.removeDestroyedTarget(destroyedShip);
     }
 
-    adjustColorBrightness(color, factor) {
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        return `#${Math.round(r * factor).toString(16).padStart(2, '0')}${Math.round(g * factor).toString(16).padStart(2, '0')}${Math.round(b * factor).toString(16).padStart(2, '0')}`;
-    }
-
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
         // Delegate status icon updates to target computer manager
         this.targetComputerManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
@@ -1412,20 +1404,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
      * Callback when weapon system is ready (called by Ship)
      */
     onWeaponSystemReady() {
-debug('COMBAT', '🔫 StarfieldManager: Weapon system ready notification received');
-        
-        // Try to connect WeaponHUD immediately
-        if (this.weaponHUD && !this.weaponHUDConnected) {
-debug('COMBAT', 'Attempting immediate WeaponHUD connection...');
-            this.connectWeaponHUDToSystem();
-            
-            // If connection successful, clear the retry interval
-            if (this.weaponHUDConnected && this.weaponHUDRetryInterval) {
-                clearInterval(this.weaponHUDRetryInterval);
-                this.weaponHUDRetryInterval = null;
-debug('COMBAT', '✅ WeaponHUD connected immediately, retry interval cleared');
-            }
-        }
+        this.weaponHUDManager.onWeaponSystemReady();
     }
     /**
      * Get sub-targeting availability and display information
