@@ -76,6 +76,9 @@ export class PropertyProxyInitializer {
 
         // State managers proxies
         PropertyProxyInitializer.initializeStateManagersProxies(sfm);
+
+        // Input systems proxies
+        PropertyProxyInitializer.initializeInputSystemsProxies(sfm);
     }
 
     /**
@@ -610,6 +613,24 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'damageControlStateManager', {
             get: () => sfm.stateManagersInitializer.damageControlStateManager,
             set: (val) => { sfm.stateManagersInitializer.damageControlStateManager = val; }
+        });
+    }
+
+    /**
+     * Input systems property proxies
+     */
+    static initializeInputSystemsProxies(sfm) {
+        Object.defineProperty(sfm, 'dockingOperationsManager', {
+            get: () => sfm.inputSystemsInitializer.dockingOperationsManager,
+            set: (val) => { sfm.inputSystemsInitializer.dockingOperationsManager = val; }
+        });
+        Object.defineProperty(sfm, 'keyboardInputManager', {
+            get: () => sfm.inputSystemsInitializer.keyboardInputManager,
+            set: (val) => { sfm.inputSystemsInitializer.keyboardInputManager = val; }
+        });
+        Object.defineProperty(sfm, 'shipMovementController', {
+            get: () => sfm.inputSystemsInitializer.shipMovementController,
+            set: (val) => { sfm.inputSystemsInitializer.shipMovementController = val; }
         });
     }
 }

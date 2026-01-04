@@ -107,6 +107,12 @@ export class DisposalManager {
             this.sfm.stateManagersInitializer = null;
         }
 
+        // Clean up InputSystemsInitializer (handles 3 input/operations managers)
+        if (this.sfm.inputSystemsInitializer) {
+            this.sfm.inputSystemsInitializer.dispose();
+            this.sfm.inputSystemsInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {

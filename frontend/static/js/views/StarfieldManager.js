@@ -1,9 +1,7 @@
 // THREE is handled dynamically in constructor
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
-import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
-import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
-import { ShipMovementController } from '../managers/ShipMovementController.js';
+import { InputSystemsInitializer } from '../managers/InputSystemsInitializer.js';
 import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
@@ -79,14 +77,9 @@ export class StarfieldManager {
         // ViewStateManager will be initialized later, but we need solarSystemManager reference early
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
 
-        // Initialize Docking Operations Manager
-        this.dockingOperationsManager = new DockingOperationsManager(this);
-
-        // Initialize Keyboard Input Manager
-        this.keyboardInputManager = new KeyboardInputManager(this);
-
-        // Initialize Ship Movement Controller
-        this.shipMovementController = new ShipMovementController(this);
+        // InputSystemsInitializer - consolidates 3 input/operations managers
+        this.inputSystemsInitializer = new InputSystemsInitializer(this);
+        this.inputSystemsInitializer.initialize();
 
         // Initialize Ship Systems HUD Manager
         this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
