@@ -39,6 +39,7 @@ import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js'
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
+import { MiscSystemManager } from '../managers/MiscSystemManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -495,6 +496,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // UpdateLoopManager - handles main game loop coordination
         this.updateLoopManager = new UpdateLoopManager(this);
+
+        // MiscSystemManager - handles miscellaneous system operations
+        this.miscSystemManager = new MiscSystemManager(this);
     }
 
     // ========================================
@@ -721,11 +725,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     setSolarSystemManager(manager) {
-        this.solarSystemManager = manager;
-        // Update target computer manager with new solar system manager
-        if (this.targetComputerManager) {
-            this.targetComputerManager.solarSystemManager = manager;
-        }
+        this.miscSystemManager.setSolarSystemManager(manager);
     }
 
     bindMouseEvents() {
@@ -862,24 +862,12 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         this.commandAudioManager.generateCommandFailedBeep();
     }
 
-    // Function to recreate the starfield with new density
     recreateStarfield() {
-        // Update starfield renderer's star count and recreate
-        this.starfieldRenderer.setStarCount(this.starCount);
-        this.starfield = this.starfieldRenderer.getStarfield();
+        this.miscSystemManager.recreateStarfield();
     }
 
-    /**
-     * Toggle proximity detector display
-     */
     toggleProximityDetector() {
-        if (this.proximityDetector3D) {
-            // The proximity detector will handle its own validation
-            const success = this.proximityDetector3D.toggle();
-debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', success);
-            return success;
-        }
-        return false;
+        return this.miscSystemManager.toggleProximityDetector();
     }
 
     // ========================================
@@ -1125,11 +1113,8 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         this.targetComputerManager.updateDirectionArrow();
     }
 
-    /**
-     * Mark that damage control display needs updating
-     */
     markDamageControlForUpdate() {
-        this.shouldUpdateDamageControl = true;
+        this.miscSystemManager.markDamageControlForUpdate();
     }
 
     /**
@@ -1144,14 +1129,8 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         this.uiToggleManager.toggleDebugMode();
     }
 
-    /**
-     * Refresh the current target and its wireframe
-     */
     refreshCurrentTarget() {
-        if (this.currentTarget && this.targetComputerEnabled) {
-            // Update the wireframe display without cycling
-            this.updateTargetDisplay();
-        }
+        this.miscSystemManager.refreshCurrentTarget();
     }
     
     /**
@@ -1211,11 +1190,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     updateStatusIcons(distance, diplomacyColor, isEnemyShip, info) {
-        // Delegate status icon updates to target computer manager
-        this.targetComputerManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
-
-        // Update intel icon display (this is still handled by StarfieldManager)
-        this.updateIntelIconDisplay();
+        this.miscSystemManager.updateStatusIcons(distance, diplomacyColor, isEnemyShip, info);
     }
 
     updateActionButtons(currentTargetData, info) {

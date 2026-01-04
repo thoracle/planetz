@@ -176,6 +176,12 @@ export class DisposalManager {
             this.sfm.updateLoopManager.dispose();
             this.sfm.updateLoopManager = null;
         }
+
+        // Clean up MiscSystemManager
+        if (this.sfm.miscSystemManager) {
+            this.sfm.miscSystemManager.dispose();
+            this.sfm.miscSystemManager = null;
+        }
     }
 
     /**
