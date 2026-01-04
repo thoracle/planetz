@@ -110,9 +110,7 @@ export class StarfieldManager {
         // Initialize Camera State Manager (holds camera vectors and mouse look state)
         this.cameraStateManager = new CameraStateManager(this);
 
-        // View state
-        this.view = 'FORE'; // Initialize with FORE view
-        this.previousView = 'FORE'; // Add previous view tracking
+        // ViewStateManager will be initialized later, but we need solarSystemManager reference early
         this.solarSystemManager = null; // Will be set by setSolarSystemManager
 
         // Initialize Docking Operations Manager

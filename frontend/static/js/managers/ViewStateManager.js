@@ -10,6 +10,7 @@
  * - Controls crosshair visibility based on view/dock state
  * - Preserves previous view for special view transitions
  * - Restricts view changes while docked
+ * - Holds view state (view, previousView)
  */
 
 import { debug } from '../debug.js';
@@ -21,6 +22,10 @@ export class ViewStateManager {
      */
     constructor(starfieldManager) {
         this.sfm = starfieldManager;
+
+        // View state
+        this.view = 'FORE'; // Current view (FORE, AFT, GALACTIC, LONG RANGE)
+        this.previousView = 'FORE'; // Previous view for special view transitions
     }
 
     /**
@@ -36,8 +41,8 @@ export class ViewStateManager {
         // Store previous view when switching to special views
         if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
             // Only store previous view if it's not a special view
-            if (this.sfm.view !== 'GALACTIC' && this.sfm.view !== 'LONG RANGE') {
-                this.sfm.previousView = this.sfm.view;
+            if (this.view !== 'GALACTIC' && this.view !== 'LONG RANGE') {
+                this.previousView = this.view;
             }
         }
 
@@ -47,11 +52,11 @@ export class ViewStateManager {
         }
 
         // When leaving special views while docked, restore to previous view or force FORE
-        if (this.sfm.isDocked && (this.sfm.view === 'GALACTIC' || this.sfm.view === 'LONG RANGE') &&
+        if (this.sfm.isDocked && (this.view === 'GALACTIC' || this.view === 'LONG RANGE') &&
             viewType !== 'GALACTIC' && viewType !== 'SCANNER') {
             // Use previous view if it exists and is valid (FORE or AFT), otherwise default to FORE
-            const validView = this.sfm.previousView === 'FORE' || this.sfm.previousView === 'AFT' ? this.sfm.previousView : 'FORE';
-            this.sfm.view = validView;
+            const validView = this.previousView === 'FORE' || this.previousView === 'AFT' ? this.previousView : 'FORE';
+            this.view = validView;
             this.sfm.camera.rotation.set(0, validView === 'AFT' ? Math.PI : 0, 0);
 
             // Always ensure crosshairs are hidden while docked
@@ -66,31 +71,63 @@ export class ViewStateManager {
 
         // Set the view type, converting SCANNER to LONG RANGE for display
         if (!this.sfm.isDocked) {
-            this.sfm.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
+            this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
 
             // Update camera rotation based on view (only for flight views)
-            if (this.sfm.view === 'AFT') {
+            if (this.view === 'AFT') {
                 this.sfm.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis
-            } else if (this.sfm.view === 'FORE') {
+            } else if (this.view === 'FORE') {
                 this.sfm.camera.rotation.set(0, 0, 0); // Reset to forward
             }
         } else {
             // If docked, allow special views
             if (viewType === 'GALACTIC' || viewType === 'SCANNER') {
-                this.sfm.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
+                this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
             }
         }
 
         // Handle crosshair visibility
         if (this.sfm.viewManager) {
             // Hide crosshairs if docked or in special views
-            const showCrosshairs = !this.sfm.isDocked && this.sfm.view !== 'GALACTIC' && this.sfm.view !== 'LONG RANGE';
-            this.sfm.viewManager.frontCrosshair.style.display = showCrosshairs && this.sfm.view === 'FORE' ? 'block' : 'none';
-            this.sfm.viewManager.aftCrosshair.style.display = showCrosshairs && this.sfm.view === 'AFT' ? 'block' : 'none';
+            const showCrosshairs = !this.sfm.isDocked && this.view !== 'GALACTIC' && this.view !== 'LONG RANGE';
+            this.sfm.viewManager.frontCrosshair.style.display = showCrosshairs && this.view === 'FORE' ? 'block' : 'none';
+            this.sfm.viewManager.aftCrosshair.style.display = showCrosshairs && this.view === 'AFT' ? 'block' : 'none';
         }
 
         this.sfm.camera.updateMatrixWorld();
         this.sfm.updateSpeedIndicator();
+    }
+
+    /**
+     * Get current view
+     * @returns {string} Current view type
+     */
+    getView() {
+        return this.view;
+    }
+
+    /**
+     * Get previous view
+     * @returns {string} Previous view type
+     */
+    getPreviousView() {
+        return this.previousView;
+    }
+
+    /**
+     * Check if current view is a special view (GALACTIC or LONG RANGE)
+     * @returns {boolean} True if in special view
+     */
+    isSpecialView() {
+        return this.view === 'GALACTIC' || this.view === 'LONG RANGE';
+    }
+
+    /**
+     * Check if current view is a flight view (FORE or AFT)
+     * @returns {boolean} True if in flight view
+     */
+    isFlightView() {
+        return this.view === 'FORE' || this.view === 'AFT';
     }
 
     /**

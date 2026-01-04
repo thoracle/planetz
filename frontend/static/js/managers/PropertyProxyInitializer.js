@@ -43,6 +43,9 @@ export class PropertyProxyInitializer {
 
         // Damage control state proxies
         PropertyProxyInitializer.initializeDamageControlStateProxies(sfm);
+
+        // View state proxies
+        PropertyProxyInitializer.initializeViewStateProxies(sfm);
     }
 
     /**
@@ -317,6 +320,20 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'previousTarget', {
             get: () => sfm.damageControlStateManager.previousTarget,
             set: (val) => { sfm.damageControlStateManager.previousTarget = val; }
+        });
+    }
+
+    /**
+     * View state property proxies
+     */
+    static initializeViewStateProxies(sfm) {
+        Object.defineProperty(sfm, 'view', {
+            get: () => sfm.viewStateManager.view,
+            set: (val) => { sfm.viewStateManager.view = val; }
+        });
+        Object.defineProperty(sfm, 'previousView', {
+            get: () => sfm.viewStateManager.previousView,
+            set: (val) => { sfm.viewStateManager.previousView = val; }
         });
     }
 }

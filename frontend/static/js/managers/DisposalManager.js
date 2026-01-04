@@ -200,6 +200,12 @@ export class DisposalManager {
             this.sfm.damageControlStateManager.dispose();
             this.sfm.damageControlStateManager = null;
         }
+
+        // Clean up ViewStateManager
+        if (this.sfm.viewStateManager) {
+            this.sfm.viewStateManager.dispose();
+            this.sfm.viewStateManager = null;
+        }
     }
 
     /**
