@@ -79,6 +79,9 @@ export class PropertyProxyInitializer {
 
         // Input systems proxies
         PropertyProxyInitializer.initializeInputSystemsProxies(sfm);
+
+        // HUD systems proxies
+        PropertyProxyInitializer.initializeHUDProxies(sfm);
     }
 
     /**
@@ -631,6 +634,20 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'shipMovementController', {
             get: () => sfm.inputSystemsInitializer.shipMovementController,
             set: (val) => { sfm.inputSystemsInitializer.shipMovementController = val; }
+        });
+    }
+
+    /**
+     * HUD systems property proxies
+     */
+    static initializeHUDProxies(sfm) {
+        Object.defineProperty(sfm, 'shipSystemsHUDManager', {
+            get: () => sfm.hudInitializer.shipSystemsHUDManager,
+            set: (val) => { sfm.hudInitializer.shipSystemsHUDManager = val; }
+        });
+        Object.defineProperty(sfm, 'intelDisplayManager', {
+            get: () => sfm.hudInitializer.intelDisplayManager,
+            set: (val) => { sfm.hudInitializer.intelDisplayManager = val; }
         });
     }
 }

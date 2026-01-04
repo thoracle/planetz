@@ -1,8 +1,7 @@
 // THREE is handled dynamically in constructor
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
-import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
+import { HUDInitializer } from '../managers/HUDInitializer.js';
 import { InputSystemsInitializer } from '../managers/InputSystemsInitializer.js';
-import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
@@ -81,8 +80,9 @@ export class StarfieldManager {
         this.inputSystemsInitializer = new InputSystemsInitializer(this);
         this.inputSystemsInitializer.initialize();
 
-        // Initialize Ship Systems HUD Manager
-        this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
+        // HUDInitializer - consolidates 2 HUD managers
+        this.hudInitializer = new HUDInitializer(this);
+        this.hudInitializer.initialize();
 
         // RenderingInitManager - handles starfield renderer initialization
         this.renderingInitManager = new RenderingInitManager(this);
@@ -115,9 +115,6 @@ export class StarfieldManager {
         //     this._dockingInitTried = true;
         //     this.initializeSimpleDocking();
         // }
-        
-        // Initialize Intel Display Manager
-        this.intelDisplayManager = new IntelDisplayManager(this);
 
         // Create weapon HUD
         debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');

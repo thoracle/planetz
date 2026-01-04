@@ -113,6 +113,12 @@ export class DisposalManager {
             this.sfm.inputSystemsInitializer = null;
         }
 
+        // Clean up HUDInitializer (handles 2 HUD managers)
+        if (this.sfm.hudInitializer) {
+            this.sfm.hudInitializer.dispose();
+            this.sfm.hudInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {
@@ -151,11 +157,6 @@ export class DisposalManager {
         if (this.sfm.audioInitManager) {
             this.sfm.audioInitManager.dispose();
             this.sfm.audioInitManager = null;
-        }
-
-        // Intel HUD cleanup delegated to IntelDisplayManager
-        if (this.sfm.intelDisplayManager) {
-            this.sfm.intelDisplayManager.destroy();
         }
 
         // Clean up ButtonStateManager
