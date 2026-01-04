@@ -85,6 +85,9 @@ export class PropertyProxyInitializer {
 
         // UI managers proxies
         PropertyProxyInitializer.initializeUIManagersProxies(sfm);
+
+        // Infrastructure managers proxies
+        PropertyProxyInitializer.initializeInfrastructureProxies(sfm);
     }
 
     /**
@@ -669,6 +672,29 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'hudContainerManager', {
             get: () => sfm.uiManagersInitializer.hudContainerManager,
             set: (val) => { sfm.uiManagersInitializer.hudContainerManager = val; }
+        });
+    }
+
+    /**
+     * Infrastructure managers property proxies
+     */
+    static initializeInfrastructureProxies(sfm) {
+        Object.defineProperty(sfm, 'timeoutManager', {
+            get: () => sfm.infrastructureInitializer.timeoutManager,
+            set: (val) => { sfm.infrastructureInitializer.timeoutManager = val; }
+        });
+        Object.defineProperty(sfm, 'globalReferencesManager', {
+            get: () => sfm.infrastructureInitializer.globalReferencesManager,
+            set: (val) => { sfm.infrastructureInitializer.globalReferencesManager = val; }
+        });
+        Object.defineProperty(sfm, 'buttonStateManager', {
+            get: () => sfm.infrastructureInitializer.buttonStateManager,
+            set: (val) => { sfm.infrastructureInitializer.buttonStateManager = val; }
+        });
+        // Also proxy _buttonStateManager for backwards compatibility
+        Object.defineProperty(sfm, '_buttonStateManager', {
+            get: () => sfm.infrastructureInitializer.buttonStateManager,
+            set: (val) => { sfm.infrastructureInitializer.buttonStateManager = val; }
         });
     }
 }

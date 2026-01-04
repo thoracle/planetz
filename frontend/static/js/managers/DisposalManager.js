@@ -125,6 +125,12 @@ export class DisposalManager {
             this.sfm.uiManagersInitializer = null;
         }
 
+        // Clean up InfrastructureInitializer (handles 3 infrastructure managers)
+        if (this.sfm.infrastructureInitializer) {
+            this.sfm.infrastructureInitializer.dispose();
+            this.sfm.infrastructureInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {
@@ -163,13 +169,6 @@ export class DisposalManager {
         if (this.sfm.audioInitManager) {
             this.sfm.audioInitManager.dispose();
             this.sfm.audioInitManager = null;
-        }
-
-        // Clean up ButtonStateManager
-        if (this.sfm._buttonStateManager) {
-            this.sfm._buttonStateManager.dispose();
-            this.sfm._buttonStateManager = null;
-            this.sfm.buttonStateManager = null;
         }
 
     }
@@ -241,22 +240,17 @@ export class DisposalManager {
 
     /**
      * Remove global window references
-     * Delegated to GlobalReferencesManager
+     * Now handled by InfrastructureInitializer.dispose()
      */
     disposeGlobalReferences() {
-        if (this.sfm.globalReferencesManager) {
-            this.sfm.globalReferencesManager.dispose();
-            this.sfm.globalReferencesManager = null;
-        }
+        // GlobalReferencesManager is now handled by InfrastructureInitializer
     }
 
     /**
      * Clear all pending timeouts via TimeoutManager
+     * Now handled by InfrastructureInitializer.dispose()
      */
     disposeTimeouts() {
-        if (this.sfm.timeoutManager) {
-            this.sfm.timeoutManager.dispose();
-            this.sfm.timeoutManager = null;
-        }
+        // TimeoutManager is now handled by InfrastructureInitializer
     }
 }

@@ -3,12 +3,10 @@ import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.j
 import { HUDInitializer } from '../managers/HUDInitializer.js';
 import { InputSystemsInitializer } from '../managers/InputSystemsInitializer.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
-import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { AudioInitManager } from '../managers/AudioInitManager.js';
-import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
 import { UIManagersInitializer } from '../managers/UIManagersInitializer.js';
-import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
+import { InfrastructureInitializer } from '../managers/InfrastructureInitializer.js';
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
 import { AIInitManager } from '../managers/AIInitManager.js';
@@ -101,12 +99,9 @@ export class StarfieldManager {
         // AbortController for centralized event listener cleanup
         this._abortController = new AbortController();
 
-        // TimeoutManager - handles timeout tracking and cleanup
-        this.timeoutManager = new TimeoutManager(this);
-
-        // GlobalReferencesManager - handles window.* global references
-        this.globalReferencesManager = new GlobalReferencesManager(this);
-        this.globalReferencesManager.initialize();
+        // InfrastructureInitializer - consolidates 3 infrastructure managers
+        this.infrastructureInitializer = new InfrastructureInitializer(this);
+        this.infrastructureInitializer.initialize();
 
         // Initialize simple docking system (moved to app.js after spatial systems are ready)
         // if (!this._dockingInitTried) {
@@ -144,11 +139,6 @@ export class StarfieldManager {
         this.audioInitManager = new AudioInitManager(this);
         this.audioInitManager.initializeAudio();
 
-        // ButtonStateManager - handles dock button CSS and state (initialized later)
-        // We need to create it early for CSS injection
-        this._buttonStateManager = new ButtonStateManager(this);
-        this._buttonStateManager.injectDockButtonCSS();
-
         // UtilityManagersInitializer - consolidates 14 utility managers
         this.utilityManagersInitializer = new UtilityManagersInitializer(this);
         this.utilityManagersInitializer.initialize();
@@ -166,10 +156,6 @@ export class StarfieldManager {
 
         // DisposalManager - handles cleanup and resource disposal
         this.disposalManager = new DisposalManager(this);
-
-        // ButtonStateManager already created earlier for CSS injection
-        // Alias for consistency with other managers
-        this.buttonStateManager = this._buttonStateManager;
 
         // Initialize property proxies for backwards compatibility
         // All Object.defineProperty calls are centralized in PropertyProxyInitializer
