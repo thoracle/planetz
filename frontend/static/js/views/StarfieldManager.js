@@ -43,6 +43,7 @@ import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
 import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
+import { AIInitManager } from '../managers/AIInitManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
@@ -58,7 +59,6 @@ const TESTING_CONFIG = {
     // RESET_CREDITS: true,
     // RESET_FACTION_STANDINGS: true
 };
-import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 
 // Constants
 import { SHIP_MOVEMENT, DOCKING } from '../constants/ShipConstants.js';
@@ -171,8 +171,9 @@ export class StarfieldManager {
         // Mission components (missionAPI, missionEventService, etc.) are exposed via PropertyProxyInitializer
         this.missionCoordinator = new MissionSystemCoordinator(this);
 
-        // Create enemy AI manager
-        this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);
+        // AIInitManager - handles enemy AI initialization
+        this.aiInitManager = new AIInitManager(this);
+        this.aiInitManager.initialize();
 
         // Initialize mission system after a short delay to ensure all systems are ready
         this._setTimeout(() => {

@@ -64,6 +64,9 @@ export class PropertyProxyInitializer {
 
         // Rendering system proxies
         PropertyProxyInitializer.initializeRenderingProxies(sfm);
+
+        // AI system proxies
+        PropertyProxyInitializer.initializeAIProxies(sfm);
     }
 
     /**
@@ -462,6 +465,16 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'starfieldRenderer', {
             get: () => sfm.renderingInitManager.starfieldRenderer,
             set: (val) => { sfm.renderingInitManager.starfieldRenderer = val; }
+        });
+    }
+
+    /**
+     * AI system property proxies
+     */
+    static initializeAIProxies(sfm) {
+        Object.defineProperty(sfm, 'enemyAIManager', {
+            get: () => sfm.aiInitManager.enemyAIManager,
+            set: (val) => { sfm.aiInitManager.enemyAIManager = val; }
         });
     }
 }

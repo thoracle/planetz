@@ -83,12 +83,10 @@ export class DisposalManager {
             this.sfm.targetingInitManager = null;
         }
 
-        // Clean up EnemyAIManager
-        if (this.sfm.enemyAIManager) {
-            if (typeof this.sfm.enemyAIManager.dispose === 'function') {
-                this.sfm.enemyAIManager.dispose();
-            }
-            this.sfm.enemyAIManager = null;
+        // Clean up AIInitManager (handles enemyAIManager)
+        if (this.sfm.aiInitManager) {
+            this.sfm.aiInitManager.dispose();
+            this.sfm.aiInitManager = null;
         }
 
         // Clean up WeaponHUD
