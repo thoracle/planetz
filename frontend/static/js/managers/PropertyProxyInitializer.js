@@ -67,6 +67,9 @@ export class PropertyProxyInitializer {
 
         // AI system proxies
         PropertyProxyInitializer.initializeAIProxies(sfm);
+
+        // Utility managers proxies
+        PropertyProxyInitializer.initializeUtilityManagersProxies(sfm);
     }
 
     /**
@@ -475,6 +478,68 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'enemyAIManager', {
             get: () => sfm.aiInitManager.enemyAIManager,
             set: (val) => { sfm.aiInitManager.enemyAIManager = val; }
+        });
+    }
+
+    /**
+     * Utility managers property proxies
+     */
+    static initializeUtilityManagersProxies(sfm) {
+        Object.defineProperty(sfm, 'targetDummyManager', {
+            get: () => sfm.utilityManagersInitializer.targetDummyManager,
+            set: (val) => { sfm.utilityManagersInitializer.targetDummyManager = val; }
+        });
+        Object.defineProperty(sfm, 'targetOutlineManager', {
+            get: () => sfm.utilityManagersInitializer.targetOutlineManager,
+            set: (val) => { sfm.utilityManagersInitializer.targetOutlineManager = val; }
+        });
+        Object.defineProperty(sfm, 'destroyedTargetHandler', {
+            get: () => sfm.utilityManagersInitializer.destroyedTargetHandler,
+            set: (val) => { sfm.utilityManagersInitializer.destroyedTargetHandler = val; }
+        });
+        Object.defineProperty(sfm, 'reticleManager', {
+            get: () => sfm.utilityManagersInitializer.reticleManager,
+            set: (val) => { sfm.utilityManagersInitializer.reticleManager = val; }
+        });
+        Object.defineProperty(sfm, 'systemLifecycleManager', {
+            get: () => sfm.utilityManagersInitializer.systemLifecycleManager,
+            set: (val) => { sfm.utilityManagersInitializer.systemLifecycleManager = val; }
+        });
+        Object.defineProperty(sfm, 'hudMessageManager', {
+            get: () => sfm.utilityManagersInitializer.hudMessageManager,
+            set: (val) => { sfm.utilityManagersInitializer.hudMessageManager = val; }
+        });
+        Object.defineProperty(sfm, 'cargoDeliveryHandler', {
+            get: () => sfm.utilityManagersInitializer.cargoDeliveryHandler,
+            set: (val) => { sfm.utilityManagersInitializer.cargoDeliveryHandler = val; }
+        });
+        Object.defineProperty(sfm, 'waypointTestManager', {
+            get: () => sfm.utilityManagersInitializer.waypointTestManager,
+            set: (val) => { sfm.utilityManagersInitializer.waypointTestManager = val; }
+        });
+        Object.defineProperty(sfm, 'commandAudioManager', {
+            get: () => sfm.utilityManagersInitializer.commandAudioManager,
+            set: (val) => { sfm.utilityManagersInitializer.commandAudioManager = val; }
+        });
+        Object.defineProperty(sfm, 'weaponHUDManager', {
+            get: () => sfm.utilityManagersInitializer.weaponHUDManager,
+            set: (val) => { sfm.utilityManagersInitializer.weaponHUDManager = val; }
+        });
+        Object.defineProperty(sfm, 'statusBarManager', {
+            get: () => sfm.utilityManagersInitializer.statusBarManager,
+            set: (val) => { sfm.utilityManagersInitializer.statusBarManager = val; }
+        });
+        Object.defineProperty(sfm, 'subTargetDisplayManager', {
+            get: () => sfm.utilityManagersInitializer.subTargetDisplayManager,
+            set: (val) => { sfm.utilityManagersInitializer.subTargetDisplayManager = val; }
+        });
+        Object.defineProperty(sfm, 'debugCommandManager', {
+            get: () => sfm.utilityManagersInitializer.debugCommandManager,
+            set: (val) => { sfm.utilityManagersInitializer.debugCommandManager = val; }
+        });
+        Object.defineProperty(sfm, 'sectorManager', {
+            get: () => sfm.utilityManagersInitializer.sectorManager,
+            set: (val) => { sfm.utilityManagersInitializer.sectorManager = val; }
         });
     }
 }

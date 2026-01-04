@@ -89,6 +89,12 @@ export class DisposalManager {
             this.sfm.aiInitManager = null;
         }
 
+        // Clean up UtilityManagersInitializer (handles 14 utility managers)
+        if (this.sfm.utilityManagersInitializer) {
+            this.sfm.utilityManagersInitializer.dispose();
+            this.sfm.utilityManagersInitializer = null;
+        }
+
         // Clean up WeaponHUD
         if (this.sfm.weaponHUD) {
             if (typeof this.sfm.weaponHUD.dispose === 'function') {

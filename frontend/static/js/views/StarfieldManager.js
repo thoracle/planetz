@@ -5,20 +5,6 @@ import { DockingOperationsManager } from '../managers/DockingOperationsManager.j
 import { KeyboardInputManager } from '../managers/KeyboardInputManager.js';
 import { ShipMovementController } from '../managers/ShipMovementController.js';
 import { ShipSystemsHUDManager } from '../managers/ShipSystemsHUDManager.js';
-import { TargetDummyManager } from '../managers/TargetDummyManager.js';
-import { TargetOutlineManager } from '../managers/TargetOutlineManager.js';
-import { DestroyedTargetHandler } from '../managers/DestroyedTargetHandler.js';
-import { ReticleManager } from '../managers/ReticleManager.js';
-import { SystemLifecycleManager } from '../managers/SystemLifecycleManager.js';
-import { HUDMessageManager } from '../managers/HUDMessageManager.js';
-import { CargoDeliveryHandler } from '../managers/CargoDeliveryHandler.js';
-import { WaypointTestManager } from '../managers/WaypointTestManager.js';
-import { CommandAudioManager } from '../managers/CommandAudioManager.js';
-import { WeaponHUDManager } from '../managers/WeaponHUDManager.js';
-import { StatusBarManager } from '../managers/StatusBarManager.js';
-import { SubTargetDisplayManager } from '../managers/SubTargetDisplayManager.js';
-import { DebugCommandManager } from '../managers/DebugCommandManager.js';
-import { SectorManager } from '../managers/SectorManager.js';
 import { ViewStateManager } from '../managers/ViewStateManager.js';
 import { TargetValidationManager } from '../managers/TargetValidationManager.js';
 import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.js';
@@ -44,6 +30,7 @@ import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js'
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { RenderingInitManager } from '../managers/RenderingInitManager.js';
 import { AIInitManager } from '../managers/AIInitManager.js';
+import { UtilityManagersInitializer } from '../managers/UtilityManagersInitializer.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
@@ -198,8 +185,9 @@ export class StarfieldManager {
         this._buttonStateManager = new ButtonStateManager(this);
         this._buttonStateManager.injectDockButtonCSS();
 
-        // Target dummy ships manager (extracted)
-        this.targetDummyManager = new TargetDummyManager(this);
+        // UtilityManagersInitializer - consolidates 14 utility managers
+        this.utilityManagersInitializer = new UtilityManagersInitializer(this);
+        this.utilityManagersInitializer.initialize();
 
         // Try to initialize WeaponEffectsManager after a short delay
         // This ensures THREE.js is fully loaded and available
@@ -207,45 +195,6 @@ export class StarfieldManager {
             this.initializeWeaponEffectsManager();
             this.initializeAIManager();
         }, 100);
-
-        // Target outline manager (extracted)
-        this.targetOutlineManager = new TargetOutlineManager(this);
-
-        // Destroyed target handler (extracted)
-        this.destroyedTargetHandler = new DestroyedTargetHandler(this);
-
-        // Reticle manager (extracted)
-        this.reticleManager = new ReticleManager(this);
-
-        // System lifecycle manager (extracted)
-        this.systemLifecycleManager = new SystemLifecycleManager(this);
-
-        // HUD message manager (extracted)
-        this.hudMessageManager = new HUDMessageManager(this);
-
-        // Cargo delivery handler (extracted)
-        this.cargoDeliveryHandler = new CargoDeliveryHandler(this);
-
-        // Waypoint test manager (extracted)
-        this.waypointTestManager = new WaypointTestManager(this);
-
-        // Command audio manager (extracted)
-        this.commandAudioManager = new CommandAudioManager(this);
-
-        // Weapon HUD manager (extracted)
-        this.weaponHUDManager = new WeaponHUDManager(this);
-
-        // Status bar manager (extracted)
-        this.statusBarManager = new StatusBarManager(this);
-
-        // Sub-target display manager (extracted)
-        this.subTargetDisplayManager = new SubTargetDisplayManager(this);
-
-        // Debug command manager (extracted)
-        this.debugCommandManager = new DebugCommandManager(this);
-
-        // Sector manager (extracted)
-        this.sectorManager = new SectorManager(this);
 
         // ViewStateManager - handles view state changes (FORE, AFT, GALACTIC, LONG RANGE)
         this.viewStateManager = new ViewStateManager(this);
