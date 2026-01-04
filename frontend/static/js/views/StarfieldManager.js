@@ -4,9 +4,7 @@ import { HelpInterface } from '../ui/HelpInterface.js';
 import DockingSystemManager from '../ship/DockingSystemManager.js';
 import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
-import DamageControlHUD from '../ui/DamageControlHUD.js';
 import { CommunicationHUD } from '../ui/CommunicationHUD.js';
-import DiplomacyHUD from '../ui/DiplomacyHUD.js';
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
 import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
@@ -45,6 +43,7 @@ import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.j
 import { TargetStateManager } from '../managers/TargetStateManager.js';
 import { CameraStateManager } from '../managers/CameraStateManager.js';
 import { DamageControlStateManager } from '../managers/DamageControlStateManager.js';
+import { HUDContainerManager } from '../managers/HUDContainerManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -218,15 +217,9 @@ export class StarfieldManager {
             this.missionCoordinator.initializeMissionSystem();
         }, 2000);
         
-        // Create clean damage control HUD
-        this.damageControlContainer = document.createElement('div');
-        document.body.appendChild(this.damageControlContainer);
-        this.damageControlHUD = new DamageControlHUD(this.ship, this.damageControlContainer, this);
-
-        // Create diplomacy HUD container
-        this.diplomacyContainer = document.createElement('div');
-        document.body.appendChild(this.diplomacyContainer);
-        this.diplomacyHUD = new DiplomacyHUD(this, this.diplomacyContainer);
+        // HUD Container Manager - handles damage control and diplomacy HUD creation
+        this.hudContainerManager = new HUDContainerManager(this);
+        this.hudContainerManager.initialize();
         
         // Bind keyboard events
         this.bindKeyEvents();

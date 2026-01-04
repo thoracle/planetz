@@ -206,6 +206,12 @@ export class DisposalManager {
             this.sfm.viewStateManager.dispose();
             this.sfm.viewStateManager = null;
         }
+
+        // Clean up HUDContainerManager
+        if (this.sfm.hudContainerManager) {
+            this.sfm.hudContainerManager.dispose();
+            this.sfm.hudContainerManager = null;
+        }
     }
 
     /**
@@ -218,13 +224,8 @@ export class DisposalManager {
             this.sfm.dockingModal = null;
         }
 
-        // Clean up damage control HUD
-        if (this.sfm.damageControlHUD) {
-            this.sfm.damageControlHUD.dispose();
-        }
-        if (this.sfm.damageControlContainer && this.sfm.damageControlContainer.parentNode) {
-            this.sfm.damageControlContainer.parentNode.removeChild(this.sfm.damageControlContainer);
-        }
+        // Note: damageControlHUD and damageControlContainer are now cleaned up
+        // by HUDContainerManager.dispose() in disposeManagers()
 
         // Clean up target dummy ships
         this.sfm.clearTargetDummyShips();

@@ -49,6 +49,9 @@ export class PropertyProxyInitializer {
 
         // Mission system proxies
         PropertyProxyInitializer.initializeMissionProxies(sfm);
+
+        // HUD container proxies
+        PropertyProxyInitializer.initializeHUDContainerProxies(sfm);
     }
 
     /**
@@ -361,6 +364,28 @@ export class PropertyProxyInitializer {
         });
         Object.defineProperty(sfm, 'missionEventHandler', {
             get: () => sfm.missionCoordinator.missionEventHandler
+        });
+    }
+
+    /**
+     * HUD container property proxies
+     */
+    static initializeHUDContainerProxies(sfm) {
+        Object.defineProperty(sfm, 'damageControlContainer', {
+            get: () => sfm.hudContainerManager.damageControlContainer,
+            set: (val) => { sfm.hudContainerManager.damageControlContainer = val; }
+        });
+        Object.defineProperty(sfm, 'damageControlHUD', {
+            get: () => sfm.hudContainerManager.damageControlHUD,
+            set: (val) => { sfm.hudContainerManager.damageControlHUD = val; }
+        });
+        Object.defineProperty(sfm, 'diplomacyContainer', {
+            get: () => sfm.hudContainerManager.diplomacyContainer,
+            set: (val) => { sfm.hudContainerManager.diplomacyContainer = val; }
+        });
+        Object.defineProperty(sfm, 'diplomacyHUD', {
+            get: () => sfm.hudContainerManager.diplomacyHUD,
+            set: (val) => { sfm.hudContainerManager.diplomacyHUD = val; }
         });
     }
 }
