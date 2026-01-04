@@ -42,6 +42,7 @@ import { DamageControlStateManager } from '../managers/DamageControlStateManager
 import { HUDContainerManager } from '../managers/HUDContainerManager.js';
 import { DockingUIManager } from '../managers/DockingUIManager.js';
 import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
+import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -158,9 +159,10 @@ export class StarfieldManager {
         // TimeoutManager - handles timeout tracking and cleanup
         this.timeoutManager = new TimeoutManager(this);
 
-        // Expose target computer manager globally for waypoints integration
-        window.targetComputerManager = this.targetComputerManager;
-        
+        // GlobalReferencesManager - handles window.* global references
+        this.globalReferencesManager = new GlobalReferencesManager(this);
+        this.globalReferencesManager.initialize();
+
         // Initialize Waypoint HUD
         
         // Create radar HUD
@@ -212,9 +214,6 @@ export class StarfieldManager {
         // AudioInitManager - handles audio listener and StarfieldAudioManager
         this.audioInitManager = new AudioInitManager(this);
         this.audioInitManager.initializeAudio();
-
-        // Make this instance globally available for button click handlers
-        window.starfieldManager = this;
 
         // ButtonStateManager - handles dock button CSS and state (initialized later)
         // We need to create it early for CSS injection

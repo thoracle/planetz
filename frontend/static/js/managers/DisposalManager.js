@@ -293,16 +293,12 @@ export class DisposalManager {
 
     /**
      * Remove global window references
+     * Delegated to GlobalReferencesManager
      */
     disposeGlobalReferences() {
-        if (window.starfieldManager === this.sfm) {
-            delete window.starfieldManager;
-        }
-        if (window.starfieldAudioManager === this.sfm.audioManager) {
-            delete window.starfieldAudioManager;
-        }
-        if (window.targetComputerManager === this.sfm.targetComputerManager) {
-            delete window.targetComputerManager;
+        if (this.sfm.globalReferencesManager) {
+            this.sfm.globalReferencesManager.dispose();
+            this.sfm.globalReferencesManager = null;
         }
     }
 
