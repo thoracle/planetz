@@ -34,6 +34,7 @@ import { UIToggleManager } from '../managers/UIToggleManager.js';
 import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
 import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
+import { CommunicationManager } from '../managers/CommunicationManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -523,6 +524,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // DisposalManager - handles cleanup and resource disposal
         this.disposalManager = new DisposalManager(this);
+
+        // CommunicationManager - handles communication HUD display
+        this.communicationManagerDelegate = new CommunicationManager(this);
     }
 
     /**
@@ -792,37 +796,11 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     update(deltaTime) {
         if (!deltaTime) deltaTime = 1/60;
 
-        // P1 DEBUG: Track camera position before any updates for intermittent camera shake debugging
-        const cameraPosBefore = this.camera.position.clone();
-
         // If docked, update orbit instead of normal movement
         if (this.isDocked) {
             this.updateOrbit(deltaTime);
             this.updateSpeedIndicator();
             return;
-        }
-        
-        // P1 DEBUG: Check for unexpected camera position changes during stationary flight
-        const checkCameraMovement = () => {
-            if (!this.isDocked && this.currentSpeed === 0) {
-                const cameraMovement = this.camera.position.distanceTo(cameraPosBefore);
-                if (cameraMovement > 0.001) { // Threshold for detecting movement
-                    debug('P1', `🔍 CAMERA SHAKE DETECTED: Unexpected camera movement during stationary flight`);
-                    debug('P1', `   Movement distance: ${cameraMovement.toFixed(6)} units`);
-                    debug('P1', `   Before: (${cameraPosBefore.x.toFixed(3)}, ${cameraPosBefore.y.toFixed(3)}, ${cameraPosBefore.z.toFixed(3)})`);
-                    debug('P1', `   After: (${this.camera.position.x.toFixed(3)}, ${this.camera.position.y.toFixed(3)}, ${this.camera.position.z.toFixed(3)})`);
-                    debug('P1', `   isDocked: ${this.isDocked}, currentSpeed: ${this.currentSpeed}, dockedTo: ${this.dockedTo?.name || 'null'}`);
-                    debug('P1', `   Call stack: ${new Error().stack.split('\n').slice(1, 4).join(' | ')}`);
-                }
-            }
-        };
-
-        // DEBUG: Log when isDocked is false but we're still getting camera shake
-        // This will help identify if the issue is elsewhere
-        // Using P1 channel to ensure visibility for intermittent camera shake bug
-        if (!this.isDocked && this.currentSpeed === 0) {
-            // Camera shake issue occurs when flying in space, not while docked
-            // Debug logging removed to reduce console spam
         }
 
         // Handle smooth rotation from arrow keys
@@ -1418,35 +1396,21 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
         this.keyboardInputManager.handleSubTargetingKey(direction);
     }
 
-    /**
-     * Show communication message from mission or AI system
-     * @param {string} npcName - Name of the NPC sending the message
-     * @param {string} message - The message text
-     * @param {Object} options - Optional settings (channel, signal strength, duration)
-     */
+    // ========================================
+    // Communication System Delegation Methods
+    // (Implementation moved to CommunicationManager)
+    // ========================================
+
     showCommunication(npcName, message, options = {}) {
-        if (this.communicationHUD) {
-            this.communicationHUD.showMessage(npcName, message, options);
-            return true;
-        }
-        debug('P1', '🗣️ Communication HUD not available');
-        return false;
+        return this.communicationManagerDelegate.showCommunication(npcName, message, options);
     }
 
-    /**
-     * Hide communication HUD
-     */
     hideCommunication() {
-        if (this.communicationHUD) {
-            this.communicationHUD.hide();
-        }
+        this.communicationManagerDelegate.hideCommunication();
     }
 
-    /**
-     * Check if communication HUD is visible
-     */
     isCommunicationVisible() {
-        return this.communicationHUD ? this.communicationHUD.visible : false;
+        return this.communicationManagerDelegate.isCommunicationVisible();
     }
 
     // ========================================

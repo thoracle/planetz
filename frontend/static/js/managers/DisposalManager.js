@@ -151,6 +151,12 @@ export class DisposalManager {
         if (this.sfm.intelDisplayManager) {
             this.sfm.intelDisplayManager.destroy();
         }
+
+        // Clean up CommunicationManager
+        if (this.sfm.communicationManagerDelegate) {
+            this.sfm.communicationManagerDelegate.dispose();
+            this.sfm.communicationManagerDelegate = null;
+        }
     }
 
     /**
