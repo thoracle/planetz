@@ -55,6 +55,9 @@ export class PropertyProxyInitializer {
 
         // Docking UI proxies
         PropertyProxyInitializer.initializeDockingUIProxies(sfm);
+
+        // Interface proxies
+        PropertyProxyInitializer.initializeInterfaceProxies(sfm);
     }
 
     /**
@@ -411,6 +414,20 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'physicsDockingManager', {
             get: () => sfm.dockingUIManager.physicsDockingManager,
             set: (val) => { sfm.dockingUIManager.physicsDockingManager = val; }
+        });
+    }
+
+    /**
+     * Interface property proxies
+     */
+    static initializeInterfaceProxies(sfm) {
+        Object.defineProperty(sfm, 'helpInterface', {
+            get: () => sfm.interfaceInitManager.helpInterface,
+            set: (val) => { sfm.interfaceInitManager.helpInterface = val; }
+        });
+        Object.defineProperty(sfm, 'communicationHUD', {
+            get: () => sfm.interfaceInitManager.communicationHUD,
+            set: (val) => { sfm.interfaceInitManager.communicationHUD = val; }
         });
     }
 }

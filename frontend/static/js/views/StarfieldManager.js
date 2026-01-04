@@ -1,8 +1,6 @@
 // THREE is handled dynamically in constructor
-import { HelpInterface } from '../ui/HelpInterface.js';
 import SimpleDockingManager from '../SimpleDockingManager.js';
 import { getSystemDisplayName } from '../ship/System.js';
-import { CommunicationHUD } from '../ui/CommunicationHUD.js';
 import { MissionSystemCoordinator } from '../managers/MissionSystemCoordinator.js';
 import { IntelDisplayManager } from '../managers/IntelDisplayManager.js';
 import { DockingOperationsManager } from '../managers/DockingOperationsManager.js';
@@ -43,6 +41,7 @@ import { CameraStateManager } from '../managers/CameraStateManager.js';
 import { DamageControlStateManager } from '../managers/DamageControlStateManager.js';
 import { HUDContainerManager } from '../managers/HUDContainerManager.js';
 import { DockingUIManager } from '../managers/DockingUIManager.js';
+import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -184,18 +183,10 @@ export class StarfieldManager {
         // Docking UI Manager - handles docking interface, system manager, and modal
         this.dockingUIManager = new DockingUIManager(this);
         this.dockingUIManager.initialize();
-        
-        // Create help interface
-        try {
-            this.helpInterface = new HelpInterface(this);
-            debug('UI', 'HelpInterface created successfully');
-        } catch (error) {
-            debug('P1', `❌ Failed to create HelpInterface: ${error}`);
-            this.helpInterface = null;
-        }
-        
-        // Create communication HUD for NPC interactions
-        this.communicationHUD = new CommunicationHUD(this, document.body);
+
+        // Interface Init Manager - handles help interface and communication HUD
+        this.interfaceInitManager = new InterfaceInitManager(this);
+        this.interfaceInitManager.initialize();
 
         // Create mission system coordinator (handles all mission-related functionality)
         // Mission components (missionAPI, missionEventService, etc.) are exposed via PropertyProxyInitializer

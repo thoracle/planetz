@@ -218,6 +218,12 @@ export class DisposalManager {
             this.sfm.dockingUIManager.dispose();
             this.sfm.dockingUIManager = null;
         }
+
+        // Clean up InterfaceInitManager
+        if (this.sfm.interfaceInitManager) {
+            this.sfm.interfaceInitManager.dispose();
+            this.sfm.interfaceInitManager = null;
+        }
     }
 
     /**
