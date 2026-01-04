@@ -36,6 +36,7 @@ import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
 import { DisposalManager } from '../managers/DisposalManager.js';
 import { CommunicationManager } from '../managers/CommunicationManager.js';
 import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js';
+import { ButtonStateManager } from '../managers/ButtonStateManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -373,51 +374,16 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Make audio manager globally accessible for other audio systems
         window.starfieldAudioManager = this.audioManager;
 
-        // Add CSS for dock button
-        const style = document.createElement('style');
-        style.textContent = `
-            .dock-button {
-                background: #00aa41;
-                color: #000 !important;
-                border: none;
-                padding: 6px 15px;
-                cursor: pointer;
-                font-family: "Courier New", monospace;
-                font-weight: bold;
-                border-radius: 4px;
-                transition: all 0.2s ease-in-out;
-                pointer-events: auto;
-                z-index: 1005;
-                width: 100%;
-                font-size: 12px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                box-shadow: 0 0 10px rgba(0, 170, 65, 0.3);
-                position: relative;
-            }
-            .dock-button:hover {
-                filter: brightness(1.2);
-                transform: scale(1.02);
-                box-shadow: 0 0 15px rgba(0, 170, 65, 0.5);
-            }
-            .dock-button.launch {
-                background: #aa4100;
-                box-shadow: 0 0 10px rgba(170, 65, 0, 0.3);
-            }
-            .dock-button.launch:hover {
-                background: #cc4f00;
-                box-shadow: 0 0 15px rgba(170, 65, 0, 0.5);
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Add button state tracking
-        this.currentButtonState = {
-            hasDockButton: false,
-            isDocked: false,
-            hasScanButton: false,
-            hasTradeButton: false
-        };
+        // ButtonStateManager - handles dock button CSS and state (initialized later)
+        // We need to create it early for CSS injection
+        this._buttonStateManager = new ButtonStateManager(this);
+        this._buttonStateManager.injectDockButtonCSS();
+
+        // Expose currentButtonState for backwards compatibility
+        Object.defineProperty(this, 'currentButtonState', {
+            get: () => this._buttonStateManager.currentButtonState,
+            set: (val) => { this._buttonStateManager.currentButtonState = val; }
+        });
         
         // Target dummy ships manager (extracted)
         this.targetDummyManager = new TargetDummyManager(this);
@@ -531,6 +497,10 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // FactionDiplomacyManager - handles faction relationship lookups
         this.factionDiplomacyManager = new FactionDiplomacyManager(this);
+
+        // ButtonStateManager already created earlier for CSS injection
+        // Alias for consistency with other managers
+        this.buttonStateManager = this._buttonStateManager;
     }
 
     // ========================================
@@ -1310,19 +1280,7 @@ debug('UTILITY', 'StarfieldManager: 3D Proximity Detector toggle result:', succe
     }
 
     updateActionButtons(currentTargetData, info) {
-        // Dock button removed - docking is now handled by the DockingModal
-        // which shows when conditions are met (distance, speed, etc.)
-        
-        // Clear existing buttons since we no longer show dock button
-        this.targetComputerManager.clearActionButtons();
-        
-        // Reset button state
-        this.currentButtonState = {
-            hasDockButton: false,
-            isDocked: this.isDocked,
-            hasScanButton: false,
-            hasTradeButton: false
-        };
+        this.buttonStateManager.updateActionButtons(currentTargetData, info);
     }
 
     setImpulseSpeed(requestedSpeed) {

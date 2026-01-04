@@ -163,6 +163,13 @@ export class DisposalManager {
             this.sfm.factionDiplomacyManager.dispose();
             this.sfm.factionDiplomacyManager = null;
         }
+
+        // Clean up ButtonStateManager
+        if (this.sfm._buttonStateManager) {
+            this.sfm._buttonStateManager.dispose();
+            this.sfm._buttonStateManager = null;
+            this.sfm.buttonStateManager = null;
+        }
     }
 
     /**
