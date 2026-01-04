@@ -113,10 +113,10 @@ export class DisposalManager {
             this.sfm.missionCoordinator = null;
         }
 
-        // Clean up starfield renderer
-        if (this.sfm.starfieldRenderer) {
-            this.sfm.starfieldRenderer.dispose();
-            this.sfm.starfieldRenderer = null;
+        // Clean up RenderingInitManager (handles starfieldRenderer)
+        if (this.sfm.renderingInitManager) {
+            this.sfm.renderingInitManager.dispose();
+            this.sfm.renderingInitManager = null;
         }
 
         // Clean up wireframe renderer

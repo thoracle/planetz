@@ -42,6 +42,7 @@ import { DockingUIManager } from '../managers/DockingUIManager.js';
 import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
 import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
 import { TargetingInitManager } from '../managers/TargetingInitManager.js';
+import { RenderingInitManager } from '../managers/RenderingInitManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
@@ -57,13 +58,11 @@ const TESTING_CONFIG = {
     // RESET_CREDITS: true,
     // RESET_FACTION_STANDINGS: true
 };
-import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 
 // Constants
 import { SHIP_MOVEMENT, DOCKING } from '../constants/ShipConstants.js';
 import { TARGETING_TIMING } from '../constants/TargetingConstants.js';
-import { STARFIELD } from '../constants/GameConstants.js';
 
 // VERSION TRACKING
 const STARFIELD_VERSION = '7.8.0-targeting-fixes';
@@ -118,10 +117,10 @@ export class StarfieldManager {
         // Initialize Ship Systems HUD Manager
         this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);
 
-        // Create starfield renderer with quintuple density
-        this.starfieldRenderer = new StarfieldRenderer(this.scene, this.THREE, STARFIELD.STAR_COUNT);
-        this.starfieldRenderer.initialize();
-        
+        // RenderingInitManager - handles starfield renderer initialization
+        this.renderingInitManager = new RenderingInitManager(this);
+        this.renderingInitManager.initialize();
+
         // Create speed indicator
         this.createSpeedIndicator();
         

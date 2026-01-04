@@ -61,6 +61,9 @@ export class PropertyProxyInitializer {
 
         // Targeting system proxies
         PropertyProxyInitializer.initializeTargetingProxies(sfm);
+
+        // Rendering system proxies
+        PropertyProxyInitializer.initializeRenderingProxies(sfm);
     }
 
     /**
@@ -449,6 +452,16 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'proximityDetector3D', {
             get: () => sfm.targetingInitManager.proximityDetector3D,
             set: (val) => { sfm.targetingInitManager.proximityDetector3D = val; }
+        });
+    }
+
+    /**
+     * Rendering system property proxies
+     */
+    static initializeRenderingProxies(sfm) {
+        Object.defineProperty(sfm, 'starfieldRenderer', {
+            get: () => sfm.renderingInitManager.starfieldRenderer,
+            set: (val) => { sfm.renderingInitManager.starfieldRenderer = val; }
         });
     }
 }
