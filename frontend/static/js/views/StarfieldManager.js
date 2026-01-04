@@ -28,6 +28,7 @@ import { SubTargetDisplayManager } from '../managers/SubTargetDisplayManager.js'
 import { DebugCommandManager } from '../managers/DebugCommandManager.js';
 import { SectorManager } from '../managers/SectorManager.js';
 import { ViewStateManager } from '../managers/ViewStateManager.js';
+import { TargetValidationManager } from '../managers/TargetValidationManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -499,6 +500,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // ViewStateManager - handles view state changes (FORE, AFT, GALACTIC, LONG RANGE)
         this.viewStateManager = new ViewStateManager(this);
+
+        // TargetValidationManager - handles target validation and sub-target updates
+        this.targetValidationManager = new TargetValidationManager(this);
     }
 
     /**
@@ -1056,59 +1060,9 @@ debug('TARGETING', `🎯   After: target=${targetAfterUpdate?.userData?.ship?.sh
         // Update starfield positions - delegate to StarfieldRenderer
         this.starfieldRenderer.updateStarfieldPositions(this.camera.position, this.view);
 
-        // Update target display whenever target computer is enabled
-        if (this.targetComputerEnabled) {
-            this.updateTargetDisplay();
-            
-            // If we have a current target, verify it's still valid and update sub-targets
-            if (this.currentTarget) {
-                // Verify the current target is still valid
-                const targetData = this.getCurrentTargetData();
-                if (targetData && targetData.object === this.currentTarget) {
-                    // Update sub-targets for targeting computer if it has sub-targeting capability
-                    const ship = this.viewManager?.getShip();
-                    const targetComputer = ship?.getSystem('target_computer');
-                    if (targetComputer && targetComputer.hasSubTargeting()) {
-                        // Update sub-targets periodically (this is handled in TargetComputer.update)
-                        // but we need to refresh the display when sub-targets change
-                        targetComputer.updateSubTargets();
-                    }
-                } else {
-                    // Target mismatch, clear current target
-                    this.currentTarget = null;
-                    this.targetIndex = -1;
-                }
-            }
-        }
-        
-        // Update target computer manager (handles wireframe rendering, reticles, etc.)
-        if (this.targetComputerEnabled) {
-            this.targetComputerManager.update(deltaTime);
-        }
+        // Update targeting system - delegate to TargetValidationManager
+        this.targetValidationManager.updateTargetingState(deltaTime);
 
-        // Update 3D world outline if target computer is enabled and we have a target
-        if (this.targetComputerEnabled && this.currentTarget && this.outlineEnabled) {
-            // Throttle outline updates to prevent continuous recreation (max 10 FPS for outline updates)
-            const now = Date.now();
-            if (now - this.lastOutlineUpdate > 100) {
-                this.updateTargetOutline(this.currentTarget, deltaTime);
-                this.lastOutlineUpdate = now;
-            }
-        }
-
-        // Update direction arrow after updating target display - delegate to target computer manager
-        if (this.targetComputerManager) {
-            // Sync the target computer enabled state only, not the current target
-            this.targetComputerManager.targetComputerEnabled = this.targetComputerEnabled;
-            
-            if (this.targetComputerEnabled && this.currentTarget) {
-                this.updateDirectionArrow();
-            } else {
-                // Hide all arrows - delegate to target computer manager
-                this.targetComputerManager.hideAllDirectionArrows();
-            }
-        }
-        
         // Update weapon system - delegate to WeaponHUDManager
         this.weaponHUDManager.updateWeaponSystem(deltaTime);
 
