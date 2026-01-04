@@ -33,6 +33,7 @@ import { WeaponEffectsInitManager } from '../managers/WeaponEffectsInitManager.j
 import { UIToggleManager } from '../managers/UIToggleManager.js';
 import { TargetCyclingManager } from '../managers/TargetCyclingManager.js';
 import { TargetDisplayManager } from '../managers/TargetDisplayManager.js';
+import { DisposalManager } from '../managers/DisposalManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -519,6 +520,9 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
 
         // TargetDisplayManager - handles target display updates and formatting
         this.targetDisplayManager = new TargetDisplayManager(this);
+
+        // DisposalManager - handles cleanup and resource disposal
+        this.disposalManager = new DisposalManager(this);
     }
 
     /**
@@ -894,168 +898,7 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     dispose() {
-        debug('UTILITY', '⚡ StarfieldManager disposal started...');
-
-        // Abort all event listeners registered with AbortController
-        if (this._abortController) {
-            this._abortController.abort();
-            this._abortController = null;
-        }
-
-        // Clean up TargetComputerManager
-        if (this.targetComputerManager) {
-            this.targetComputerManager.dispose();
-            this.targetComputerManager = null;
-        }
-
-        // Clean up EnemyAIManager
-        if (this.enemyAIManager) {
-            if (typeof this.enemyAIManager.dispose === 'function') {
-                this.enemyAIManager.dispose();
-            }
-            this.enemyAIManager = null;
-        }
-
-        // Clean up StarChartsManager
-        if (this.starChartsManager) {
-            if (typeof this.starChartsManager.dispose === 'function') {
-                this.starChartsManager.dispose();
-            }
-            this.starChartsManager = null;
-        }
-
-        // Clean up ProximityDetector3D (radar)
-        if (this.proximityDetector3D) {
-            if (typeof this.proximityDetector3D.dispose === 'function') {
-                this.proximityDetector3D.dispose();
-            }
-            this.proximityDetector3D = null;
-        }
-
-        // Clean up WeaponHUD
-        if (this.weaponHUD) {
-            if (typeof this.weaponHUD.dispose === 'function') {
-                this.weaponHUD.dispose();
-            }
-            this.weaponHUD = null;
-        }
-
-        // Clean up HelpInterface
-        if (this.helpInterface) {
-            if (typeof this.helpInterface.dispose === 'function') {
-                this.helpInterface.dispose();
-            }
-            this.helpInterface = null;
-        }
-
-        // Clean up MissionSystemCoordinator (handles all mission components)
-        if (this.missionCoordinator) {
-            this.missionCoordinator.dispose();
-            this.missionCoordinator = null;
-        }
-
-        // Clean up docking modal
-        if (this.dockingModal) {
-            this.dockingModal.destroy();
-            this.dockingModal = null;
-        }
-
-        // Clean up damage control HUD
-        if (this.damageControlHUD) {
-            this.damageControlHUD.dispose();
-        }
-        if (this.damageControlContainer && this.damageControlContainer.parentNode) {
-            this.damageControlContainer.parentNode.removeChild(this.damageControlContainer);
-        }
-
-        // Clean up repair system interval
-        if (this.repairUpdateInterval) {
-            clearInterval(this.repairUpdateInterval);
-            this.repairUpdateInterval = null;
-        }
-
-        // Clean up WeaponHUD retry interval
-        if (this.weaponHUDRetryInterval) {
-            clearInterval(this.weaponHUDRetryInterval);
-            this.weaponHUDRetryInterval = null;
-        }
-
-        // Clean up target dummy ships
-        this.clearTargetDummyShips();
-
-        // Clean up starfield renderer
-        if (this.starfieldRenderer) {
-            this.starfieldRenderer.dispose();
-            this.starfieldRenderer = null;
-        }
-
-        // Clean up wireframe and renderer
-        if (this.wireframeRenderer) {
-            this.wireframeRenderer.dispose();
-            this.wireframeRenderer = null;
-        }
-
-        if (this.targetWireframe) {
-            if (this.wireframeScene) {
-                this.wireframeScene.remove(this.targetWireframe);
-            }
-            if (this.targetWireframe.geometry) {
-                this.targetWireframe.geometry.dispose();
-            }
-            if (this.targetWireframe.material) {
-                if (Array.isArray(this.targetWireframe.material)) {
-                    this.targetWireframe.material.forEach(material => material.dispose());
-                } else {
-                    this.targetWireframe.material.dispose();
-                }
-            }
-            this.targetWireframe = null;
-        }
-
-        // Clean up audio manager
-        if (this.audioManager) {
-            this.audioManager.dispose();
-            this.audioManager = null;
-        }
-
-        // Clean up UI elements
-        if (this.shipSystemsHUD && this.shipSystemsHUD.parentNode) {
-            this.shipSystemsHUD.parentNode.removeChild(this.shipSystemsHUD);
-            this.shipSystemsHUD = null;
-        }
-        if (this.speedIndicator && this.speedIndicator.parentNode) {
-            this.speedIndicator.parentNode.removeChild(this.speedIndicator);
-            this.speedIndicator = null;
-        }
-        // Intel HUD cleanup delegated to IntelDisplayManager
-        if (this.intelDisplayManager) {
-            this.intelDisplayManager.destroy();
-        }
-
-        // Remove global references
-        if (window.starfieldManager === this) {
-            delete window.starfieldManager;
-        }
-        if (window.starfieldAudioManager === this.audioManager) {
-            delete window.starfieldAudioManager;
-        }
-        if (window.targetComputerManager === this.targetComputerManager) {
-            delete window.targetComputerManager;
-        }
-
-        // Clear all pending timeouts
-        if (this._pendingTimeouts) {
-            this._pendingTimeouts.forEach(id => clearTimeout(id));
-            this._pendingTimeouts.clear();
-            this._pendingTimeouts = null;
-        }
-
-        this.ship = null;
-        this.scene = null;
-        this.camera = null;
-        this.viewManager = null;
-
-        debug('UTILITY', '✅ StarfieldManager disposal complete');
+        this.disposalManager.dispose();
     }
 
     /**

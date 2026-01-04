@@ -1,0 +1,256 @@
+/**
+ * DisposalManager
+ *
+ * Extracted from StarfieldManager to reduce god class size.
+ * Handles cleanup and disposal of all StarfieldManager resources.
+ *
+ * Features:
+ * - Dispose all sub-managers and components
+ * - Clean up UI elements and DOM nodes
+ * - Clear intervals and timeouts
+ * - Remove global references
+ * - Clean up Three.js resources (geometry, materials)
+ */
+
+import { debug } from '../debug.js';
+
+export class DisposalManager {
+    /**
+     * Create a DisposalManager
+     * @param {Object} starfieldManager - Reference to parent StarfieldManager
+     */
+    constructor(starfieldManager) {
+        this.sfm = starfieldManager;
+    }
+
+    /**
+     * Dispose of all StarfieldManager resources
+     * This is the main cleanup method called when StarfieldManager is destroyed
+     */
+    dispose() {
+        debug('UTILITY', '⚡ StarfieldManager disposal started...');
+
+        // Abort all event listeners registered with AbortController
+        this.disposeEventListeners();
+
+        // Clean up all sub-managers
+        this.disposeManagers();
+
+        // Clean up UI components
+        this.disposeUIComponents();
+
+        // Clean up intervals
+        this.disposeIntervals();
+
+        // Clean up Three.js resources
+        this.disposeThreeJsResources();
+
+        // Clean up UI elements
+        this.disposeUIElements();
+
+        // Remove global references
+        this.disposeGlobalReferences();
+
+        // Clear all pending timeouts
+        this.disposeTimeouts();
+
+        // Clear core references
+        this.sfm.ship = null;
+        this.sfm.scene = null;
+        this.sfm.camera = null;
+        this.sfm.viewManager = null;
+
+        debug('UTILITY', '✅ StarfieldManager disposal complete');
+    }
+
+    /**
+     * Dispose event listeners via AbortController
+     */
+    disposeEventListeners() {
+        if (this.sfm._abortController) {
+            this.sfm._abortController.abort();
+            this.sfm._abortController = null;
+        }
+    }
+
+    /**
+     * Dispose all sub-managers
+     */
+    disposeManagers() {
+        // Clean up TargetComputerManager
+        if (this.sfm.targetComputerManager) {
+            this.sfm.targetComputerManager.dispose();
+            this.sfm.targetComputerManager = null;
+        }
+
+        // Clean up EnemyAIManager
+        if (this.sfm.enemyAIManager) {
+            if (typeof this.sfm.enemyAIManager.dispose === 'function') {
+                this.sfm.enemyAIManager.dispose();
+            }
+            this.sfm.enemyAIManager = null;
+        }
+
+        // Clean up StarChartsManager
+        if (this.sfm.starChartsManager) {
+            if (typeof this.sfm.starChartsManager.dispose === 'function') {
+                this.sfm.starChartsManager.dispose();
+            }
+            this.sfm.starChartsManager = null;
+        }
+
+        // Clean up ProximityDetector3D (radar)
+        if (this.sfm.proximityDetector3D) {
+            if (typeof this.sfm.proximityDetector3D.dispose === 'function') {
+                this.sfm.proximityDetector3D.dispose();
+            }
+            this.sfm.proximityDetector3D = null;
+        }
+
+        // Clean up WeaponHUD
+        if (this.sfm.weaponHUD) {
+            if (typeof this.sfm.weaponHUD.dispose === 'function') {
+                this.sfm.weaponHUD.dispose();
+            }
+            this.sfm.weaponHUD = null;
+        }
+
+        // Clean up HelpInterface
+        if (this.sfm.helpInterface) {
+            if (typeof this.sfm.helpInterface.dispose === 'function') {
+                this.sfm.helpInterface.dispose();
+            }
+            this.sfm.helpInterface = null;
+        }
+
+        // Clean up MissionSystemCoordinator (handles all mission components)
+        if (this.sfm.missionCoordinator) {
+            this.sfm.missionCoordinator.dispose();
+            this.sfm.missionCoordinator = null;
+        }
+
+        // Clean up starfield renderer
+        if (this.sfm.starfieldRenderer) {
+            this.sfm.starfieldRenderer.dispose();
+            this.sfm.starfieldRenderer = null;
+        }
+
+        // Clean up wireframe renderer
+        if (this.sfm.wireframeRenderer) {
+            this.sfm.wireframeRenderer.dispose();
+            this.sfm.wireframeRenderer = null;
+        }
+
+        // Clean up audio manager
+        if (this.sfm.audioManager) {
+            this.sfm.audioManager.dispose();
+            this.sfm.audioManager = null;
+        }
+
+        // Intel HUD cleanup delegated to IntelDisplayManager
+        if (this.sfm.intelDisplayManager) {
+            this.sfm.intelDisplayManager.destroy();
+        }
+    }
+
+    /**
+     * Dispose UI components (modals, HUDs)
+     */
+    disposeUIComponents() {
+        // Clean up docking modal
+        if (this.sfm.dockingModal) {
+            this.sfm.dockingModal.destroy();
+            this.sfm.dockingModal = null;
+        }
+
+        // Clean up damage control HUD
+        if (this.sfm.damageControlHUD) {
+            this.sfm.damageControlHUD.dispose();
+        }
+        if (this.sfm.damageControlContainer && this.sfm.damageControlContainer.parentNode) {
+            this.sfm.damageControlContainer.parentNode.removeChild(this.sfm.damageControlContainer);
+        }
+
+        // Clean up target dummy ships
+        this.sfm.clearTargetDummyShips();
+    }
+
+    /**
+     * Dispose intervals (repair, weapon HUD retry)
+     */
+    disposeIntervals() {
+        // Clean up repair system interval
+        if (this.sfm.repairUpdateInterval) {
+            clearInterval(this.sfm.repairUpdateInterval);
+            this.sfm.repairUpdateInterval = null;
+        }
+
+        // Clean up WeaponHUD retry interval
+        if (this.sfm.weaponHUDRetryInterval) {
+            clearInterval(this.sfm.weaponHUDRetryInterval);
+            this.sfm.weaponHUDRetryInterval = null;
+        }
+    }
+
+    /**
+     * Dispose Three.js resources (geometry, materials)
+     */
+    disposeThreeJsResources() {
+        if (this.sfm.targetWireframe) {
+            if (this.sfm.wireframeScene) {
+                this.sfm.wireframeScene.remove(this.sfm.targetWireframe);
+            }
+            if (this.sfm.targetWireframe.geometry) {
+                this.sfm.targetWireframe.geometry.dispose();
+            }
+            if (this.sfm.targetWireframe.material) {
+                if (Array.isArray(this.sfm.targetWireframe.material)) {
+                    this.sfm.targetWireframe.material.forEach(material => material.dispose());
+                } else {
+                    this.sfm.targetWireframe.material.dispose();
+                }
+            }
+            this.sfm.targetWireframe = null;
+        }
+    }
+
+    /**
+     * Dispose UI elements (HUDs, indicators)
+     */
+    disposeUIElements() {
+        if (this.sfm.shipSystemsHUD && this.sfm.shipSystemsHUD.parentNode) {
+            this.sfm.shipSystemsHUD.parentNode.removeChild(this.sfm.shipSystemsHUD);
+            this.sfm.shipSystemsHUD = null;
+        }
+        if (this.sfm.speedIndicator && this.sfm.speedIndicator.parentNode) {
+            this.sfm.speedIndicator.parentNode.removeChild(this.sfm.speedIndicator);
+            this.sfm.speedIndicator = null;
+        }
+    }
+
+    /**
+     * Remove global window references
+     */
+    disposeGlobalReferences() {
+        if (window.starfieldManager === this.sfm) {
+            delete window.starfieldManager;
+        }
+        if (window.starfieldAudioManager === this.sfm.audioManager) {
+            delete window.starfieldAudioManager;
+        }
+        if (window.targetComputerManager === this.sfm.targetComputerManager) {
+            delete window.targetComputerManager;
+        }
+    }
+
+    /**
+     * Clear all pending timeouts
+     */
+    disposeTimeouts() {
+        if (this.sfm._pendingTimeouts) {
+            this.sfm._pendingTimeouts.forEach(id => clearTimeout(id));
+            this.sfm._pendingTimeouts.clear();
+            this.sfm._pendingTimeouts = null;
+        }
+    }
+}
