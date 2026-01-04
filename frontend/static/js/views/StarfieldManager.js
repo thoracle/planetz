@@ -207,15 +207,8 @@ export class StarfieldManager {
         this.communicationHUD = new CommunicationHUD(this, document.body);
 
         // Create mission system coordinator (handles all mission-related functionality)
+        // Mission components (missionAPI, missionEventService, etc.) are exposed via PropertyProxyInitializer
         this.missionCoordinator = new MissionSystemCoordinator(this);
-
-        // Expose mission components for backwards compatibility
-        this.missionAPI = this.missionCoordinator.missionAPI;
-        this.missionEventService = this.missionCoordinator.missionEventService;
-        this.missionStatusHUD = this.missionCoordinator.missionStatusHUD;
-        this.missionCompletionUI = this.missionCoordinator.missionCompletionUI;
-        this.missionNotificationHandler = this.missionCoordinator.missionNotificationHandler;
-        this.missionEventHandler = this.missionCoordinator.missionEventHandler;
 
         // Create enemy AI manager
         this.enemyAIManager = new EnemyAIManager(this.scene, this.camera, this);

@@ -46,6 +46,9 @@ export class PropertyProxyInitializer {
 
         // View state proxies
         PropertyProxyInitializer.initializeViewStateProxies(sfm);
+
+        // Mission system proxies
+        PropertyProxyInitializer.initializeMissionProxies(sfm);
     }
 
     /**
@@ -334,6 +337,30 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'previousView', {
             get: () => sfm.viewStateManager.previousView,
             set: (val) => { sfm.viewStateManager.previousView = val; }
+        });
+    }
+
+    /**
+     * Mission system property proxies (read-only access to MissionSystemCoordinator components)
+     */
+    static initializeMissionProxies(sfm) {
+        Object.defineProperty(sfm, 'missionAPI', {
+            get: () => sfm.missionCoordinator.missionAPI
+        });
+        Object.defineProperty(sfm, 'missionEventService', {
+            get: () => sfm.missionCoordinator.missionEventService
+        });
+        Object.defineProperty(sfm, 'missionStatusHUD', {
+            get: () => sfm.missionCoordinator.missionStatusHUD
+        });
+        Object.defineProperty(sfm, 'missionCompletionUI', {
+            get: () => sfm.missionCoordinator.missionCompletionUI
+        });
+        Object.defineProperty(sfm, 'missionNotificationHandler', {
+            get: () => sfm.missionCoordinator.missionNotificationHandler
+        });
+        Object.defineProperty(sfm, 'missionEventHandler', {
+            get: () => sfm.missionCoordinator.missionEventHandler
         });
     }
 }
