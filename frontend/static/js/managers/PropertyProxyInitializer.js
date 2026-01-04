@@ -58,6 +58,9 @@ export class PropertyProxyInitializer {
 
         // Interface proxies
         PropertyProxyInitializer.initializeInterfaceProxies(sfm);
+
+        // Targeting system proxies
+        PropertyProxyInitializer.initializeTargetingProxies(sfm);
     }
 
     /**
@@ -428,6 +431,24 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'communicationHUD', {
             get: () => sfm.interfaceInitManager.communicationHUD,
             set: (val) => { sfm.interfaceInitManager.communicationHUD = val; }
+        });
+    }
+
+    /**
+     * Targeting system property proxies
+     */
+    static initializeTargetingProxies(sfm) {
+        Object.defineProperty(sfm, 'targetComputerManager', {
+            get: () => sfm.targetingInitManager.targetComputerManager,
+            set: (val) => { sfm.targetingInitManager.targetComputerManager = val; }
+        });
+        Object.defineProperty(sfm, 'starChartsManager', {
+            get: () => sfm.targetingInitManager.starChartsManager,
+            set: (val) => { sfm.targetingInitManager.starChartsManager = val; }
+        });
+        Object.defineProperty(sfm, 'proximityDetector3D', {
+            get: () => sfm.targetingInitManager.proximityDetector3D,
+            set: (val) => { sfm.targetingInitManager.proximityDetector3D = val; }
         });
     }
 }

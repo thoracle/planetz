@@ -41,8 +41,8 @@ import { HUDContainerManager } from '../managers/HUDContainerManager.js';
 import { DockingUIManager } from '../managers/DockingUIManager.js';
 import { InterfaceInitManager } from '../managers/InterfaceInitManager.js';
 import { GlobalReferencesManager } from '../managers/GlobalReferencesManager.js';
+import { TargetingInitManager } from '../managers/TargetingInitManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
-import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
@@ -58,8 +58,6 @@ const TESTING_CONFIG = {
     // RESET_FACTION_STANDINGS: true
 };
 import { StarfieldRenderer } from './StarfieldRenderer.js';
-import { TargetComputerManager } from './TargetComputerManager.js';
-import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
 import { EnemyAIManager } from '../ai/EnemyAIManager.js';
 
 // Constants
@@ -134,18 +132,10 @@ export class StarfieldManager {
         // Initialize Damage Control State Manager
         this.damageControlStateManager = new DamageControlStateManager(this);
 
-        // Create target computer manager
-        this.targetComputerManager = new TargetComputerManager(
-            this.scene, this.camera, this.viewManager, this.THREE, this.solarSystemManager
-        );
-        this.targetComputerManager.initialize();
-        
-        // Create star charts manager
-        this.starChartsManager = new StarChartsManager(
-            this.scene, this.camera, this.viewManager, this.solarSystemManager, this.targetComputerManager
-        );
-        
-        // Help screen controller will be initialized later in constructor
+        // TargetingInitManager - handles targeting system initialization
+        // (targetComputerManager, starChartsManager, proximityDetector3D)
+        this.targetingInitManager = new TargetingInitManager(this);
+        this.targetingInitManager.initialize();
 
         // AbortController for centralized event listener cleanup
         this._abortController = new AbortController();
@@ -157,12 +147,6 @@ export class StarfieldManager {
         this.globalReferencesManager = new GlobalReferencesManager(this);
         this.globalReferencesManager.initialize();
 
-        // Initialize Waypoint HUD
-        
-        // Create radar HUD
-        this.proximityDetector3D = new ProximityDetector3D(this, document.body);
-        debug('UTILITY', 'StarfieldManager: 3D Proximity Detector initialized');
-        
         // Initialize simple docking system (moved to app.js after spatial systems are ready)
         // if (!this._dockingInitTried) {
         //     this._dockingInitTried = true;

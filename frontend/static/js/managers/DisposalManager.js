@@ -77,10 +77,10 @@ export class DisposalManager {
      * Dispose all sub-managers
      */
     disposeManagers() {
-        // Clean up TargetComputerManager
-        if (this.sfm.targetComputerManager) {
-            this.sfm.targetComputerManager.dispose();
-            this.sfm.targetComputerManager = null;
+        // Clean up TargetingInitManager (handles targetComputerManager, starChartsManager, proximityDetector3D)
+        if (this.sfm.targetingInitManager) {
+            this.sfm.targetingInitManager.dispose();
+            this.sfm.targetingInitManager = null;
         }
 
         // Clean up EnemyAIManager
@@ -89,22 +89,6 @@ export class DisposalManager {
                 this.sfm.enemyAIManager.dispose();
             }
             this.sfm.enemyAIManager = null;
-        }
-
-        // Clean up StarChartsManager
-        if (this.sfm.starChartsManager) {
-            if (typeof this.sfm.starChartsManager.dispose === 'function') {
-                this.sfm.starChartsManager.dispose();
-            }
-            this.sfm.starChartsManager = null;
-        }
-
-        // Clean up ProximityDetector3D (radar)
-        if (this.sfm.proximityDetector3D) {
-            if (typeof this.sfm.proximityDetector3D.dispose === 'function') {
-                this.sfm.proximityDetector3D.dispose();
-            }
-            this.sfm.proximityDetector3D = null;
         }
 
         // Clean up WeaponHUD
