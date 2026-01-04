@@ -182,6 +182,12 @@ export class DisposalManager {
             this.sfm.miscSystemManager.dispose();
             this.sfm.miscSystemManager = null;
         }
+
+        // Clean up TargetStateManager
+        if (this.sfm.targetStateManager) {
+            this.sfm.targetStateManager.dispose();
+            this.sfm.targetStateManager = null;
+        }
     }
 
     /**

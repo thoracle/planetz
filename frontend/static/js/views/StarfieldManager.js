@@ -42,6 +42,7 @@ import { UpdateLoopManager } from '../managers/UpdateLoopManager.js';
 import { MiscSystemManager } from '../managers/MiscSystemManager.js';
 import { TimeoutManager } from '../managers/TimeoutManager.js';
 import { PropertyProxyInitializer } from '../managers/PropertyProxyInitializer.js';
+import { TargetStateManager } from '../managers/TargetStateManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -127,25 +128,8 @@ export class StarfieldManager {
         // Initialize Ship Movement Controller
         this.shipMovementController = new ShipMovementController(this);
 
-        // Target computer state
-        this.targetComputerEnabled = false;
-        this.currentTarget = null;
-        this.targetIndex = -1;
-        this.targetObjects = [];
-        this.targetWireframe = null;
-        this.targetReticle = null;
-        
-        // Add sorting state
-        this.lastSortTime = 0;
-        this.sortInterval = TARGETING_TIMING.SORT_INTERVAL_MS;
-
-        // Add arrow state tracking
-        this.lastArrowState = null;
-
-        // Add button state logging throttling
-        this.lastButtonStateLog = null;
-
-        // Smooth rotation state is now managed by ShipMovementController
+        // Initialize Target State Manager (holds targeting-related state)
+        this.targetStateManager = new TargetStateManager(this);
 
         // Initialize Ship Systems HUD Manager
         this.shipSystemsHUDManager = new ShipSystemsHUDManager(this);

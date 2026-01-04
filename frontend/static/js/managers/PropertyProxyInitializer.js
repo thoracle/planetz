@@ -34,6 +34,9 @@ export class PropertyProxyInitializer {
 
         // Button state proxies
         PropertyProxyInitializer.initializeButtonStateProxies(sfm);
+
+        // Target state proxies
+        PropertyProxyInitializer.initializeTargetStateProxies(sfm);
     }
 
     /**
@@ -190,6 +193,52 @@ export class PropertyProxyInitializer {
         Object.defineProperty(sfm, 'currentButtonState', {
             get: () => sfm._buttonStateManager.currentButtonState,
             set: (val) => { sfm._buttonStateManager.currentButtonState = val; }
+        });
+    }
+
+    /**
+     * Target state property proxies
+     */
+    static initializeTargetStateProxies(sfm) {
+        Object.defineProperty(sfm, 'targetComputerEnabled', {
+            get: () => sfm.targetStateManager.targetComputerEnabled,
+            set: (val) => { sfm.targetStateManager.targetComputerEnabled = val; }
+        });
+        Object.defineProperty(sfm, 'currentTarget', {
+            get: () => sfm.targetStateManager.currentTarget,
+            set: (val) => { sfm.targetStateManager.currentTarget = val; }
+        });
+        Object.defineProperty(sfm, 'targetIndex', {
+            get: () => sfm.targetStateManager.targetIndex,
+            set: (val) => { sfm.targetStateManager.targetIndex = val; }
+        });
+        Object.defineProperty(sfm, 'targetObjects', {
+            get: () => sfm.targetStateManager.targetObjects,
+            set: (val) => { sfm.targetStateManager.targetObjects = val; }
+        });
+        Object.defineProperty(sfm, 'targetWireframe', {
+            get: () => sfm.targetStateManager.targetWireframe,
+            set: (val) => { sfm.targetStateManager.targetWireframe = val; }
+        });
+        Object.defineProperty(sfm, 'targetReticle', {
+            get: () => sfm.targetStateManager.targetReticle,
+            set: (val) => { sfm.targetStateManager.targetReticle = val; }
+        });
+        Object.defineProperty(sfm, 'lastSortTime', {
+            get: () => sfm.targetStateManager.lastSortTime,
+            set: (val) => { sfm.targetStateManager.lastSortTime = val; }
+        });
+        Object.defineProperty(sfm, 'sortInterval', {
+            get: () => sfm.targetStateManager.sortInterval,
+            set: (val) => { sfm.targetStateManager.sortInterval = val; }
+        });
+        Object.defineProperty(sfm, 'lastArrowState', {
+            get: () => sfm.targetStateManager.lastArrowState,
+            set: (val) => { sfm.targetStateManager.lastArrowState = val; }
+        });
+        Object.defineProperty(sfm, 'lastButtonStateLog', {
+            get: () => sfm.targetStateManager.lastButtonStateLog,
+            set: (val) => { sfm.targetStateManager.lastButtonStateLog = val; }
         });
     }
 }
