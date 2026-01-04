@@ -33,11 +33,11 @@ export class DisposalManager {
         // Abort all event listeners registered with AbortController
         this.disposeEventListeners();
 
+        // Clean up UI components BEFORE managers (some UI cleanup needs manager access)
+        this.disposeUIComponents();
+
         // Clean up all sub-managers
         this.disposeManagers();
-
-        // Clean up UI components
-        this.disposeUIComponents();
 
         // Clean up intervals
         this.disposeIntervals();
@@ -119,7 +119,7 @@ export class DisposalManager {
             this.sfm.uiManagersInitializer = null;
         }
 
-        // Clean up InfrastructureInitializer (handles 3 infrastructure managers)
+        // Clean up InfrastructureInitializer (handles 4 infrastructure managers)
         if (this.sfm.infrastructureInitializer) {
             this.sfm.infrastructureInitializer.dispose();
             this.sfm.infrastructureInitializer = null;
@@ -163,6 +163,7 @@ export class DisposalManager {
 
     /**
      * Dispose UI components (modals, HUDs)
+     * Called BEFORE disposeManagers() to ensure managers are still available
      */
     disposeUIComponents() {
         // Note: dockingModal is now cleaned up by DockingUIManager.dispose() in disposeManagers()
@@ -170,7 +171,9 @@ export class DisposalManager {
         // by HUDContainerManager.dispose() in disposeManagers()
 
         // Clean up target dummy ships
-        this.sfm.clearTargetDummyShips();
+        if (this.sfm.targetDummyManager) {
+            this.sfm.clearTargetDummyShips();
+        }
     }
 
     /**
