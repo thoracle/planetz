@@ -299,4 +299,62 @@ export class ShipMovementController {
         this.decelerating = false;
         this.rotationVelocity = { x: 0, y: 0 };
     }
+
+    /**
+     * Set impulse speed with engine audio feedback
+     * @param {number} requestedSpeed - The requested speed (0-9)
+     * @returns {boolean} True if speed was set successfully
+     */
+    setImpulseSpeed(requestedSpeed) {
+        // Don't allow speed changes while docked
+        if (this.sfm.isDocked) {
+            return false;
+        }
+
+        // Update impulse engines with new speed setting (this will clamp the speed)
+        const ship = this.sfm.viewManager?.getShip();
+        let actualSpeed = requestedSpeed; // fallback
+
+        if (ship) {
+            const impulseEngines = ship.getSystem('impulse_engines');
+            if (impulseEngines) {
+                // Check if the requested speed exceeds the engine's maximum capability
+                const maxSpeed = impulseEngines.getMaxImpulseSpeed();
+
+                if (requestedSpeed > maxSpeed) {
+                    // Requested speed exceeds engine capability - fail silently for modal
+                    return false;
+                }
+
+                impulseEngines.setImpulseSpeed(requestedSpeed);
+                // Get the actual clamped speed from the impulse engines
+                actualSpeed = impulseEngines.getImpulseSpeed();
+            }
+        }
+
+        // Set target speed to the actual clamped speed
+        this.targetSpeed = actualSpeed;
+
+        // Determine if we need to decelerate
+        if (actualSpeed < this.currentSpeed) {
+            this.decelerating = true;
+            // Start engine shutdown if going to zero
+            if (actualSpeed === 0 && this.sfm.engineState === 'running') {
+                this.sfm.playEngineShutdown();
+            }
+        } else {
+            this.decelerating = false;
+            // Handle engine sounds for acceleration
+            if (this.sfm.soundLoaded) {
+                const volume = actualSpeed / this.maxSpeed;
+                if (this.sfm.engineState === 'stopped') {
+                    this.sfm.playEngineStartup(volume);
+                } else if (this.sfm.engineState === 'running') {
+                    this.sfm.engineSound.setVolume(volume);
+                }
+            }
+        }
+
+        return true;
+    }
 }

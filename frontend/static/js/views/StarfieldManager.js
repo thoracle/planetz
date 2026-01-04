@@ -2084,56 +2084,7 @@ debug('INSPECTION', '🐛 DEBUG MODE DISABLED - Cleaning up debug spheres');
     }
 
     setImpulseSpeed(requestedSpeed) {
-        // Don't allow speed changes while docked
-        if (this.isDocked) {
-            return false;
-        }
-        
-        // Update impulse engines with new speed setting (this will clamp the speed)
-        const ship = this.viewManager?.getShip();
-        let actualSpeed = requestedSpeed; // fallback
-        
-        if (ship) {
-            const impulseEngines = ship.getSystem('impulse_engines');
-            if (impulseEngines) {
-                // Check if the requested speed exceeds the engine's maximum capability
-                const maxSpeed = impulseEngines.getMaxImpulseSpeed();
-                
-                if (requestedSpeed > maxSpeed) {
-                    // Requested speed exceeds engine capability - fail silently for modal
-                    return false;
-                }
-                
-                impulseEngines.setImpulseSpeed(requestedSpeed);
-                // Get the actual clamped speed from the impulse engines
-                actualSpeed = impulseEngines.getImpulseSpeed();
-            }
-        }
-        
-        // Set target speed to the actual clamped speed
-        this.targetSpeed = actualSpeed;
-        
-        // Determine if we need to decelerate
-        if (actualSpeed < this.currentSpeed) {
-            this.decelerating = true;
-            // Start engine shutdown if going to zero
-            if (actualSpeed === 0 && this.engineState === 'running') {
-                this.playEngineShutdown();
-            }
-        } else {
-            this.decelerating = false;
-            // Handle engine sounds for acceleration
-            if (this.soundLoaded) {
-                const volume = actualSpeed / this.maxSpeed;
-                if (this.engineState === 'stopped') {
-                    this.playEngineStartup(volume);
-                } else if (this.engineState === 'running') {
-                    this.engineSound.setVolume(volume);
-                }
-            }
-        }
-        
-        return true;
+        return this.shipMovementController.setImpulseSpeed(requestedSpeed);
     }
 
     /**
