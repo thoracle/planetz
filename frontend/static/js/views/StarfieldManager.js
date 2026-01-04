@@ -37,6 +37,7 @@ import { DisposalManager } from '../managers/DisposalManager.js';
 import { CommunicationManager } from '../managers/CommunicationManager.js';
 import { FactionDiplomacyManager } from '../managers/FactionDiplomacyManager.js';
 import { ButtonStateManager } from '../managers/ButtonStateManager.js';
+import { AudioInitManager } from '../managers/AudioInitManager.js';
 import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { StarChartsManager } from './StarChartsManager.js';
 import { debug } from '../debug.js';
@@ -56,7 +57,6 @@ const TESTING_CONFIG = {
 import { WeaponSlot } from '../ship/systems/WeaponSlot.js';
 import SimplifiedDamageControl from '../ui/SimplifiedDamageControl.js';
 import DockingModal from '../ui/DockingModal.js';
-import { StarfieldAudioManager } from './StarfieldAudioManager.js';
 import { StarfieldRenderer } from './StarfieldRenderer.js';
 import { TargetComputerManager } from './TargetComputerManager.js';
 import { ProximityDetector3D } from '../ui/ProximityDetector3D.js';
@@ -357,22 +357,12 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
         // Bind mouse events
         this.bindMouseEvents();
 
-        // Audio setup - using new StarfieldAudioManager
-        this.listener = new this.THREE.AudioListener();
-        if (!this.camera) {
-            debug('P1', 'No camera available for audio listener');
-            return;
-        }
-        this.camera.add(this.listener);
-
-        // Initialize audio manager
-        this.audioManager = new StarfieldAudioManager(this.THREE, this.listener);
+        // AudioInitManager - handles audio listener and StarfieldAudioManager
+        this.audioInitManager = new AudioInitManager(this);
+        this.audioInitManager.initializeAudio();
 
         // Make this instance globally available for button click handlers
         window.starfieldManager = this;
-        
-        // Make audio manager globally accessible for other audio systems
-        window.starfieldAudioManager = this.audioManager;
 
         // ButtonStateManager - handles dock button CSS and state (initialized later)
         // We need to create it early for CSS injection
@@ -898,13 +888,11 @@ debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD..
     }
 
     playEngineStartup(targetVolume) {
-        // Delegate to audio manager
-        this.audioManager.playEngineStartup();
+        this.audioInitManager.playEngineStartup(targetVolume);
     }
 
     playEngineShutdown() {
-        // Delegate to audio manager
-        this.audioManager.playEngineShutdown();
+        this.audioInitManager.playEngineShutdown();
     }
 
     playCommandSound() {
