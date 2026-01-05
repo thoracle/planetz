@@ -1,6 +1,7 @@
 import { debug } from '../debug.js';
 import { StarChartsPanController } from './starcharts/StarChartsPanController.js';
 import { StarChartsTooltipManager } from './starcharts/StarChartsTooltipManager.js';
+import { StarChartsCoordinateSystem } from './starcharts/StarChartsCoordinateSystem.js';
 
 /**
  * StarChartsUI - User interface for the Star Charts discovery system
@@ -67,6 +68,9 @@ export class StarChartsUI {
 
         // Initialize tooltip manager
         this.tooltipManager = new StarChartsTooltipManager(this);
+
+        // Initialize coordinate system manager
+        this.coordinateSystem = new StarChartsCoordinateSystem(this);
 
         this.setupEventListeners();
 
@@ -587,32 +591,16 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
         }
     }
 
+    // ========================================
+    // Coordinate system methods (delegated to StarChartsCoordinateSystem)
+    // ========================================
+
     screenToWorld(screenX, screenY) {
-        // Convert screen coordinates to world coordinates
-        
-        const rect = this.svg.getBoundingClientRect();
-        const svgWidth = rect.width;
-        const svgHeight = rect.height;
-        
-        // Calculate world bounds based on zoom level
-        const worldSize = this.getWorldSize();
-        const worldX = (screenX / svgWidth - 0.5) * worldSize + this.currentCenter.x;
-        const worldY = (screenY / svgHeight - 0.5) * worldSize + this.currentCenter.y;
-        
-        return { x: worldX, y: worldY };
+        return this.coordinateSystem.screenToWorld(screenX, screenY);
     }
-    
+
     getWorldSize() {
-        // Get world size based on zoom level
-        
-        // Mimic LRS scaling by adjusting base size from discovery range
-        let baseSize = 1000;
-        try {
-            const range = this.starChartsManager.getDiscoveryRadius?.() || 150;
-            const rangeMultiplier = Math.max(0.5, Math.min(2.0, range / 150));
-            baseSize = 1000 * rangeMultiplier;
-        } catch (e) {}
-        return baseSize / this.currentZoomLevel;
+        return this.coordinateSystem.getWorldSize();
     }
     
     getObjectAtPosition(worldX, worldY, screenTolerancePixels = 12) {
@@ -773,25 +761,9 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
     }
 
     worldToScreen(object) {
-        // Convert world coordinates to screen coordinates for an object
-        // This is the inverse of screenToWorld
-
-        if (!object) return null;
-
-        const pos = this.getDisplayPosition(object);
-        if (!pos) return null;
-
-        const rect = this.svg.getBoundingClientRect();
-        const svgWidth = rect.width;
-        const svgHeight = rect.height;
-        const worldSize = this.getWorldSize();
-
-        // Convert world coordinates back to screen coordinates
-        const screenX = ((pos.x - this.currentCenter.x) / worldSize + 0.5) * svgWidth;
-        const screenY = ((pos.y - this.currentCenter.y) / worldSize + 0.5) * svgHeight;
-
-        return { x: screenX, y: screenY };
+        return this.coordinateSystem.worldToScreen(object);
     }
+
     // ========================================
     // Tooltip methods (delegated to StarChartsTooltipManager)
     // ========================================
@@ -1464,108 +1436,16 @@ debug('UI', 'Star Charts: Interface hidden');
         this.svg.appendChild(ring);
     }
 
-    // Convert stored object position to top-down display coordinates (x,z)
     getDisplayPosition(object) {
-        // Prefer normalized display position if model built
-        if (this.displayModel && this.displayModel.positions.has(object.id)) {
-            const pos = this.displayModel.positions.get(object.id);
-            if (object.type === 'navigation_beacon') {
-debug('UI', `🎯 Beacon ${object.name}: Using display model position (${pos.x}, ${pos.y}) - found in model`);
-            }
-            return pos;
-        } else if (object.type === 'navigation_beacon') {
-debug('UI', `🎯 Beacon ${object.name}: Display model position NOT found, falling back to calculation`);
-        }
-        if (Array.isArray(object.position)) {
-            if (object.position.length >= 3) {
-                // Special handling for navigation beacons - they use [x, y, z] format
-                // where y is the vertical coordinate, not z
-                const pos = object.type === 'navigation_beacon'
-                    ? { x: object.position[0], y: object.position[1] }
-                    : { x: object.position[0], y: object.position[2] };
-
-                if (object.type === 'navigation_beacon') {
-debug('UI', `🎯 Beacon ${object.name}: Using beacon position [${object.position[0]}, ${object.position[1]}, ${object.position[2]}] -> display (${pos.x}, ${pos.y})`);
-                }
-                return pos;
-            }
-            if (object.position.length === 2) {
-                const radiusAU = object.position[0];
-                const angleDeg = object.position[1];
-                const angleRad = (angleDeg * Math.PI) / 180;
-                const AU_TO_DISPLAY = 149.6; // Keep consistent with planet units
-                const r = radiusAU * AU_TO_DISPLAY;
-                const pos = { x: r * Math.cos(angleRad), y: r * Math.sin(angleRad) };
-                if (object.type === 'navigation_beacon') {
-debug('UI', `🎯 Beacon ${object.name}: Using polar position [${radiusAU}, ${angleDeg}] -> display (${pos.x}, ${pos.y})`);
-                }
-                return pos;
-            }
-        }
-        if (object.type === 'navigation_beacon') {
-debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0)`);
-        }
-        return { x: 0, y: 0 };
+        return this.coordinateSystem.getDisplayPosition(object);
     }
 
     getSectorStarDisplayPosition() {
-        try {
-            const sectorData = this.starChartsManager.objectDatabase?.sectors[this.starChartsManager.getCurrentSector()];
-            if (sectorData?.star) {
-                return this.getDisplayPosition(sectorData.star);
-            }
-        } catch (e) {}
-        return { x: 0, y: 0 };
+        return this.coordinateSystem.getSectorStarDisplayPosition();
     }
-    
+
     setupCoordinateSystem() {
-        // Setup SVG coordinate system - account for map container aspect ratio
-        
-        // Ensure valid zoom level (allow zoom out to 0.4 for beacon ring view)
-        if (isNaN(this.currentZoomLevel) || this.currentZoomLevel < 0.4) {
-            this.currentZoomLevel = 1;
-        }
-
-        // Ensure valid center coordinates
-        if (!this.currentCenter || isNaN(this.currentCenter.x) || isNaN(this.currentCenter.y)) {
-            this.currentCenter = { x: 0, y: 0 };
-        }
-
-        // Get actual map container dimensions to account for layout
-        const mapRect = this.mapContainer.getBoundingClientRect();
-        const containerWidth = mapRect.width || 400; // Fallback if not available
-        const containerHeight = mapRect.height || 400;
-        
-        // Calculate aspect ratio of the actual container
-        const aspectRatio = containerWidth / containerHeight;
-        
-        // Adjust viewBox to maintain proper centering based on container aspect ratio
-        let baseViewBoxWidth = this.defaultViewBox.width / this.currentZoomLevel;
-        let baseViewBoxHeight = this.defaultViewBox.height / this.currentZoomLevel;
-        
-        // If container is wider than square, adjust viewBox width to maintain centering
-        if (aspectRatio > 1) {
-            baseViewBoxWidth = baseViewBoxHeight * aspectRatio;
-        } else if (aspectRatio < 1) {
-            baseViewBoxHeight = baseViewBoxWidth / aspectRatio;
-        }
-        
-        // Calculate viewBox position ensuring the center point
-        const viewBoxX = this.currentCenter.x - (baseViewBoxWidth / 2);
-        const viewBoxY = this.currentCenter.y - (baseViewBoxHeight / 2);
-
-        // Final validation of viewBox values
-        const safeViewBox = {
-            width: isNaN(baseViewBoxWidth) ? this.defaultViewBox.width : baseViewBoxWidth,
-            height: isNaN(baseViewBoxHeight) ? this.defaultViewBox.height : baseViewBoxHeight,
-            x: isNaN(viewBoxX) ? this.defaultViewBox.x : viewBoxX,
-            y: isNaN(viewBoxY) ? this.defaultViewBox.y : viewBoxY
-        };
-
-        const viewBox = `${safeViewBox.x} ${safeViewBox.y} ${safeViewBox.width} ${safeViewBox.height}`;
-        this.svg.setAttribute('viewBox', viewBox);
-        
-        // console.log(`🔍 Star Charts ViewBox: zoom=${this.currentZoomLevel}, container=${containerWidth}x${containerHeight} (ratio=${aspectRatio.toFixed(2)}), viewBox="${viewBox}", center=(${this.currentCenter.x}, ${this.currentCenter.y})`);
+        this.coordinateSystem.setupCoordinateSystem();
     }
     
     renderDiscoveredObjects() {
@@ -2898,6 +2778,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (this.tooltipManager) {
             this.tooltipManager.dispose();
             this.tooltipManager = null;
+        }
+
+        // Dispose coordinate system manager
+        if (this.coordinateSystem) {
+            this.coordinateSystem.dispose();
+            this.coordinateSystem = null;
         }
 
         // Remove document-level event listeners
