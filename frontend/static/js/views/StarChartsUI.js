@@ -1,5 +1,6 @@
 import { debug } from '../debug.js';
 import { StarChartsPanController } from './starcharts/StarChartsPanController.js';
+import { StarChartsTooltipManager } from './starcharts/StarChartsTooltipManager.js';
 
 /**
  * StarChartsUI - User interface for the Star Charts discovery system
@@ -63,6 +64,9 @@ export class StarChartsUI {
 
         // Initialize pan controller (must be after createInterface so svg exists)
         this.panController = new StarChartsPanController(this);
+
+        // Initialize tooltip manager
+        this.tooltipManager = new StarChartsTooltipManager(this);
 
         this.setupEventListeners();
 
@@ -180,7 +184,7 @@ debug('UI', 'StarChartsUI: Interface created');
         this.svg.addEventListener('mousemove', this._boundSvgMouseMoveHandler);
 
         this._boundSvgMouseLeaveHandler = () => {
-            this.tooltip.style.display = 'none';
+            this.hideTooltip();
         };
         this.svg.addEventListener('mouseleave', this._boundSvgMouseLeaveHandler);
     }
@@ -309,13 +313,13 @@ debug('UI', 'StarChartsUI: Interface created');
                     if (hoveredObject) {
                         this.showTooltip(x, y, hoveredObject);
                     } else {
-                        this.tooltip.style.display = 'none';
+                        this.hideTooltip();
                     }
                 }
             }
         } else {
             // No interactive element found - hide tooltip
-            this.tooltip.style.display = 'none';
+            this.hideTooltip();
         }
     }
     
@@ -788,222 +792,32 @@ debug('P1', `🎯 Star Charts: Failed to select ${object.name} for targeting`);
 
         return { x: screenX, y: screenY };
     }
+    // ========================================
+    // Tooltip methods (delegated to StarChartsTooltipManager)
+    // ========================================
+
     ensureObjectDataLoaded() {
-        // Ensure object database is loaded before showing tooltips
-        if (!this.starChartsManager.objectDatabase || !this.starChartsManager.isInitialized) {
-            debug('STAR_CHARTS', '🖱️ Object database not ready for tooltips yet');
-            return false;
-        }
-        return true;
+        return this.tooltipManager.ensureObjectDataLoaded();
     }
-    
+
     ensureObjectHasName(object) {
-        // Ensure object has a name, fetching from database if needed
-        if (!object) return null;
-        
-        // If object already has a name, return it
-        if (object.name && object.name !== 'undefined' && object.name.trim() !== '') {
-            return object;
-        }
-        
-        // If it's a ship, handle specially
-        if (object._isShip) {
-            return {
-                ...object,
-                name: 'Your Ship',
-                type: 'ship'
-            };
-        }
-        
-        // Try to get complete data from database
-        if (object.id && this.starChartsManager.objectDatabase) {
-            const completeData = this.starChartsManager.getObjectData(object.id);
-            if (completeData && completeData.name) {
-                return {
-                    ...object,
-                    ...completeData
-                };
-            }
-        }
-        
-        // Fallback: create a meaningful name from available data
-        let fallbackName = 'Unknown Object';
-        if (object.id) {
-            // Check if ID is a string before trying to use string methods
-            if (typeof object.id === 'string') {
-                // Try to extract meaningful name from ID
-                const cleanId = object.id.replace(/^[A-Z]\d+_/, ''); // Remove sector prefix like "A0_"
-                fallbackName = cleanId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            } else {
-                // If ID is numeric (like Three.js mesh ID), create a generic name
-                fallbackName = `Object ${object.id}`;
-            }
-        }
-        
-        return {
-            ...object,
-            name: fallbackName,
-            type: object.type || 'Unknown'
-        };
+        return this.tooltipManager.ensureObjectHasName(object);
     }
-    
-    
-    
+
     showTooltip(screenX, screenY, object) {
-        // Ensure object database is ready
-        if (!this.ensureObjectDataLoaded()) {
-            return;
-        }
-        
-        // Ensure object has complete data including name
-        const completeObject = this.ensureObjectHasName(object);
-        if (!completeObject) {
-            debug('STAR_CHARTS', '⚠️ Could not get complete object data for tooltip');
-            return;
-        }
-
-        // For undiscovered objects, show "Unknown" instead of revealing the name
-        // For ship, show "You are here"
-        let tooltipText;
-        if (completeObject._isShip) {
-            tooltipText = 'You are here';
-        } else if (completeObject._isUndiscovered) {
-            tooltipText = 'Unknown';
-        } else {
-            // Use the name from the complete object
-            tooltipText = completeObject.name || 'Unknown Object';
-        }
-
-        // Show tooltip for hovered object - match LRS simple text format
-
-        // Simple text tooltip like LRS (no HTML formatting)
-        if (!this.tooltip) {
-            debug('P1', '❌ Tooltip element not found!');
-            return;
-        }
-        
-        this.tooltip.textContent = tooltipText;
-
-        // Position tooltip at cursor like LRS
-        this.tooltip.style.left = screenX + 'px';
-        this.tooltip.style.top = screenY + 'px';
-        this.tooltip.style.display = 'block';
+        this.tooltipManager.showTooltip(screenX, screenY, object);
     }
-    
+
     showObjectDetails(object) {
-        // Show detailed information about selected object
-        
-        // For undiscovered objects, only show minimal info
-        if (object._isUndiscovered) {
-            const p = this.getDisplayPosition(object);
-            const detailsHTML = `
-                <div class="object-details">
-                    <h3 style="color: #44ffff; margin-top: 0;">
-                        Unknown Object
-                    </h3>
-                    <div><strong>Status:</strong> Undiscovered</div>
-                    <div><strong>Position:</strong></div>
-                    <div style="margin-left: 10px;">
-                        X: ${p.x.toFixed(1)}<br>
-                        Z: ${p.y.toFixed(1)}
-                    </div>
-                    <div style="margin-top: 10px; font-style: italic; color: #888;">
-                        Move closer to discover more information
-                    </div>
-                </div>
-            `;
-            this.detailsPanel.innerHTML = detailsHTML;
-            return;
-        }
-        
-        let detailsHTML = `
-            <div class="object-details">
-                <h3 style="color: #00ff00; margin-top: 0;">${object.name}</h3>
-                <div><strong>Type:</strong> ${object.type}</div>
-                <div><strong>Class:</strong> ${object.class || 'Unknown'}</div>
-        `;
-        
-        // Add position info (robust for DB cartesian, polar, or normalized positions)
-        try {
-            let posBlock = '';
-            if (Array.isArray(object.position) && object.position.length >= 3 &&
-                typeof object.position[0] === 'number') {
-                posBlock = `
-                    X: ${object.position[0].toFixed(1)}<br>
-                    Y: ${object.position[1].toFixed(1)}<br>
-                    Z: ${object.position[2].toFixed(1)}
-                `;
-            } else if (Array.isArray(object.position) && object.position.length === 2 &&
-                       typeof object.position[0] === 'number') {
-                const radiusAU = object.position[0];
-                const angleDeg = object.position[1];
-                posBlock = `
-                    Radius (AU): ${radiusAU.toFixed(3)}<br>
-                    Angle: ${angleDeg.toFixed(1)}°
-                `;
-            } else {
-                // Use normalized display position (top-down X/Z)
-                const p = this.getDisplayPosition(object);
-                posBlock = `
-                    X: ${p.x.toFixed(1)}<br>
-                    Z: ${p.y.toFixed(1)}
-                `;
-            }
-            detailsHTML += `
-                <div><strong>Position:</strong></div>
-                <div style="margin-left: 10px;">${posBlock}</div>
-            `;
-        } catch (e) {}
-        
-        // Add orbit info for celestial bodies
-        if (object.orbit) {
-            detailsHTML += `
-                <div><strong>Orbital Data:</strong></div>
-                <div style="margin-left: 10px;">
-                    Parent: ${object.orbit.parent}<br>
-                    Radius: ${object.orbit.radius.toFixed(1)} km<br>
-                    Period: ${object.orbit.period.toFixed(1)} days
-                </div>
-            `;
-        }
-        
-        // Add station-specific info
-        if (object.faction) {
-            detailsHTML += `<div><strong>Faction:</strong> ${object.faction}</div>`;
-        }
-        
-        if (object.services && object.services.length > 0) {
-            detailsHTML += `
-                <div><strong>Services:</strong></div>
-                <div style="margin-left: 10px;">
-                    ${object.services.join('<br>')}
-                </div>
-            `;
-        }
-        
-        // Add description
-        if (object.description) {
-            detailsHTML += `
-                <div style="margin-top: 10px;">
-                    <strong>Description:</strong><br>
-                    <em>${object.description}</em>
-                </div>
-            `;
-        }
-        
-        // Add intel brief for stations
-        if (object.intel_brief) {
-            detailsHTML += `
-                <div style="margin-top: 10px; color: #ffff00;">
-                    <strong>Intel Brief:</strong><br>
-                    <em>${object.intel_brief}</em>
-                </div>
-            `;
-        }
-        
-        detailsHTML += '</div>';
-        
-        this.detailsPanel.innerHTML = detailsHTML;
+        this.tooltipManager.showObjectDetails(object);
+    }
+
+    hideTooltip() {
+        this.tooltipManager.hideTooltip();
+    }
+
+    clearObjectDetails() {
+        this.tooltipManager.clearObjectDetails();
     }
     
     show() {
@@ -1125,8 +939,8 @@ debug('UI', 'Star Charts: Interface shown');
             this._isVisible = false;
             this.container.classList.remove('visible');
             this.container.classList.remove('targeting-active');
-            this.tooltip.style.display = 'none';
-            
+            this.hideTooltip();
+
             // Remove target indicator when hiding
             this.removeTargetIndicator();
             
@@ -3078,6 +2892,12 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         if (this.panController) {
             this.panController.dispose();
             this.panController = null;
+        }
+
+        // Dispose tooltip manager
+        if (this.tooltipManager) {
+            this.tooltipManager.dispose();
+            this.tooltipManager = null;
         }
 
         // Remove document-level event listeners
