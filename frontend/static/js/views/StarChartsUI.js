@@ -2,6 +2,7 @@ import { debug } from '../debug.js';
 import { StarChartsPanController } from './starcharts/StarChartsPanController.js';
 import { StarChartsTooltipManager } from './starcharts/StarChartsTooltipManager.js';
 import { StarChartsCoordinateSystem } from './starcharts/StarChartsCoordinateSystem.js';
+import { StarChartsDisplayModel } from './starcharts/StarChartsDisplayModel.js';
 
 /**
  * StarChartsUI - User interface for the Star Charts discovery system
@@ -71,6 +72,9 @@ export class StarChartsUI {
 
         // Initialize coordinate system manager
         this.coordinateSystem = new StarChartsCoordinateSystem(this);
+
+        // Initialize display model manager
+        this.displayModelManager = new StarChartsDisplayModel(this);
 
         this.setupEventListeners();
 
@@ -974,433 +978,44 @@ debug('UI', 'Star Charts: Interface hidden');
         debug('TARGETING', `🎯 RENDER: Star Charts render completed`);
     }
 
-    // Build normalized ring model to match LRS visual layout
+    // ========================================
+    // Display model methods (delegated to StarChartsDisplayModel)
+    // ========================================
+
     buildDisplayModel() {
-        this.displayModel = {
-            planetOrder: [],
-            ringRadii: [],
-            positions: new Map(), // id -> {x,y}
-            moonOffsets: new Map() // id -> radius
-        };
-        const ssm = this.getSolarSystemManagerRef();
-        const sectorId = this.starChartsManager.getCurrentSector();
-        const sectorData = this.starChartsManager.objectDatabase?.sectors[sectorId];
-        if (!sectorData) return;
-
-        // 0) Set star position at origin (0,0) - center of coordinate system
-        if (sectorData.star) {
-            this.displayModel.positions.set(sectorData.star.id, { x: 0, y: 0 });
-        }
-
-        // 1) Determine planet order by starSystem.planets order (matches LRS rings)
-        const lrsPlanets = (ssm && ssm.starSystem && Array.isArray(ssm.starSystem.planets))
-            ? ssm.starSystem.planets
-            : [];
-
-        // 2) Create ring radii like LRS (100, 250, 400, ...)
-        const base = 100;
-        const step = 150;
-        lrsPlanets.forEach((p, i) => {
-            const ring = base + i * step;
-            this.displayModel.ringRadii.push(ring);
-            // Find DB object to get ID for consistent selection/labels
-            const planetDb = (sectorData.objects || []).find(o => o.type === 'planet' && o.name === p.planet_name) || null;
-            const planetId = planetDb?.id || `planet_${i}`;
-            this.displayModel.planetOrder.push(planetId);
-            const angleDeg = (() => {
-                if (ssm && ssm.celestialBodies) {
-                    const body = ssm.celestialBodies.get(`planet_${i}`);
-                    if (body && body.position) {
-                        const pos = body.position;
-                        return (Math.atan2(pos.z, pos.x) * 180) / Math.PI;
-                    }
-                }
-                return this.getLiveAngleDegForPlanet(planetDb || p);
-            })();
-            const angleRad = angleDeg * Math.PI / 180;
-            const x = ring * Math.cos(angleRad);
-            const y = ring * Math.sin(angleRad);
-            this.displayModel.positions.set(planetId, { x, y });
-        });
-
-        // 3) Moons: place around their parent planet using small local rings
-        if (ssm && ssm.celestialBodies) {
-            // For each planet index, place its moons by keys moon_i_j
-            lrsPlanets.forEach((_, i) => {
-                const parentId = this.displayModel.planetOrder[i] || `planet_${i}`;
-                const parentPos = this.displayModel.positions.get(parentId) || { x: 0, y: 0 };
-                
-                // Find the actual planet object to get all possible IDs
-                const planetDb = (sectorData.objects || []).find(o => o.type === 'planet' && o.name === lrsPlanets[i]?.planet_name);
-                const possibleParentIds = [parentId];
-                if (planetDb && planetDb.id !== parentId) {
-                    possibleParentIds.push(planetDb.id);
-                }
-                
-                // Collect moons for this planet from DB by parent id match (check all possible IDs)
-                const dbMoons = (sectorData.objects || []).filter(o => 
-                    o.type === 'moon' && 
-                    o.orbit?.parent && 
-                    possibleParentIds.includes(o.orbit.parent)
-                );
-                if (dbMoons.length > 0) {
-                    dbMoons.sort((a, b) => (a.orbit?.radius || 0) - (b.orbit?.radius || 0));
-                    dbMoons.forEach((m, idx) => {
-                        const localR = 30 + idx * 15;
-                        const angleDeg = this.getLiveAngleDegForMoon(m, parentId);
-                        const angleRad = angleDeg * Math.PI / 180;
-                        const x = parentPos.x + localR * Math.cos(angleRad);
-                        const y = parentPos.y + localR * Math.sin(angleRad);
-                        this.displayModel.positions.set(m.id, { x, y });
-                        this.displayModel.moonOffsets.set(m.id, localR);
-                    });
-                } else {
-                    // Fallback to SSM moon keys moon_i_j up to some count
-                    for (let j = 0; j < 6; j++) {
-                        const moonKey = `moon_${i}_${j}`;
-                        const moonBody = ssm.celestialBodies.get(moonKey);
-                        if (!moonBody) break;
-                        const localR = 30 + j * 15;
-                        const rel = moonBody.position.clone();
-                        const parentBody = ssm.celestialBodies.get(`planet_${i}`);
-                        if (parentBody) rel.sub(parentBody.position);
-                        const angleDeg = (Math.atan2(rel.z, rel.x) * 180) / Math.PI;
-                        const angleRad = angleDeg * Math.PI / 180;
-                        const x = parentPos.x + localR * Math.cos(angleRad);
-                        const y = parentPos.y + localR * Math.sin(angleRad);
-                        const syntheticId = `${moonKey}`;
-                        this.displayModel.positions.set(syntheticId, { x, y });
-                        this.displayModel.moonOffsets.set(syntheticId, localR);
-                    }
-                }
-            });
-        }
-
-        // 4) Infrastructure: snap to nearest planet ring by polar coords [AU, deg]
-        const infra = sectorData.infrastructure || {};
-        const stations = infra.stations || [];
-        const beacons = infra.beacons || [];
-        const AU_TO_DISPLAY = 149.6;
-        const snapToNearestRing = (radiusDisplay, isStation = false) => {
-            if (this.displayModel.ringRadii.length === 0) return radiusDisplay;
-            const nearestRing = this.displayModel.ringRadii.reduce((best, r) => (
-                Math.abs(r - radiusDisplay) < Math.abs(best - radiusDisplay) ? r : best
-            ), this.displayModel.ringRadii[0]);
-            
-            // Add offset for stations to prevent overlap with planets
-            if (isStation) {
-                return nearestRing + 25; // Offset stations 25 units outward from planet ring
-            }
-            return nearestRing;
-        };
-        const placePolar = (obj) => {
-            // console.log(`🎯 placePolar: Processing ${obj.name} (${obj.type})`);
-
-            // Prefer live angle if available by matching body name to SSM
-            const liveAngle = this.getLiveAngleDegByName(obj.name);
-            // console.log(`🎯 placePolar: liveAngle for ${obj.name} = ${liveAngle}`);
-
-            if (typeof liveAngle === 'number') {
-                // console.log(`✅ Using live angle ${liveAngle}° for ${obj.name}`);
-                // Snap to nearest ring or force beacon ring
-                const isBeacon = (obj.type === 'navigation_beacon');
-                const isStation = (obj.type === 'space_station');
-                const rDisplayGuess = Array.isArray(obj.position) && obj.position.length === 2 ? (obj.position[0] * AU_TO_DISPLAY) : 300;
-                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplayGuess, isStation);
-                const rad = liveAngle * Math.PI / 180;
-                const x = ring * Math.cos(rad);
-                const y = ring * Math.sin(rad);
-                // console.log(`📍 Final position for ${obj.name}: (${x.toFixed(1)}, ${y.toFixed(1)}) using ring ${ring}`);
-                this.displayModel.positions.set(obj.id, { x, y });
-                return;
-            } else {
-                // console.log(`❌ No live angle for ${obj.name}, falling back to static coordinates`);
-            }
-            // Handle static/polar data
-            const isBeacon = (obj.type === 'navigation_beacon');
-            if (Array.isArray(obj.position) && obj.position.length === 2) {
-                const rDisplay = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : (obj.position[0] * AU_TO_DISPLAY);
-                const angleDeg = obj.position[1];
-                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(rDisplay);
-                const angleRad = angleDeg * Math.PI / 180;
-                const x = ring * Math.cos(angleRad);
-                const y = ring * Math.sin(angleRad);
-                this.displayModel.positions.set(obj.id, { x, y });
-                return;
-            }
-            // Fallback for infrastructure with 3D coordinates [x, y, z] (e.g., beacons JSON)
-            if (Array.isArray(obj.position) && obj.position.length === 3) {
-                const x3 = obj.position[0];
-                const y3 = obj.position[1]; // Use Y coordinate for beacons (they're positioned vertically)
-                const z3 = obj.position[2];
-
-                // For beacons, calculate angle using y,x (not z,x) since they're arranged in a circle
-                const angleDeg = isBeacon
-                    ? (Math.atan2(y3, x3) * 180) / Math.PI
-                    : (Math.atan2(z3, x3) * 180) / Math.PI;
-
-                if (isBeacon) {
-                    // console.log(`🎯 Beacon ${obj.name}: Using Y-based angle calculation`);
-                    // console.log(`   Position: [${x3}, ${y3}, ${z3}]`);
-                    // console.log(`   Old angle (z,x): ${(Math.atan2(z3, x3) * 180) / Math.PI}°`);
-                    // console.log(`   New angle (y,x): ${angleDeg}°`);
-                }
-
-                const ring = isBeacon && this.displayModel.beaconRing ? this.displayModel.beaconRing : snapToNearestRing(300);
-                const angleRad = angleDeg * Math.PI / 180;
-                const x = ring * Math.cos(angleRad);
-                const y = ring * Math.sin(angleRad);
-                this.displayModel.positions.set(obj.id, { x, y });
-
-                if (isBeacon) {
-                    // console.log(`   Final position: (${x.toFixed(1)}, ${y.toFixed(1)})`);
-                }
-                return;
-            }
-            // If no position information, skip
-            return;
-        };
-        
-        // 5) Set beacon ring radius BEFORE positioning beacons (stationary ring like LRS)
-        this.displayModel.beaconRing = 350;
-        
-        // Position stations with collision detection
-        this.positionStationsWithCollisionDetection(stations, placePolar);
-        
-        // Position beacons (they have their own dedicated ring, so less collision risk)
-        // console.log(`🔧 Positioning ${beacons.length} beacons`);
-        beacons.forEach(beacon => {
-            // console.log(`🔧 Positioning beacon: ${beacon.name} (${beacon.id}) with position [${beacon.position}]`);
-            placePolar(beacon);
-            // const pos = this.displayModel.positions.get(beacon.id);
-            // console.log(`🔧 Beacon ${beacon.name} positioned at:`, pos);
-            // if (pos) {
-            //     console.log(`🔧 Display model now has ${this.displayModel.positions.size} total positions`);
-            // }
-        });
+        this.displayModelManager.buildDisplayModel();
     }
-    
+
     positionStationsWithCollisionDetection(stations, placePolar) {
-        // Position stations with collision detection to prevent overlaps
-        
-        const minSeparationAngle = 15; // Minimum degrees between stations on same ring
-        const positionedStations = new Map(); // ring -> array of angles
-        
-        // Sort stations by priority (prefer live angles, then by name for consistency)
-        const sortedStations = [...stations].sort((a, b) => {
-            const aHasLive = typeof this.getLiveAngleDegByName(a.name) === 'number';
-            const bHasLive = typeof this.getLiveAngleDegByName(b.name) === 'number';
-            
-            // Prioritize stations with live angles
-            if (aHasLive && !bHasLive) return -1;
-            if (!aHasLive && bHasLive) return 1;
-            
-            // Then sort by name for consistency
-            return (a.name || a.id || '').localeCompare(b.name || b.id || '');
-        });
-        
-        sortedStations.forEach(station => {
-            // Calculate preferred position
-            let preferredAngle = null;
-            let ring = null;
-            
-            // Try to get live angle first
-            const liveAngle = this.getLiveAngleDegByName(station.name);
-            if (typeof liveAngle === 'number') {
-                preferredAngle = liveAngle;
-                const AU_TO_DISPLAY = 149.6;
-                const rDisplayGuess = Array.isArray(station.position) && station.position.length === 2 ? 
-                    (station.position[0] * AU_TO_DISPLAY) : 300;
-                ring = this.snapToNearestRing(rDisplayGuess, true); // true = isStation
-            } else if (Array.isArray(station.position) && station.position.length === 2) {
-                preferredAngle = station.position[1]; // angle in degrees
-                const AU_TO_DISPLAY = 149.6;
-                ring = this.snapToNearestRing(station.position[0] * AU_TO_DISPLAY, true);
-            }
-            
-            if (preferredAngle === null || ring === null) {
-                // Fallback: use original placePolar logic
-                placePolar(station);
-                return;
-            }
-            
-            // Normalize angle to 0-360 range
-            preferredAngle = ((preferredAngle % 360) + 360) % 360;
-            
-            // Check for collisions on this ring
-            if (!positionedStations.has(ring)) {
-                positionedStations.set(ring, []);
-            }
-            
-            const existingAngles = positionedStations.get(ring);
-            let finalAngle = preferredAngle;
-            
-            // Find a collision-free angle
-            let attempts = 0;
-            const maxAttempts = 24; // 360/15 = 24 possible positions with 15° separation
-            
-            while (attempts < maxAttempts) {
-                let hasCollision = false;
-                
-                for (const existingAngle of existingAngles) {
-                    const angleDiff = Math.min(
-                        Math.abs(finalAngle - existingAngle),
-                        360 - Math.abs(finalAngle - existingAngle)
-                    );
-                    
-                    if (angleDiff < minSeparationAngle) {
-                        hasCollision = true;
-                        break;
-                    }
-                }
-                
-                if (!hasCollision) {
-                    // Found a good position
-                    break;
-                }
-                
-                // Try next position (alternate between + and - offsets)
-                attempts++;
-                const offset = Math.ceil(attempts / 2) * minSeparationAngle;
-                finalAngle = attempts % 2 === 1 ? 
-                    (preferredAngle + offset) % 360 : 
-                    ((preferredAngle - offset) + 360) % 360;
-            }
-            
-            // Record this position
-            existingAngles.push(finalAngle);
-            
-            // Set the final position
-            const angleRad = finalAngle * Math.PI / 180;
-            const x = ring * Math.cos(angleRad);
-            const y = ring * Math.sin(angleRad);
-            this.displayModel.positions.set(station.id, { x, y });
-            
-            // Log collision resolution if we had to move the station
-            if (Math.abs(finalAngle - preferredAngle) > 1) {
-                // console.log(`🔧 Star Charts: Moved "${station.name}" from ${preferredAngle.toFixed(1)}° to ${finalAngle.toFixed(1)}° to avoid collision`);
-            }
-        });
+        this.displayModelManager.positionStationsWithCollisionDetection(stations, placePolar);
     }
-    
+
     snapToNearestRing(radiusDisplay, isStation = false) {
-        // Helper method to snap to nearest ring (extracted from buildDisplayModel)
-        if (this.displayModel.ringRadii.length === 0) return radiusDisplay;
-        const nearestRing = this.displayModel.ringRadii.reduce((best, r) => (
-            Math.abs(r - radiusDisplay) < Math.abs(best - radiusDisplay) ? r : best
-        ), this.displayModel.ringRadii[0]);
-        
-        // Add offset for stations to prevent overlap with planets
-        if (isStation) {
-            return nearestRing + 25; // Offset stations 25 units outward from planet ring
-        }
-        return nearestRing;
+        return this.displayModelManager.snapToNearestRing(radiusDisplay, isStation);
     }
 
-    // Helper: get SolarSystemManager reference
     getSolarSystemManagerRef() {
-        try {
-            if (this.viewManager && typeof this.viewManager.getSolarSystemManager === 'function') {
-                return this.viewManager.getSolarSystemManager();
-            }
-        } catch (e) {}
-        return null;
+        return this.displayModelManager.getSolarSystemManagerRef();
     }
 
-    // Helper: find body by display name using SolarSystemManager
     findBodyByName(name) {
-        const ssm = this.getSolarSystemManagerRef();
-        if (!ssm || typeof ssm.getCelestialBodies !== 'function' || typeof ssm.getCelestialBodyInfo !== 'function') return null;
-        const bodies = ssm.getCelestialBodies();
-        for (const [key, body] of bodies.entries()) {
-            const info = ssm.getCelestialBodyInfo(body);
-            if (info && info.name === name) return { key, body };
-        }
-        return null;
+        return this.displayModelManager.findBodyByName(name);
     }
 
-    // Get live angle for planet based on absolute position in scene
     getLiveAngleDegForPlanet(object) {
-        const ssm = this.getSolarSystemManagerRef();
-        if (ssm) {
-            const found = this.findBodyByName(object.name);
-            if (found && found.body && found.body.position) {
-                const pos = found.body.position;
-                return (Math.atan2(pos.z, pos.x) * 180) / Math.PI;
-            }
-        }
-        // fallback to data
-        if (object.orbit && typeof object.orbit.angle === 'number') return object.orbit.angle;
-        if (Array.isArray(object.position) && object.position.length >= 3) {
-            return (Math.atan2(object.position[2], object.position[0]) * 180) / Math.PI;
-        }
-        return 0;
+        return this.displayModelManager.getLiveAngleDegForPlanet(object);
     }
 
-    // Get live angle for moon relative to its parent planet
     getLiveAngleDegForMoon(object, parentId) {
-        const ssm = this.getSolarSystemManagerRef();
-        if (ssm) {
-            const child = this.findBodyByName(object.name);
-            const parentObj = this.starChartsManager.getObjectData(parentId);
-            const parent = parentObj ? this.findBodyByName(parentObj.name) : null;
-            if (child && parent && child.body && parent.body) {
-                const rel = child.body.position.clone().sub(parent.body.position);
-                return (Math.atan2(rel.z, rel.x) * 180) / Math.PI;
-            }
-        }
-        // fallback to data
-        if (object.orbit && typeof object.orbit.angle === 'number') return object.orbit.angle;
-        if (Array.isArray(object.position) && object.position.length >= 3) {
-            return (Math.atan2(object.position[2], object.position[0]) * 180) / Math.PI;
-        }
-        return 0;
+        return this.displayModelManager.getLiveAngleDegForMoon(object, parentId);
     }
 
-    // Live angle by matching name (stations/beacons when present in scene)
     getLiveAngleDegByName(name) {
-        const ssm = this.getSolarSystemManagerRef();
-        if (!ssm) return null;
-        const found = this.findBodyByName(name);
-        if (found && found.body && found.body.position) {
-            const pos = found.body.position;
-            // For navigation beacons, use y coordinate (vertical) instead of z (depth)
-            const isBeacon = name.includes('Navigation Beacon');
-            const angleCoord = isBeacon ? pos.y : pos.z;
-            // console.log(`📐 getLiveAngleDegByName: ${name} isBeacon=${isBeacon}, using ${isBeacon ? 'pos.y' : 'pos.z'} = ${angleCoord}`);
-            return (Math.atan2(angleCoord, pos.x) * 180) / Math.PI;
-        }
-            // Fallback for navigation beacons (exist in StarfieldManager)
-        try {
-            const beacons = this.viewManager?.starfieldManager?.navigationBeacons || [];
-            // console.log(`🔍 getLiveAngleDegByName: Looking for "${name}" in ${beacons.length} beacons`);
-            const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
-            if (b) {
-                // console.log(`✅ Found beacon "${name}" at position (${b.position.x.toFixed(1)}, ${b.position.y.toFixed(1)}, ${b.position.z.toFixed(1)})`);
-                // console.log(`📐 Calculated angle: ${(Math.atan2(b.position.y, b.position.x) * 180) / Math.PI}°`);
-                return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
-            } else {
-                // console.log(`❌ Beacon "${name}" not found. Available beacons:`);
-                // beacons.forEach((bc, i) => {
-                //     console.log(`  ${i+1}. "${bc.userData?.name || 'Navigation Beacon'}"`);
-                // });
-            }
-        } catch (e) {
-            debug('P1', '❌ Error in beacon angle lookup:', e);
-        }
-        return null;
+        return this.displayModelManager.getLiveAngleDegByName(name);
     }
 
-    // Explicit beacon angle getter (by name) used when building infra positions
     getBeaconAngleDegByName(name) {
-        try {
-            const beacons = this.viewManager?.starfieldManager?.navigationBeacons || [];
-            const b = beacons.find(bc => (bc.userData?.name || 'Navigation Beacon') === name);
-            if (b && b.position) {
-                return (Math.atan2(b.position.y, b.position.x) * 180) / Math.PI;
-            }
-        } catch (e) {}
-        return null;
+        return this.displayModelManager.getBeaconAngleDegByName(name);
     }
 
     renderBeaconRingIfNeeded() {
@@ -1480,130 +1095,19 @@ debug('UI', 'Star Charts: Interface hidden');
     }
     
     getDiscoveredObjectsForRender() {
-        // Get all objects for current sector - discovered objects show normally, undiscovered show as "?"
-        // In test mode, all objects show normally
-
-        // CLEAN FIX: Get fresh sector data from solarSystemManager like Long Range Scanner does
-        const solarSystemManager = this.viewManager.getSolarSystemManager();
-        if (!solarSystemManager) return [];
-        
-        const currentSector = solarSystemManager.currentSector;
-        const rawStarSystem = solarSystemManager.starSystem;
-        if (!rawStarSystem) return [];
-        
-        // Update StarChartsManager current sector to match reality
-        if (this.starChartsManager.currentSector !== currentSector) {
-            debug('STAR_CHARTS', `🗺️ StarChartsUI: Updating sector from ${this.starChartsManager.currentSector} to ${currentSector}`);
-            this.starChartsManager.currentSector = currentSector;
-        }
-        
-        // CRITICAL FIX: Use dynamic solar system data instead of static database
-        const celestialBodies = solarSystemManager.getCelestialBodies();
-        if (!celestialBodies || celestialBodies.size === 0) return [];
-
-        // Check if test mode is enabled (show all objects normally)
-        const isTestMode = this.isTestModeEnabled();
-        const discoveredIds = isTestMode ? null : this.starChartsManager.getDiscoveredObjects();
-        const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
-        const isDiscovered = (id) => {
-            if (isTestMode) return true;
-            if (!Array.isArray(discoveredIds)) return false;
-            const nid = norm(id);
-            return discoveredIds.some(did => norm(did) === nid);
-        };
-
-        const allObjects = [];
-
-        // CRITICAL FIX: Process dynamic solar system objects instead of static database
-        for (const [key, body] of celestialBodies.entries()) {
-            const bodyId = `${currentSector}_${key}`;
-            const info = solarSystemManager.getCelestialBodyInfo(body);
-            
-            if (!info) continue;
-            
-            const discovered = isDiscovered(bodyId);
-            
-            // Create object data compatible with StarCharts UI format
-            const objectData = {
-                id: bodyId,
-                name: info.name,
-                type: info.type,
-                position: body.position ? [body.position.x, body.position.y, body.position.z] : [0, 0, 0],
-                cartesianPosition: body.position,
-                visualRadius: info.radius || 1,
-                class: this.starChartsManager.getObjectClass(info.type),
-                description: this.starChartsManager.getObjectDescription(info.name, info.type),
-                faction: info.faction || 'neutral',
-                diplomacy: info.diplomacy || 'neutral'
-            };
-            
-            if (discovered || isTestMode) {
-                allObjects.push(objectData);
-            } else {
-                // Add undiscovered object with special flag
-                allObjects.push({
-                    ...objectData,
-                    _isUndiscovered: true
-                });
-            }
-        }
-
-        // Infrastructure objects are now included in the dynamic solar system as celestial bodies
-        // No separate infrastructure processing needed
-        
-        if (isTestMode) {
-            // console.log(`🧪 Star Charts TEST MODE: Showing all ${allObjects.length} objects in sector`);
-        }
-        
-        return allObjects;
+        return this.displayModelManager.getDiscoveredObjectsForRender();
     }
-    
+
     isTestModeEnabled() {
-        // Check if test mode is enabled (same logic as StarChartsManager)
-        try {
-            if (typeof window !== 'undefined' && window.STAR_CHARTS_DISCOVER_ALL === true) {
-                return true;
-            }
-        } catch (e) {}
-        try {
-            const flag = localStorage.getItem('star_charts_test_discover_all');
-            return String(flag).toLowerCase() === 'true' || flag === '1';
-        } catch (e) {}
-        return false;
+        return this.displayModelManager.isTestModeEnabled();
     }
-    
+
     matchesTargetId(targetId, objectId) {
-        // Helper to match target IDs with normalization
-        if (!targetId || !objectId) return false;
-        if (targetId === objectId) return true;
-        
-        // Try normalized versions
-        const norm = (id) => (typeof id === 'string' ? id.replace(/^a0_/i, 'A0_') : id);
-        return norm(targetId) === norm(objectId);
+        return this.displayModelManager.matchesTargetId(targetId, objectId);
     }
-    
+
     matchesCurrentTarget(object) {
-        // Enhanced target matching that handles both ID and name matching
-        const currentTarget = this.starChartsManager.targetComputerManager?.currentTarget;
-        if (!currentTarget || !object) return false;
-        
-        // Try ID matching first
-        if (this.matchesTargetId(currentTarget.id, object.id)) {
-            return true;
-        }
-        
-        // Try name matching as fallback
-        if (currentTarget.name && object.name && currentTarget.name === object.name) {
-            return true;
-        }
-        
-        // Try to get target data from target computer and match by name
-        const targetData = this.starChartsManager.targetComputerManager.getCurrentTargetData?.();
-        if (targetData && targetData.name && object.name && targetData.name === object.name) {
-            return true;
-        }
-        
-        return false;
+        return this.displayModelManager.matchesCurrentTarget(object);
     }
     
     renderOrbitLines(objects) {
@@ -2784,6 +2288,12 @@ debug('UI', 'Star Charts: Interface hidden');
         if (this.coordinateSystem) {
             this.coordinateSystem.dispose();
             this.coordinateSystem = null;
+        }
+
+        // Dispose display model manager
+        if (this.displayModelManager) {
+            this.displayModelManager.dispose();
+            this.displayModelManager = null;
         }
 
         // Remove document-level event listeners
