@@ -7,32 +7,14 @@ import {
     WIREFRAME_GEOMETRY,
     SUBSYSTEM_GEOMETRY,
 } from '../constants/TargetingConstants.js';
-import { DirectionArrowRenderer } from '../ui/DirectionArrowRenderer.js';
-import { TargetReticleManager } from '../ui/TargetReticleManager.js';
-import { SubSystemPanelManager } from '../ui/SubSystemPanelManager.js';
-import { WireframeRenderer } from '../ui/WireframeRenderer.js';
-import { TargetingFeedbackManager } from '../ui/TargetingFeedbackManager.js';
-import { TargetOutlineManager } from '../ui/TargetOutlineManager.js';
-import { HUDStatusManager } from '../ui/HUDStatusManager.js';
-import { TargetIdManager } from '../ui/TargetIdManager.js';
-import { TargetListManager } from '../ui/TargetListManager.js';
-import { WaypointTargetManager } from '../ui/WaypointTargetManager.js';
-import { TargetSelectionManager } from '../ui/TargetSelectionManager.js';
-import { TargetDataProcessor } from '../ui/TargetDataProcessor.js';
-import { TargetPositionManager } from '../ui/TargetPositionManager.js';
-import { TargetDiplomacyManager } from '../ui/TargetDiplomacyManager.js';
-import { StarChartsNotifier } from '../ui/StarChartsNotifier.js';
-import { TargetSectorManager } from '../ui/TargetSectorManager.js';
-import { TargetStateManager } from '../ui/TargetStateManager.js';
-import { DestroyedTargetHandler } from '../ui/DestroyedTargetHandler.js';
-import { TargetHUDController } from '../ui/TargetHUDController.js';
-import { TargetComputerToggle } from '../ui/TargetComputerToggle.js';
-import { TargetWireframeCreator } from '../ui/TargetWireframeCreator.js';
-import { ClickCycleHandler } from '../ui/ClickCycleHandler.js';
-import { TargetHUDBuilder } from '../ui/TargetHUDBuilder.js';
-import { TargetUpdateLoop } from '../ui/TargetUpdateLoop.js';
-import { TCMResourceCleaner } from '../ui/TCMResourceCleaner.js';
-import { TargetDisplayUpdater } from '../ui/TargetDisplayUpdater.js';
+
+// Initializers (consolidate 26 managers into 6 initializers)
+import { TCMRenderingInitializer } from '../managers/TCMRenderingInitializer.js';
+import { TCMTargetingInitializer } from '../managers/TCMTargetingInitializer.js';
+import { TCMDataInitializer } from '../managers/TCMDataInitializer.js';
+import { TCMFeedbackInitializer } from '../managers/TCMFeedbackInitializer.js';
+import { TCMWaypointInitializer } from '../managers/TCMWaypointInitializer.js';
+import { TCMLifecycleInitializer } from '../managers/TCMLifecycleInitializer.js';
 
 /**
  * TargetComputerManager - Handles all target computer functionality
@@ -144,85 +126,130 @@ export class TargetComputerManager {
         // Warning throttling
         this.lastTargetNotFoundWarning = 0;
 
-        // Initialize DirectionArrowRenderer
-        this.directionArrowRenderer = new DirectionArrowRenderer(this);
+        // TCMRenderingInitializer - handles 7 UI/rendering managers
+        this.renderingInitializer = new TCMRenderingInitializer(this);
+        this.renderingInitializer.initialize();
 
-        // Initialize TargetReticleManager
-        this.targetReticleManager = new TargetReticleManager(this);
+        // TCMTargetingInitializer - handles 6 targeting/selection managers
+        this.targetingInitializer = new TCMTargetingInitializer(this);
+        this.targetingInitializer.initialize();
 
-        // Initialize SubSystemPanelManager
-        this.subSystemPanelManager = new SubSystemPanelManager(this);
+        // TCMDataInitializer - handles 4 data/processing managers
+        this.dataInitializer = new TCMDataInitializer(this);
+        this.dataInitializer.initialize();
 
-        // Initialize WireframeRenderer
-        this.wireframeRendererManager = new WireframeRenderer(this);
+        // TCMFeedbackInitializer - handles 3 feedback managers
+        this.feedbackInitializer = new TCMFeedbackInitializer(this);
+        this.feedbackInitializer.initialize();
 
-        // Initialize TargetingFeedbackManager
-        this.targetingFeedbackManager = new TargetingFeedbackManager(this);
+        // TCMWaypointInitializer - handles 3 waypoint/sector managers
+        this.waypointInitializer = new TCMWaypointInitializer(this);
+        this.waypointInitializer.initialize();
 
-        // Initialize TargetOutlineManager
-        this.targetOutlineManager = new TargetOutlineManager(this);
+        // TCMLifecycleInitializer - handles 3 lifecycle managers
+        this.lifecycleInitializer = new TCMLifecycleInitializer(this);
+        this.lifecycleInitializer.initialize();
 
-        // Initialize HUDStatusManager
-        this.hudStatusManager = new HUDStatusManager(this);
+        // Initialize property proxies for backwards compatibility
+        this._initializePropertyProxies();
 
-        // Initialize TargetIdManager
-        this.targetIdManager = new TargetIdManager(this);
+        debug('UTILITY', '🎯 TargetComputerManager initialized with 6 initializers (26 managers)');
+    }
 
-        // Initialize TargetListManager
-        this.targetListManager = new TargetListManager(this);
+    /**
+     * Initialize property proxies for backwards compatibility
+     * Allows external code to access managers directly on TCM
+     */
+    _initializePropertyProxies() {
+        // Rendering managers (from TCMRenderingInitializer)
+        Object.defineProperty(this, 'directionArrowRenderer', {
+            get: () => this.renderingInitializer.directionArrowRenderer
+        });
+        Object.defineProperty(this, 'targetReticleManager', {
+            get: () => this.renderingInitializer.targetReticleManager
+        });
+        Object.defineProperty(this, 'subSystemPanelManager', {
+            get: () => this.renderingInitializer.subSystemPanelManager
+        });
+        Object.defineProperty(this, 'wireframeRendererManager', {
+            get: () => this.renderingInitializer.wireframeRendererManager
+        });
+        Object.defineProperty(this, 'targetHUDBuilder', {
+            get: () => this.renderingInitializer.targetHUDBuilder
+        });
+        Object.defineProperty(this, 'hudStatusManager', {
+            get: () => this.renderingInitializer.hudStatusManager
+        });
+        Object.defineProperty(this, 'targetDisplayUpdater', {
+            get: () => this.renderingInitializer.targetDisplayUpdater
+        });
 
-        // Initialize WaypointTargetManager
-        this.waypointTargetManager = new WaypointTargetManager(this);
+        // Targeting managers (from TCMTargetingInitializer)
+        Object.defineProperty(this, 'targetSelectionManager', {
+            get: () => this.targetingInitializer.targetSelectionManager
+        });
+        Object.defineProperty(this, 'targetListManager', {
+            get: () => this.targetingInitializer.targetListManager
+        });
+        Object.defineProperty(this, 'clickCycleHandler', {
+            get: () => this.targetingInitializer.clickCycleHandler
+        });
+        Object.defineProperty(this, 'targetComputerToggle', {
+            get: () => this.targetingInitializer.targetComputerToggle
+        });
+        Object.defineProperty(this, 'targetStateManager', {
+            get: () => this.targetingInitializer.targetStateManager
+        });
+        Object.defineProperty(this, 'destroyedTargetHandler', {
+            get: () => this.targetingInitializer.destroyedTargetHandler
+        });
 
-        // Initialize TargetSelectionManager
-        this.targetSelectionManager = new TargetSelectionManager(this);
+        // Data managers (from TCMDataInitializer)
+        Object.defineProperty(this, 'targetDataProcessor', {
+            get: () => this.dataInitializer.targetDataProcessor
+        });
+        Object.defineProperty(this, 'targetPositionManager', {
+            get: () => this.dataInitializer.targetPositionManager
+        });
+        Object.defineProperty(this, 'targetDiplomacyManager', {
+            get: () => this.dataInitializer.targetDiplomacyManager
+        });
+        Object.defineProperty(this, 'targetIdManager', {
+            get: () => this.dataInitializer.targetIdManager
+        });
 
-        // Initialize TargetDataProcessor
-        this.targetDataProcessor = new TargetDataProcessor(this);
+        // Feedback managers (from TCMFeedbackInitializer)
+        Object.defineProperty(this, 'targetingFeedbackManager', {
+            get: () => this.feedbackInitializer.targetingFeedbackManager
+        });
+        Object.defineProperty(this, 'targetOutlineManager', {
+            get: () => this.feedbackInitializer.targetOutlineManager
+        });
+        Object.defineProperty(this, 'targetWireframeCreator', {
+            get: () => this.feedbackInitializer.targetWireframeCreator
+        });
 
-        // Initialize TargetPositionManager
-        this.targetPositionManager = new TargetPositionManager(this);
+        // Waypoint managers (from TCMWaypointInitializer)
+        Object.defineProperty(this, 'waypointTargetManager', {
+            get: () => this.waypointInitializer.waypointTargetManager
+        });
+        Object.defineProperty(this, 'targetSectorManager', {
+            get: () => this.waypointInitializer.targetSectorManager
+        });
+        Object.defineProperty(this, 'starChartsNotifier', {
+            get: () => this.waypointInitializer.starChartsNotifier
+        });
 
-        // Initialize TargetDiplomacyManager
-        this.targetDiplomacyManager = new TargetDiplomacyManager(this);
-
-        // Initialize StarChartsNotifier
-        this.starChartsNotifier = new StarChartsNotifier(this);
-
-        // Initialize TargetSectorManager
-        this.targetSectorManager = new TargetSectorManager(this);
-
-        // Initialize TargetStateManager
-        this.targetStateManager = new TargetStateManager(this);
-
-        // Initialize DestroyedTargetHandler
-        this.destroyedTargetHandler = new DestroyedTargetHandler(this);
-
-        // Initialize TargetHUDController
-        this.targetHUDController = new TargetHUDController(this);
-
-        // Initialize TargetComputerToggle
-        this.targetComputerToggle = new TargetComputerToggle(this);
-
-        // Initialize TargetWireframeCreator
-        this.targetWireframeCreator = new TargetWireframeCreator(this);
-
-        // Initialize ClickCycleHandler
-        this.clickCycleHandler = new ClickCycleHandler(this);
-
-        // Initialize TargetHUDBuilder
-        this.targetHUDBuilder = new TargetHUDBuilder(this);
-
-        // Initialize TargetUpdateLoop
-        this.targetUpdateLoop = new TargetUpdateLoop(this);
-
-        // Initialize TCMResourceCleaner
-        this.resourceCleaner = new TCMResourceCleaner(this);
-
-        // Initialize TargetDisplayUpdater
-        this.targetDisplayUpdater = new TargetDisplayUpdater(this);
-
-        // console.log('🎯 TargetComputerManager initialized');
+        // Lifecycle managers (from TCMLifecycleInitializer)
+        Object.defineProperty(this, 'targetHUDController', {
+            get: () => this.lifecycleInitializer.targetHUDController
+        });
+        Object.defineProperty(this, 'targetUpdateLoop', {
+            get: () => this.lifecycleInitializer.targetUpdateLoop
+        });
+        Object.defineProperty(this, 'resourceCleaner', {
+            get: () => this.lifecycleInitializer.resourceCleaner
+        });
     }
 
     /**
