@@ -3,6 +3,13 @@ import { CardValidationEngine, CARGO_HOLD_TYPES } from './CardValidationEngine.j
 import { CardBadgeManager, getBadgeManager } from './CardBadgeManager.js';
 import { CardUpgradeAudioManager, getUpgradeAudioManager } from './CardUpgradeAudioManager.js';
 
+// Extracted handlers (reduce file size by delegating functionality)
+import { CUIDragDropHandler } from './CUIDragDropHandler.js';
+import { CUISlotRenderer } from './CUISlotRenderer.js';
+import { CUICardRenderer } from './CUICardRenderer.js';
+import { CUIModalManager } from './CUIModalManager.js';
+import { CUIShipConfigManager } from './CUIShipConfigManager.js';
+
 /**
  * CardInventoryUI class - Drag-and-drop interface for card inventory management
  *
@@ -173,7 +180,14 @@ export default class CardInventoryUI {
 
         // Audio setup for upgrade sounds (delegated to CardUpgradeAudioManager)
         this.audioManager = getUpgradeAudioManager();
-        
+
+        // Initialize extracted handlers (reduces file size by delegating functionality)
+        this.dragDropHandler = new CUIDragDropHandler(this);
+        this.slotRenderer = new CUISlotRenderer(this);
+        this.cardRenderer = new CUICardRenderer(this);
+        this.modalManager = new CUIModalManager(this);
+        this.shipConfigManager = new CUIShipConfigManager(this, playerData);
+
         // Set singleton instance and global reference
         CardInventoryUI.instance = this;
         window.cardInventoryUI = this;
