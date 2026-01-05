@@ -1,4 +1,5 @@
 import { debug } from '../debug.js';
+import { StarChartsPanController } from './starcharts/StarChartsPanController.js';
 
 /**
  * StarChartsUI - User interface for the Star Charts discovery system
@@ -28,14 +29,9 @@ export class StarChartsUI {
         this._boundSvgClickHandler = null;
         this._boundSvgMouseMoveHandler = null;
         this._boundSvgMouseLeaveHandler = null;
-        this._boundMouseDownHandler = null;
-        this._boundDocMouseMoveHandler = null;
-        this._boundDocMouseUpHandler = null;
-        this._boundTouchStartHandler = null;
-        this._boundTouchMoveHandler = null;
-        this._boundTouchEndHandler = null;
-        this._boundPinchStartHandler = null;
-        this._boundPinchMoveHandler = null;
+
+        // Pan controller (handles mouse/touch drag events)
+        this.panController = null;
 
         // Zoom and navigation state
         this.currentZoomLevel = 1;
@@ -64,8 +60,12 @@ export class StarChartsUI {
         
         // Create UI elements
         this.createInterface();
+
+        // Initialize pan controller (must be after createInterface so svg exists)
+        this.panController = new StarChartsPanController(this);
+
         this.setupEventListeners();
-        
+
 debug('UI', 'StarChartsUI: Interface created');
     }
     
@@ -170,8 +170,8 @@ debug('UI', 'StarChartsUI: Interface created');
 
         // Double-click behavior removed for new zoom model
 
-        // Pan/drag functionality
-        this.setupPanControls();
+        // Pan/drag functionality (delegated to controller)
+        this.panController.setupPanControls();
 
         // Mouse move for tooltips
         this._boundSvgMouseMoveHandler = (event) => {
@@ -187,9 +187,9 @@ debug('UI', 'StarChartsUI: Interface created');
     
     handleMapClick(event) {
         // Handle clicks on the map - match LRS click detection exactly
-        
+
         // Don't process clicks if we just finished dragging
-        if (this.panState && this.panState.isDragging) {
+        if (this.panController && this.panController.isDragging()) {
             return;
         }
         
@@ -319,212 +319,27 @@ debug('UI', 'StarChartsUI: Interface created');
         }
     }
     
-    setupPanControls() {
-        // Add pan/drag functionality for manual recentering (store handlers for cleanup)
+    // ========================================
+    // Pan Controller Delegation Methods
+    // ========================================
 
-        // Pan state
-        this.panState = {
-            isDragging: false,
-            isTouchDragging: false,
-            lastMousePos: { x: 0, y: 0 },
-            lastTouchCenter: { x: 0, y: 0 },
-            startCenter: { x: 0, y: 0 }
-        };
-
-        // Mouse drag events
-        this._boundMouseDownHandler = (event) => {
-            // Only start drag on primary button (left click)
-            if (event.button === 0) {
-                this.startMouseDrag(event);
-            }
-        };
-        this.svg.addEventListener('mousedown', this._boundMouseDownHandler);
-
-        this._boundDocMouseMoveHandler = (event) => {
-            if (this.panState.isDragging) {
-                this.handleMouseDrag(event);
-            }
-        };
-        document.addEventListener('mousemove', this._boundDocMouseMoveHandler);
-
-        this._boundDocMouseUpHandler = (event) => {
-            if (this.panState.isDragging) {
-                this.endMouseDrag(event);
-            }
-        };
-        document.addEventListener('mouseup', this._boundDocMouseUpHandler);
-
-        // Touch drag events (two-finger drag)
-        this._boundTouchStartHandler = (event) => {
-            if (event.touches.length === 2) {
-                this.startTouchDrag(event);
-                event.preventDefault();
-            }
-        };
-        this.svg.addEventListener('touchstart', this._boundTouchStartHandler, { passive: false });
-
-        this._boundTouchMoveHandler = (event) => {
-            if (event.touches.length === 2) {
-                if (this.panState.isTouchDragging) {
-                    this.handleTouchDrag(event);
-                }
-                event.preventDefault();
-            }
-        };
-        this.svg.addEventListener('touchmove', this._boundTouchMoveHandler, { passive: false });
-
-        this._boundTouchEndHandler = (event) => {
-            if (this.panState.isTouchDragging) {
-                this.endTouchDrag(event);
-            }
-        };
-        this.svg.addEventListener('touchend', this._boundTouchEndHandler);
-    }
-    
-    startMouseDrag(event) {
-        // Start mouse drag operation
-        this.panState.isDragging = true;
-        this.panState.lastMousePos = { x: event.clientX, y: event.clientY };
-        this.panState.startCenter = { ...this.currentCenter };
-        
-        // Change cursor to indicate dragging
-        this.svg.style.cursor = 'grabbing';
-        this.mapContainer.classList.add('dragging');
-        
-        // Prevent text selection during drag
-        event.preventDefault();
-        
-        // console.log('🖱️ Star Charts: Started mouse drag');
-    }
-    
-    handleMouseDrag(event) {
-        // Handle mouse drag movement
-        if (!this.panState.isDragging) return;
-        
-        const deltaX = event.clientX - this.panState.lastMousePos.x;
-        const deltaY = event.clientY - this.panState.lastMousePos.y;
-        
-        // Convert screen delta to world coordinates
-        const worldDelta = this.screenDeltaToWorldDelta(deltaX, deltaY);
-        
-        // Update center (subtract because we're moving the view, not the content)
-        this.currentCenter.x -= worldDelta.x;
-        this.currentCenter.y -= worldDelta.y;
-        
-        // Update last position
-        this.panState.lastMousePos = { x: event.clientX, y: event.clientY };
-        
-        // Re-render with new center
-        this.setupCoordinateSystem();
-        
-        // console.log(`🖱️ Star Charts: Dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
-    }
-    
-    endMouseDrag(event) {
-        // End mouse drag operation
-        this.panState.isDragging = false;
-        
-        // Restore cursor
-        this.svg.style.cursor = 'default';
-        this.mapContainer.classList.remove('dragging');
-        
-        // console.log('🖱️ Star Charts: Ended mouse drag');
-    }
-    
-    startTouchDrag(event) {
-        // Start two-finger touch drag
-        if (event.touches.length !== 2) return;
-        
-        this.panState.isTouchDragging = true;
-        
-        // Calculate center point of two touches
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        const centerX = (touch1.clientX + touch2.clientX) / 2;
-        const centerY = (touch1.clientY + touch2.clientY) / 2;
-        
-        this.panState.lastTouchCenter = { x: centerX, y: centerY };
-        this.panState.startCenter = { ...this.currentCenter };
-        
-        // console.log('👆 Star Charts: Started two-finger drag');
-    }
-    
-    handleTouchDrag(event) {
-        // Handle two-finger touch drag movement
-        if (!this.panState.isTouchDragging || event.touches.length !== 2) return;
-        
-        // Calculate new center point of two touches
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        const centerX = (touch1.clientX + touch2.clientX) / 2;
-        const centerY = (touch1.clientY + touch2.clientY) / 2;
-        
-        const deltaX = centerX - this.panState.lastTouchCenter.x;
-        const deltaY = centerY - this.panState.lastTouchCenter.y;
-        
-        // Convert screen delta to world coordinates
-        const worldDelta = this.screenDeltaToWorldDelta(deltaX, deltaY);
-        
-        // Update center (subtract because we're moving the view, not the content)
-        this.currentCenter.x -= worldDelta.x;
-        this.currentCenter.y -= worldDelta.y;
-        
-        // Update last position
-        this.panState.lastTouchCenter = { x: centerX, y: centerY };
-        
-        // Re-render with new center
-        this.setupCoordinateSystem();
-        
-        // console.log(`👆 Star Charts: Touch dragging to center (${this.currentCenter.x.toFixed(1)}, ${this.currentCenter.y.toFixed(1)})`);
-    }
-    
-    endTouchDrag(event) {
-        // End two-finger touch drag
-        this.panState.isTouchDragging = false;
-        
-        // console.log('👆 Star Charts: Ended two-finger drag');
-    }
-    
-    screenDeltaToWorldDelta(screenDeltaX, screenDeltaY) {
-        // Convert screen pixel delta to world coordinate delta
-        
-        // Get current viewBox dimensions
-        const viewBox = this.svg.getAttribute('viewBox');
-        if (!viewBox) return { x: 0, y: 0 };
-        
-        const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
-        
-        // Get SVG element dimensions
-        const svgRect = this.svg.getBoundingClientRect();
-        
-        // Calculate world units per screen pixel
-        const worldPerPixelX = vbW / svgRect.width;
-        const worldPerPixelY = vbH / svgRect.height;
-        
-        return {
-            x: screenDeltaX * worldPerPixelX,
-            y: screenDeltaY * worldPerPixelY
-        };
-    }
-    
+    /**
+     * Convert screen pixels to world units (delegated to panController)
+     * @param {number} screenPixels - Screen pixels
+     * @returns {number} World units
+     */
     screenPixelsToWorldUnits(screenPixels) {
-        // Convert screen pixels to world units (for tolerance calculations)
-        
-        // Get current viewBox dimensions
-        const viewBox = this.svg.getAttribute('viewBox');
-        if (!viewBox) return screenPixels;
-        
-        const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
-        
-        // Get SVG element dimensions
-        const svgRect = this.svg.getBoundingClientRect();
-        
-        // Calculate world units per screen pixel (use average of X and Y)
-        const worldPerPixelX = vbW / svgRect.width;
-        const worldPerPixelY = vbH / svgRect.height;
-        const worldPerPixel = (worldPerPixelX + worldPerPixelY) / 2;
-        
-        return screenPixels * worldPerPixel;
+        return this.panController.screenPixelsToWorldUnits(screenPixels);
+    }
+
+    /**
+     * Convert screen delta to world delta (delegated to panController)
+     * @param {number} screenDeltaX - Screen X delta
+     * @param {number} screenDeltaY - Screen Y delta
+     * @returns {Object} World delta {x, y}
+     */
+    screenDeltaToWorldDelta(screenDeltaX, screenDeltaY) {
+        return this.panController.screenDeltaToWorldDelta(screenDeltaX, screenDeltaY);
     }
     
     selectObject(object) {
@@ -3259,20 +3074,16 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
     dispose() {
         debug('UI', '🧹 Disposing StarChartsUI...');
 
+        // Dispose pan controller (handles its own event listener cleanup)
+        if (this.panController) {
+            this.panController.dispose();
+            this.panController = null;
+        }
+
         // Remove document-level event listeners
         if (this._boundKeydownHandler) {
             document.removeEventListener('keydown', this._boundKeydownHandler);
             this._boundKeydownHandler = null;
-        }
-
-        if (this._boundDocMouseMoveHandler) {
-            document.removeEventListener('mousemove', this._boundDocMouseMoveHandler);
-            this._boundDocMouseMoveHandler = null;
-        }
-
-        if (this._boundDocMouseUpHandler) {
-            document.removeEventListener('mouseup', this._boundDocMouseUpHandler);
-            this._boundDocMouseUpHandler = null;
         }
 
         // Remove close button handler
@@ -3296,26 +3107,6 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
             if (this._boundSvgMouseLeaveHandler) {
                 this.svg.removeEventListener('mouseleave', this._boundSvgMouseLeaveHandler);
                 this._boundSvgMouseLeaveHandler = null;
-            }
-
-            if (this._boundMouseDownHandler) {
-                this.svg.removeEventListener('mousedown', this._boundMouseDownHandler);
-                this._boundMouseDownHandler = null;
-            }
-
-            if (this._boundTouchStartHandler) {
-                this.svg.removeEventListener('touchstart', this._boundTouchStartHandler);
-                this._boundTouchStartHandler = null;
-            }
-
-            if (this._boundTouchMoveHandler) {
-                this.svg.removeEventListener('touchmove', this._boundTouchMoveHandler);
-                this._boundTouchMoveHandler = null;
-            }
-
-            if (this._boundTouchEndHandler) {
-                this.svg.removeEventListener('touchend', this._boundTouchEndHandler);
-                this._boundTouchEndHandler = null;
             }
         }
 
@@ -3341,7 +3132,6 @@ debug('UTILITY', `🎯 Beacon ${object.name}: No position data found, using (0,0
         this.tooltip = null;
         this.viewManager = null;
         this.starChartsManager = null;
-        this.panState = null;
         this.displayModel = null;
 
         debug('UI', '🧹 StarChartsUI disposed');
