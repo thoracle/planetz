@@ -377,13 +377,15 @@ debugStatus();                      // Show current channel status
 5. Check coverage: `npm run test:coverage` (generates `coverage/` dir)
 
 ### Working with Large Files
-Several files exceed 50KB due to feature complexity:
-- `StarfieldManager.js` (~346KB) - Core game coordinator
-- `TargetComputerManager.js` (~302KB) - Targeting logic
-- `StarChartsUI.js` (~142KB) - Star charts interface
-- `CardInventoryUI.js` (~139KB) - Card management UI
+After god class extraction refactoring, major files are now much smaller:
+- `StarfieldManager.js` (~1,022 lines) - Core game coordinator (was 7,989 lines, -87%)
+- `TargetComputerManager.js` (~1,301 lines) - Targeting logic (was 6,635 lines, -80%)
+- `CardInventoryUI.js` (~2,386 lines) - Card management UI (was 2,717 lines, -12%)
+- `ViewManager.js` (~862 lines) - View management (was 1,880 lines, -54%)
+- `StarChartsManager.js` (~1,324 lines) - Star charts logic (was 1,976 lines, -33%)
+- `DamageControlHUD.js` (~1,017 lines) - Damage control UI (was 1,849 lines, -45%)
 
-When modifying these files, make surgical changes to specific sections rather than rewriting large blocks.
+Functionality has been extracted into focused manager classes in `frontend/static/js/managers/`.
 
 ## Recent Major Fixes (2025)
 
@@ -434,11 +436,19 @@ Testing mode currently clears missions between sessions (`NO_PERSISTENCE = true`
 
 ### Planned Architectural Refactoring (See docs/game_object_refactor_plan.md)
 
-**Status**: PLANNING - Technical debt documentation complete
+**Status**: GOD CLASS EXTRACTION COMPLETE - Remaining technical debt documented
 
-The codebase has identified technical debt in several areas:
+The codebase has addressed major technical debt:
 
-1. **God Classes** - Large files doing too much (`StarfieldManager.js` 7,894 LOC, `TargetComputerManager.js` 6,635 LOC)
+1. **God Classes** - ✅ RESOLVED - Major files extracted into focused managers:
+   - `StarfieldManager.js`: 7,989 → 1,022 lines (-87%)
+   - `TargetComputerManager.js`: 6,635 → 1,301 lines (-80%)
+   - `CardInventoryUI.js`: 2,717 → 2,386 lines (-12%)
+   - `ViewManager.js`: 1,880 → 862 lines (-54%)
+   - `StarChartsManager.js`: 1,976 → 1,324 lines (-33%)
+   - `DamageControlHUD.js`: 1,849 → 1,017 lines (-45%)
+
+Remaining technical debt:
 2. **Console.log Violations** - 1,578 statements should use `debug()` system (automated migration planned)
 3. **Global State Pollution** - 53 files use `window.*` variables (need dependency injection)
 4. **Memory Leaks** - Event listeners without cleanup (need cleanup methods)
