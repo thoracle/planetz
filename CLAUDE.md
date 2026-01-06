@@ -448,8 +448,12 @@ The codebase has addressed major technical debt:
    - `StarChartsManager.js`: 1,976 → 1,324 lines (-33%)
    - `DamageControlHUD.js`: 1,849 → 1,017 lines (-45%)
 
+2. **Console.log Violations** - ✅ RESOLVED - All main code uses `debug()` system
+   - Test files use console (intentional for test output)
+   - DebugManager/ErrorReporter use console (they ARE the debug system)
+   - Web workers use console (can't access debug system)
+
 Remaining technical debt:
-2. **Console.log Violations** - 1,578 statements should use `debug()` system (automated migration planned)
 3. **Global State Pollution** - 53 files use `window.*` variables (need dependency injection)
 4. **Memory Leaks** - Event listeners without cleanup (need cleanup methods)
 5. **Magic Numbers** - Hardcoded values need constants files
