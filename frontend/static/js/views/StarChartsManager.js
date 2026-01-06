@@ -1,7 +1,7 @@
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
-import { SCMSpatialGrid } from './starCharts/SCMSpatialGrid.js';
-import { SCMDiscoveryProcessor } from './starCharts/SCMDiscoveryProcessor.js';
+import { SCMSpatialGrid } from './starcharts/SCMSpatialGrid.js';
+import { SCMDiscoveryProcessor } from './starcharts/SCMDiscoveryProcessor.js';
 
 /**
  * StarChartsManager - Advanced discovery-based navigation system
