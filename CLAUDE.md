@@ -466,8 +466,20 @@ The codebase has addressed major technical debt:
    - DOM removal pattern: Modal elements removed from DOM auto-cleans listeners
    - All views/UI components have dispose() methods with removeEventListener
 
+5. **Magic Numbers** - ✅ DOCUMENTED - Constants infrastructure exists, migration ongoing
+   - Constants files in `frontend/static/js/constants/`:
+     - `GameConstants.js` - Z_INDEX, UI_TIMING, PHYSICS, CAMERA, AUDIO, DISCOVERY
+     - `ShipConstants.js` - SHIP_MOVEMENT, DOCKING, ENERGY consumption
+     - `TargetingConstants.js` - WIREFRAME_COLORS, TARGETING_TIMING, TARGETING_RANGE
+     - `WireframeTypes.js` - Object type to geometry mappings
+   - **Usage**: Import constants instead of hardcoding values:
+     ```javascript
+     import { Z_INDEX, UI_TIMING } from '../constants/GameConstants.js';
+     import { WIREFRAME_COLORS } from '../constants/TargetingConstants.js';
+     ```
+   - Legacy code still has ~1000 magic numbers; migrate when touching those files
+
 Remaining technical debt:
-5. **Magic Numbers** - Hardcoded values need constants files
 6. **Timer Cleanup Issues** - 209 setTimeout/setInterval calls need centralized management
 
 **GameObject Factory Pattern**: Planned refactor to create single source of truth for game objects (planets, stations, ships) with:
