@@ -1,5 +1,7 @@
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
+import { SCMSpatialGrid } from './starCharts/SCMSpatialGrid.js';
+import { SCMDiscoveryProcessor } from './starCharts/SCMDiscoveryProcessor.js';
 
 /**
  * StarChartsManager - Advanced discovery-based navigation system
@@ -109,7 +111,11 @@ export class StarChartsManager {
 
         // Initialization state
         this.isInitialized = false;
-        
+
+        // Initialize extracted handlers
+        this.spatialGridHandler = new SCMSpatialGrid(this);
+        this.discoveryProcessor = new SCMDiscoveryProcessor(this);
+
         // Initialize system
         this.initialize();
         
@@ -462,205 +468,6 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         }
     }
     
-    initializeSpatialGrid() {
-        // Initialize spatial partitioning for optimized proximity checking
-        
-        // CRITICAL FIX: Use dynamic solar system data instead of static database
-        // This prevents contamination from other sectors
-        if (!this.solarSystemManager) {
-            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no solarSystemManager');
-            return;
-        }
-        
-        const celestialBodies = this.solarSystemManager.getCelestialBodies();
-        if (!celestialBodies || celestialBodies.size === 0) {
-            debug('STAR_CHARTS', '⚠️ Cannot initialize spatial grid: no celestial bodies in current sector');
-            return;
-        }
-        
-        this.spatialGrid.clear();
-        
-        // CRITICAL FIX: Build objects list from dynamic solar system, not static database
-        const allObjects = [];
-        
-        // Add all celestial bodies from the current dynamically generated solar system
-        for (const [key, body] of celestialBodies.entries()) {
-            const info = this.solarSystemManager.getCelestialBodyInfo(body);
-            if (info && body.position) {
-                // Create object entry compatible with discovery system
-                const objectEntry = {
-                    id: `${this._currentSector}_${key}`,
-                    name: info.name,
-                    type: info.type,
-                    position: body.position,
-                    cartesianPosition: [body.position.x, body.position.y, body.position.z]
-                };
-                allObjects.push(objectEntry);
-                debug('STAR_CHARTS', `📍 Added to spatial grid: ${objectEntry.name} (${objectEntry.id}) at [${objectEntry.cartesianPosition.join(', ')}]`);
-            }
-        }
-        
-        debug('STAR_CHARTS', `🗺️ Spatial grid using ${allObjects.length} objects from dynamic solar system (sector: ${this._currentSector})`);
-        
-        // Filter out invalid objects - now from dynamic system
-        const validObjects = allObjects;
-
-        // Store as class property for access by other methods
-        this.allObjects = validObjects;
-
-        let processedCount = 0;
-        let skippedCount = 0;
-
-        // Debug: Log ALL objects being processed
-
-        validObjects.forEach((obj, index) => {
-            if (obj && obj.position && obj.cartesianPosition) {
-                // CRITICAL FIX: cartesianPosition is already set from body.position at line 475
-                // No need for redundant getScenePosition() call that can fail on name matching
-                const position3D = obj.cartesianPosition;
-
-                const gridKey = this.getGridKey(position3D);
-
-                if (!this.spatialGrid.has(gridKey)) {
-                    this.spatialGrid.set(gridKey, []);
-
-                } else {
-
-                }
-
-                const beforeCount = this.spatialGrid.get(gridKey).length;
-                this.spatialGrid.get(gridKey).push(obj);
-                const afterCount = this.spatialGrid.get(gridKey).length;
-
-                processedCount++;
-
-                // Log summary for first few objects
-                if (index < 5) {
-
-                } else if (index === 5) {
-                    debug('STAR_CHARTS', `   ... and ${validObjects.length - 5} more objects`);
-                }
-            } else {
-                // Only skip if truly invalid (missing position or cartesianPosition)
-                debug('STAR_CHARTS', `❌ SKIPPING ${obj.id || obj.name} - no valid position data`);
-                skippedCount++;
-            }
-        });
-
-        // Only log spatial grid initialization on first setup, not on refresh
-        if (!this.spatialGridInitialized) {
-            debug('UTILITY', `🗺️ Spatial grid initialized: ${this.spatialGrid.size} cells, ${validObjects.length} objects`);
-            this.spatialGridInitialized = true;
-        }
-
-        // Add global debug function for spatial grid inspection
-        if (typeof window !== 'undefined') {
-            window.debugSpatialGrid = () => {
-
-                for (const [cellKey, objects] of this.spatialGrid) {
-
-                    objects.forEach(obj => {
-
-                    });
-                }
-                return 'Spatial grid logged to console';
-            };
-            
-            // Add manual refresh function for testing
-            window.refreshSpatialGrid = () => {
-
-                this.refreshSpatialGrid();
-                return 'Spatial grid refreshed';
-            };
-            // debug('STAR_CHARTS', '🗺️ Use debugSpatialGrid() in console to inspect spatial grid'); // Reduced spam
-        }
-    }
-
-    /**
-     * Refresh spatial grid after system generation
-     * Call this after SolarSystemManager creates all stations
-     */
-    refreshSpatialGrid() {
-        // debug('STAR_CHARTS', '🔄 Refreshing spatial grid after system generation...'); // Reduced spam
-        this.initializeSpatialGrid();
-    }
-
-    getGridKey(position) {
-        //Get spatial grid key for position (handles both 2D and 3D positions)
-        if (!position || !Array.isArray(position) || position.length < 2) {
-            debug('STAR_CHARTS', `❌ Invalid position for grid key:`, position);
-            return '0,0,0'; // Fallback
-        }
-
-        const x = Math.floor(position[0] / this.gridSize);
-        const y = Math.floor(position[1] / this.gridSize);
-
-        // Handle 2D positions (infrastructure) by assuming z=0
-        const z = position.length >= 3 ? Math.floor(position[2] / this.gridSize) : 0;
-
-        return `${x},${y},${z}`;
-    }
-    
-    getNearbyObjects(playerPosition, radius) {
-        //Get objects within radius using spatial partitioning
-
-        // debug('STAR_CHARTS', `🔍 getNearbyObjects called with playerPos[${playerPosition.join(',')}], radius=${radius}`);  // Commented out to reduce spam
-
-        const nearbyObjects = [];
-        // Fix: Ensure we search enough grid cells to cover the full radius
-        // Add larger buffer to account for objects near cell boundaries
-        // With 50km grid size and 10km discovery radius, we need at least 2 cell buffer
-        const gridRadius = Math.ceil(radius / this.gridSize) + 2;
-        const playerPos3D = this.ensure3DPosition(playerPosition);
-        const playerGridKey = this.getGridKey(playerPosition);
-        const [px, py, pz] = playerGridKey.split(',').map(Number);
-
-        // Enhanced debug logging for spatial grid search (commented out to reduce spam)
-
-        let checkedCells = 0;
-        let totalObjectsFound = 0;
-
-        // Spatial grid cell logging commented out to reduce spam
-
-        // for (const [cellKey, objects] of this.spatialGrid) {
-
-        // }
-
-        // Check surrounding grid cells
-        for (let x = px - gridRadius; x <= px + gridRadius; x++) {
-            for (let y = py - gridRadius; y <= py + gridRadius; y++) {
-                for (let z = pz - gridRadius; z <= pz + gridRadius; z++) {
-                    const gridKey = `${x},${y},${z}`;
-                    const cellObjects = this.spatialGrid.get(gridKey);
-                    checkedCells++;
-
-                    if (cellObjects && cellObjects.length > 0) {
-                        // debug('STAR_CHARTS', `📦 Cell ${gridKey}: ${cellObjects.length} objects found`); // Commented out to reduce spam
-                        
-                        // Filter objects to ensure they're actually within range (spatial grid gives nearby cells, but we need precise distance check)
-                        const inRangeObjects = cellObjects.filter(obj => {
-                            // Use stored Cartesian coordinates for accurate distance calculation
-                            const objPos3D = obj.cartesianPosition || obj.position || [0, 0, 0];
-                            const distance = this.calculateDistance(objPos3D, playerPos3D);
-                            const inRange = distance <= radius;
-                            
-                            // debug('STAR_CHARTS', `  - ${obj.id || obj.name}: ${distance.toFixed(1)}km ${inRange ? '✅ IN RANGE' : '❌ OUT OF RANGE'}`); // Commented out to reduce spam
-                            return inRange;
-                        });
-
-                        nearbyObjects.push(...inRangeObjects);
-                        totalObjectsFound += inRangeObjects.length;
-                    } else {
-                        // debug('STAR_CHARTS', `📦 Cell ${gridKey}: empty`); // Commented out to reduce spam
-                    }
-                }
-            }
-        }
-
-        // debug('STAR_CHARTS', `🔍 SUMMARY: Checked ${checkedCells} grid cells, found ${totalObjectsFound} objects total`);  // Commented out to reduce spam
-        // debug('STAR_CHARTS', `🔍 Returning ${nearbyObjects.length} nearby objects`);  // Commented out to reduce spam
-        return nearbyObjects;
-    }
     
     startDiscoveryLoop() {
         //Start the discovery checking loop
@@ -713,367 +520,6 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         }
     }
     
-    checkDiscoveryRadius() {
-        //Optimized proximity checking with performance monitoring
-        
-        const now = Date.now();
-        if (now - this.lastDiscoveryCheck < this.discoveryInterval) {
-            return; // Skip check if too soon
-        }
-        
-        const startTime = performance.now();
-        
-        try {
-            // Get player position
-            const playerPosition = this.getPlayerPosition();
-            if (!playerPosition) return;
-            
-            // Get discovery radius from Target CPU (with debug override support)
-            const discoveryRadius = this.getEffectiveDiscoveryRadius();
-            
-            // Get nearby objects using spatial partitioning
-            const nearbyObjects = this.getNearbyObjects(playerPosition, discoveryRadius);
-
-            // Debug spatial grid status
-            const gridCells = this.spatialGrid.size;
-            const totalObjectsInGrid = Array.from(this.spatialGrid.values()).reduce((sum, cell) => sum + cell.length, 0);
-
-            // Only log discovery checks when objects are found to reduce spam
-            if (nearbyObjects.length > 0) {
-                debug('STAR_CHARTS', `🔍 Discovery check: ${nearbyObjects.length} objects within ${discoveryRadius.toFixed(0)}km radius`);
-            }
-
-            // Debug: Show what objects are being checked
-            if (nearbyObjects.length > 0) {
-                debug('STAR_CHARTS', `📋 Nearby objects: ${nearbyObjects.map(obj => obj.name || obj.id).join(', ')}`);
-            }
-
-            // Debug spatial search details - commented out to reduce spam
-            // const gridRadius = Math.ceil(discoveryRadius / this.gridSize);
-            // const playerGridKey = this.getGridKey(playerPosition);
-            // debug('STAR_CHARTS', `🔍 Spatial search: gridRadius=${gridRadius}, playerGridKey=${playerGridKey}, gridSize=${this.gridSize}`);  // Commented out to reduce spam
-
-            // Batch process discoveries
-            this.batchProcessDiscoveries(nearbyObjects, playerPosition, discoveryRadius);
-            
-            this.lastDiscoveryCheck = now;
-            
-        } catch (error) {
-            debug('P1', '❌ Discovery check failed:', error);
-        }
-        
-        // Performance monitoring
-        const checkTime = performance.now() - startTime;
-        this.performanceMetrics.discoveryCheckTime.push(checkTime);
-        
-        // Alert if performance degrades
-        if (checkTime > 16) { // 16ms = 60fps budget
-            debug('PERFORMANCE', `⚠️  Discovery check exceeding frame budget: ${checkTime.toFixed(2)}ms`);
-        }
-        
-        // Keep metrics array manageable
-        if (this.performanceMetrics.discoveryCheckTime.length > 100) {
-            this.performanceMetrics.discoveryCheckTime.shift();
-        }
-    }
-    
-    batchProcessDiscoveries(objects, playerPosition, discoveryRadius) {
-        //Process discoveries in batches to avoid frame drops
-
-        // debug('STAR_CHARTS', `🔍 Processing ${objects?.length || 0} nearby objects for discovery`);  // Commented out to reduce spam
-
-        const undiscovered = objects.filter(obj => !this.isDiscovered(obj.id));
-        const inRange = undiscovered.filter(obj => this.isWithinRange(obj, playerPosition, discoveryRadius));
-        const discoveries = inRange.slice(0, this.config.maxDiscoveriesPerFrame);
-
-        // Debug undiscovered objects in range - FOCUSED DEBUG
-        if (undiscovered.length > 0) {
-            undiscovered.forEach(obj => {
-                const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
-                const distance = this.calculateDistance(objPos, playerPosition);
-                const withinRange = this.isWithinRange(obj, playerPosition, discoveryRadius);
-                
-                // Enhanced debug logging to diagnose discovery issues (reduced spam)
-
-                debug('STAR_CHARTS', `   ✅ Has cartesianPosition: ${!!obj.cartesianPosition}`);
-                
-                if (withinRange) {
-                    debug('STAR_CHARTS', `🎯 IN RANGE: ${obj.id} (${obj.type}) at ${distance.toFixed(1)}km - ready for discovery`);
-                }
-            });
-        }
-
-        // Simplified batch processing debug - only show when there are discoveries
-        if (discoveries.length > 0) {
-            debug('STAR_CHARTS', `📊 Discovery batch: ${inRange.length} in range → ${discoveries.length} processing`);
-        }
-
-        if (discoveries.length > 0) {
-            discoveries.forEach((obj, index) => {
-                const objPos = obj.cartesianPosition || obj.position || [0, 0, 0];
-                const distance = this.calculateDistance(objPos, playerPosition);
-
-                // Stagger notifications to prevent overlap when multiple objects are discovered simultaneously
-                if (index === 0) {
-                    // Process first discovery immediately
-                    this.processDiscovery(obj);
-                } else {
-                    // Delay subsequent discoveries by 2 seconds each to prevent notification overlap
-                    setTimeout(() => {
-                        this.processDiscovery(obj);
-                    }, index * 2000);
-                }
-            });
-        }
-    }
-    
-    calculateDistance(pos1, pos2) {
-        // Use unified DistanceCalculator for consistent results across all systems
-        return DistanceCalculator.calculate(pos1, pos2);
-    }
-
-    isWithinRange(object, playerPosition, discoveryRadius) {
-        //Check if object is within discovery range
-
-        // Use stored Cartesian coordinates for accurate distance calculation
-        const objPos = object.cartesianPosition || object.position || [0, 0, 0];
-        
-        // Check if we have valid position data
-        if (!objPos || (Array.isArray(objPos) && objPos.length < 2)) {
-            debug('STAR_CHARTS', `❌ Invalid position for ${object.id}: ${objPos}`);
-            return false;
-        }
-
-        const playerPos = this.ensure3DPosition(playerPosition);
-
-        const distance = this.calculateDistance(objPos, playerPos);
-        return distance <= discoveryRadius;
-    }
-
-    ensure3DPosition(position) {
-        //Ensure position is 3D by adding z=0 if missing
-        if (!position || !Array.isArray(position)) {
-            return [0, 0, 0];
-        }
-
-        if (position.length === 2) {
-            return [position[0], position[1], 0];
-        }
-
-        return position;
-    }
-    
-    processDiscovery(object) {
-        //Process a new object discovery with pacing
-        
-        // NOTIFICATION FIX: Don't call showDiscoveryNotification() here!
-        // addDiscoveredObject() already handles notifications internally.
-        // Calling it here causes DOUBLE notifications for the same object.
-        
-        // Always add to discovered list (this handles notifications internally)
-        this.addDiscoveredObject(object.id);
-        
-        // Update performance metrics
-        this.performanceMetrics.discoveryCount++;
-        
-        debug('UTILITY', `🔍 Discovered: ${object.name} (${object.type})`);
-    }
-    
-    getDiscoveryCategory(objectType) {
-        //Get discovery category for pacing system
-        
-        for (const [category, config] of Object.entries(this.discoveryTypes)) {
-            if (config.types.includes(objectType)) {
-                return category;
-            }
-        }
-        return 'background';
-    }
-    
-    shouldNotifyDiscovery(objectType) {
-        //Check if discovery should trigger notification based on pacing
-        // TEMPORARILY DISABLED: Always notify for testing purposes
-
-        // const category = this.getDiscoveryCategory(objectType);
-        // const lastTime = this.lastDiscoveryTime.get(category) || 0;
-        // const cooldown = this.discoveryTypes[category].cooldown;
-        //
-        // return Date.now() - lastTime > cooldown;
-
-        return true; // Always notify for testing - remove suppression
-    }
-    
-    showDiscoveryNotification(object, category) {
-        //Show discovery notification with appropriate prominence
-        
-        // DUPLICATE PREVENTION: Check if we've already shown notification for this object recently
-        if (!this._recentNotifications) this._recentNotifications = new Map();
-        const notificationKey = `${object.id}_${object.name}`;
-        const now = Date.now();
-        const lastNotification = this._recentNotifications.get(notificationKey);
-        
-        if (lastNotification && (now - lastNotification) < 5000) { // 5 second cooldown
-            debug('STAR_CHARTS', `⏭️ NOTIFICATION COOLDOWN: Skipping duplicate notification for ${object.name} (${now - lastNotification}ms ago)`);
-            return;
-        }
-        
-        this._recentNotifications.set(notificationKey, now);
-        debug('STAR_CHARTS', `🔔 SHOWING DISCOVERY NOTIFICATION: ${object.name} discovered!`);
-        
-        // Cleanup old entries (keep only last 50 notifications)
-        if (this._recentNotifications.size > 50) {
-            const entries = Array.from(this._recentNotifications.entries());
-            const toDelete = entries.slice(0, entries.length - 50);
-            toDelete.forEach(([key]) => this._recentNotifications.delete(key));
-        }
-        
-        const config = this.discoveryTypes[category];
-        
-        // Play audio if specified
-        if (config.audio) {
-            let played = false;
-            try {
-                if (window.audioManager && typeof window.audioManager.playSound === 'function') {
-                    window.audioManager.playSound(config.audio);
-                    played = true;
-                }
-            } catch (e) {
-                // Fall through to HTMLAudioElement fallback
-            }
-            if (!played) {
-                try {
-                    const audio = new Audio('/static/audio/blurb.mp3');
-                    audio.volume = 0.8;
-                    // Non-blocking play; browsers may reject silently if not user-initiated
-                    audio.play().catch(() => {});
-                } catch (e) {
-                    // Ignore audio errors to avoid interrupting UX
-                }
-            }
-        }
-        
-        // Show notification
-        const message = `${object.name} discovered!`;
-
-        if (config.notification === 'prominent') {
-            this.showProminentNotification(message);
-        } else if (config.notification === 'subtle') {
-            this.showSubtleNotification(message);
-        } else if (config.notification === 'log_only') {
-            debug('STAR_CHARTS', `📝 ${message}`);
-        } else {
-            debug('STAR_CHARTS', `📝 ${message}`);
-        }
-    }
-    
-    showProminentNotification(message) {
-        //Show prominent discovery notification using HUD system
-
-        debug('STAR_CHARTS', `🔔 DISCOVERY NOTIFICATION: ${message}`);
-
-        // Use ONLY ONE notification method to prevent duplicates
-        let notificationShown = false;
-
-        // Method 1: Use StarfieldManager's ephemeral HUD (top center) - PREFERRED
-        if (this.viewManager?.starfieldManager?.showHUDEphemeral) {
-            try {
-                this.viewManager.starfieldManager.showHUDEphemeral('🔍 DISCOVERY', message, 4000);
-                debug('STAR_CHARTS', `✅ Discovery notification sent to Ephemeral HUD (top center)`);
-                notificationShown = true;
-                return; // EXIT EARLY to prevent multiple notifications
-            } catch (e) {
-                debug('STAR_CHARTS', `❌ Ephemeral HUD notification failed: ${e.message}`);
-            }
-        }
-
-        // Method 2: Try WeaponHUD unified message system (FALLBACK ONLY)
-        if (!notificationShown && this.viewManager?.starfieldManager?.weaponHUD?.showUnifiedMessage) {
-            try {
-                this.viewManager.starfieldManager.weaponHUD.showUnifiedMessage(
-                    message, 
-                    5000, // duration
-                    3,    // high priority
-                    '#00ff41', // green color
-                    '#00ff41', // green border
-                    'rgba(0, 0, 0, 0.9)' // dark background
-                );
-                debug('STAR_CHARTS', `✅ Discovery notification sent to WeaponHUD (fallback)`);
-                notificationShown = true;
-                return; // EXIT EARLY to prevent multiple notifications
-            } catch (e) {
-                debug('STAR_CHARTS', `❌ WeaponHUD notification failed: ${e.message}`);
-            }
-        }
-
-        // Method 3: Fallback to creating notification element
-        if (!notificationShown) {
-            const notification = document.createElement('div');
-            notification.className = 'star-charts-discovery-notification prominent';
-            notification.textContent = message;
-
-            // Style the notification
-            Object.assign(notification.style, {
-                position: 'fixed',
-                top: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0, 255, 68, 0.9)',
-                color: '#000',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                zIndex: '10000',
-                animation: 'fadeInOut 3s ease-in-out'
-            });
-
-            document.body.appendChild(notification);
-
-            // Remove after animation
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 3000);
-        }
-    }
-    
-    showSubtleNotification(message) {
-        //Show subtle discovery notification using HUD system
-
-        // Use StarfieldManager's ephemeral HUD for proper notifications (top center)
-        if (this.viewManager?.starfieldManager?.showHUDEphemeral) {
-            this.viewManager.starfieldManager.showHUDEphemeral('🔍 DISCOVERY', message, 3000);
-        } else {
-            // Fallback to creating notification element
-            const notification = document.createElement('div');
-            notification.className = 'star-charts-discovery-notification subtle';
-            notification.textContent = message;
-
-            // Style the notification
-            Object.assign(notification.style, {
-                position: 'fixed',
-                top: '60px',
-                right: '20px',
-                backgroundColor: 'rgba(255, 255, 68, 0.7)',
-                color: '#000',
-                padding: '8px 15px',
-                borderRadius: '3px',
-                fontSize: '14px',
-                zIndex: '9999',
-                animation: 'slideInOut 2s ease-in-out'
-            });
-
-            document.body.appendChild(notification);
-
-            // Remove after animation
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 2000);
-        }
-    }
     
     getPlayerPosition() {
         //Get current player position with robust fallbacks
@@ -1179,150 +625,6 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
         }
     }
     
-    isDiscovered(input) {
-        //Check if object has been discovered
-        // DISCOVERY FIX: Handle both string IDs and target data objects
-        
-        // Basic validation
-        if (!input || !this.discoveredObjects) {
-            return false;
-        }
-        
-        // If input is a string (ID), use it directly
-        if (typeof input === 'string') {
-            const normalizedId = input.replace(/^a0_/i, 'A0_');
-            return this.discoveredObjects.has(normalizedId);
-        }
-        
-        // If input is an object (target data), construct ID using TargetComputer
-        if (typeof input === 'object' && this.targetComputerManager?.constructObjectId) {
-            const objectId = this.targetComputerManager.constructObjectId(input);
-            if (objectId) {
-                const normalizedId = objectId.replace(/^a0_/i, 'A0_');
-                return this.discoveredObjects.has(normalizedId);
-            }
-        }
-        
-        return false;
-    }
-
-    getDiscoveryMetadata(objectId) {
-        //Get metadata for a discovered object
-        // Normalize ID to handle case sensitivity (a0_ vs A0_)
-        const normalizedId = typeof objectId === 'string' ? objectId.replace(/^a0_/i, 'A0_') : objectId;
-        return this.discoveryMetadata.get(normalizedId) || null;
-    }
-
-    getObjectById(objectId) {
-        //Get object data by ID from all loaded objects
-        if (this.allObjects) {
-            return this.allObjects.find(obj => obj && obj.id === objectId);
-        }
-        return null;
-    }
-
-    addDiscoveredObject(objectId, discoveryMethod = 'proximity', source = 'player') {
-        //Add object to discovered list with metadata and save state
-        
-        // CRITICAL: Normalize IDs to prevent same object with different ID formats
-        let normalizedId = typeof objectId === 'string' ? objectId : String(objectId);
-        
-        // Step 1: Fix case sensitivity (a0_ → A0_)
-        normalizedId = normalizedId.replace(/^a0_/i, 'A0_');
-        
-        // Step 2: Remove redundant prefixes (A0_beacon_A0_ → A0_, A0_A0_ → A0_)
-        normalizedId = normalizedId.replace(/^A0_beacon_A0_/i, 'A0_');
-        normalizedId = normalizedId.replace(/^A0_A0_/i, 'A0_');
-        
-        // Step 3: Remove redundant "beacon_" prefix from navigation beacons
-        // A0_beacon_navigation_beacon_3 → A0_navigation_beacon_3
-        normalizedId = normalizedId.replace(/^A0_beacon_(navigation_beacon_)/, 'A0_$1');
-        
-        // Step 4: Normalize beacon naming (#3 vs _3)
-        normalizedId = normalizedId.replace(/navigation_beacon_#(\d+)/, 'navigation_beacon_$1');
-        
-        // Step 5: Deduplicate station naming (remove station_ prefix duplicates)
-        normalizedId = normalizedId.replace(/^A0_station_/, 'A0_');
-        
-        debug('STAR_CHARTS', `ID NORMALIZATION: "${objectId}" → "${normalizedId}"`);
-        
-        // ATOMIC CHECK-AND-ADD: This prevents ALL race conditions
-        // If already discovered, exit immediately BEFORE any other operations
-        if (this.discoveredObjects.has(normalizedId)) {
-            debug('STAR_CHARTS', `DUPLICATE DISCOVERY BLOCKED: ${normalizedId} (method: ${discoveryMethod})`);
-            // Update metadata for re-discovery
-            const existing = this.discoveryMetadata.get(normalizedId);
-            if (existing) {
-                existing.lastSeen = new Date().toISOString();
-                existing.source = source;
-            }
-            return; // EXIT - already discovered
-        }
-        
-        // Add to discovered set IMMEDIATELY (atomic with above check in single-threaded JS)
-        this.discoveredObjects.add(normalizedId);
-        debug('STAR_CHARTS', `FIRST DISCOVERY: ${normalizedId} (method: ${discoveryMethod}) - Total: ${this.discoveredObjects.size}`);
-        
-        // Secondary lock for notification phase (belt and suspenders)
-        if (!this._discoveryInProgress) this._discoveryInProgress = new Set();
-        if (this._discoveryInProgress.has(normalizedId)) {
-            debug('STAR_CHARTS', `⏭️ NOTIFICATION IN PROGRESS: ${normalizedId} - skipping duplicate notification`);
-            return;
-        }
-        this._discoveryInProgress.add(normalizedId);
-
-        // Add discovery metadata
-        const discoveryData = {
-                discoveredAt: new Date().toISOString(),
-                discoveryMethod: discoveryMethod,
-                source: source,
-                sector: this.currentSector,
-                firstDiscovered: true
-            };
-
-            this.discoveryMetadata.set(normalizedId, discoveryData);
-
-            this.saveDiscoveryState();
-            debug('STAR_CHARTS', `✅ DISCOVERED: ${normalizedId} (${discoveryMethod}) - Total discovered: ${this.discoveredObjects.size}`);
-
-            // Update achievement progress
-            this.updateAchievementProgress();
-
-            // Get object data for notification
-            const objectData = this.getObjectById(objectId);
-            if (objectData) {
-                debug('STAR_CHARTS', `📋 Object data found: ${objectData.name} (${objectData.type})`);
-                
-                // Check if we should notify
-                const shouldNotify = this.shouldNotifyDiscovery(objectData.type);
-                debug('STAR_CHARTS', `🔔 Should notify: ${shouldNotify}`);
-                
-                if (shouldNotify) {
-                    const category = this.getDiscoveryCategory(objectData.type);
-                    debug('STAR_CHARTS', `📂 Discovery category: ${category}`);
-                    this.showDiscoveryNotification(objectData, category);
-                }
-            } else {
-                debug('STAR_CHARTS', `❌ No object data found for ${objectId}`);
-            }
-
-            // Trigger discovery callbacks
-            this.triggerDiscoveryCallbacks(normalizedId, discoveryData);
-            
-            // Force immediate target computer sync for responsive updates
-            if (this.viewManager?.navigationSystemManager?.starChartsTargetComputerIntegration) {
-                this.viewManager.navigationSystemManager.starChartsTargetComputerIntegration.syncTargetData();
-                debug('STAR_CHARTS', `🔄 Triggered immediate target computer sync for discovery: ${normalizedId}`);
-            }
-            
-            // CLEANUP: Remove from discovery in progress after processing
-            setTimeout(() => {
-                if (this._discoveryInProgress) {
-                    this._discoveryInProgress.delete(normalizedId);
-                }
-            }, 100);
-    }
-
     // Integration callback methods
     addDiscoveryCallback(callback) {
         //Add a callback for discovery events
@@ -1951,6 +1253,52 @@ debug('UTILITY', `   - Spatial grid cells: ${metrics.spatialGridCells}`);
 
 // Static style element reference for cleanup
 StarChartsManager._styleElement = null;
+
+// ============================================================================
+// DELEGATION METHODS - Forward calls to extracted handlers
+// ============================================================================
+
+// Spatial Grid Handler Delegations
+StarChartsManager.prototype.initializeSpatialGrid = function() {
+    return this.spatialGridHandler.initializeSpatialGrid();
+};
+
+StarChartsManager.prototype.refreshSpatialGrid = function() {
+    return this.spatialGridHandler.refreshSpatialGrid();
+};
+
+StarChartsManager.prototype.getGridKey = function(position) {
+    return this.spatialGridHandler.getGridKey(position);
+};
+
+StarChartsManager.prototype.getNearbyObjects = function(playerPosition, radius) {
+    return this.spatialGridHandler.getNearbyObjects(playerPosition, radius);
+};
+
+// Discovery Processor Delegations
+StarChartsManager.prototype.checkDiscoveryRadius = function() {
+    return this.discoveryProcessor.checkDiscoveryRadius();
+};
+
+StarChartsManager.prototype.isDiscovered = function(input) {
+    return this.discoveryProcessor.isDiscovered(input);
+};
+
+StarChartsManager.prototype.addDiscoveredObject = function(objectId, discoveryMethod = 'proximity', source = 'player') {
+    return this.discoveryProcessor.addDiscoveredObject(objectId, discoveryMethod, source);
+};
+
+StarChartsManager.prototype.isWithinRange = function(object, playerPosition, discoveryRadius) {
+    return this.discoveryProcessor.isWithinRange(object, playerPosition, discoveryRadius);
+};
+
+StarChartsManager.prototype.processDiscovery = function(object) {
+    return this.discoveryProcessor.processDiscovery(object);
+};
+
+StarChartsManager.prototype.getObjectById = function(objectId) {
+    return this.getObjectData(objectId);
+};
 
 // Add CSS animations for notifications (only once per page load)
 if (!StarChartsManager._styleElement) {
