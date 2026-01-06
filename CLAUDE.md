@@ -453,8 +453,14 @@ The codebase has addressed major technical debt:
    - DebugManager/ErrorReporter use console (they ARE the debug system)
    - Web workers use console (can't access debug system)
 
+3. **Global State** - ✅ ANALYZED - Intentional service locator pattern, NOT pollution
+   - Core service locators: `window.starfieldManager`, `window.targetComputerManager`, `window.spatialManager`, etc.
+   - Debug utilities: `window.debug()`, `window.debugEnable()`, `window.errorReporter`, etc.
+   - UI singletons: `window.communicationHUD`, `window.shipLog`, `window.cardRewardAnimator`
+   - Ready flags: `window.starfieldManagerReady`, etc. for async initialization
+   - Managed by `GlobalReferencesManager.js` with proper dispose() cleanup
+
 Remaining technical debt:
-3. **Global State Pollution** - 53 files use `window.*` variables (need dependency injection)
 4. **Memory Leaks** - Event listeners without cleanup (need cleanup methods)
 5. **Magic Numbers** - Hardcoded values need constants files
 6. **Timer Cleanup Issues** - 209 setTimeout/setInterval calls need centralized management
