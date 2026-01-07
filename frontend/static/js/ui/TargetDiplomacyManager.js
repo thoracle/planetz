@@ -5,15 +5,18 @@
  * Handles faction and diplomacy resolution for targets.
  *
  * Features:
- * - Faction to diplomacy status mapping
+ * - Faction to diplomacy status mapping via FactionStandingsManager
  * - Target diplomacy resolution with discovery integration
  * - Special handling for stars, ships, stations, beacons
+ * - GameObject.diplomacy preferred when available (Phase 3)
  * - Fallback diplomacy logic based on target type
  */
 
 import { debug } from '../debug.js';
+import { FactionStandingsManager } from '../core/FactionStandingsManager.js';
 
-// Faction relationship mappings (matches AmbientShipManager.js)
+// Legacy faction relationship mappings (kept for backward compatibility)
+// PHASE 3: This will be removed in Phase 6 when all code uses FactionStandingsManager
 const FACTION_RELATIONS = {
     'Terran Republic Alliance': 'friendly',
     'Zephyrian Collective': 'friendly',
@@ -38,6 +41,7 @@ export class TargetDiplomacyManager {
 
     /**
      * Convert faction name to diplomacy status
+     * PHASE 3: Now uses FactionStandingsManager as primary source
      * @param {string} faction - Faction name
      * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
      */
@@ -48,7 +52,19 @@ export class TargetDiplomacyManager {
             return 'neutral';
         }
 
-        // Case-insensitive lookup: find faction by comparing lowercase versions
+        // PHASE 3: Use FactionStandingsManager as primary source
+        // This provides dynamic standings that can change during gameplay
+        try {
+            const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
+            if (diplomacy) {
+                return diplomacy;
+            }
+        } catch (e) {
+            debug('TARGETING', `FactionStandingsManager lookup failed for "${faction}": ${e.message}`);
+        }
+
+        // LEGACY FALLBACK: Case-insensitive lookup in static relations
+        // This will be removed in Phase 6
         const factionKey = Object.keys(FACTION_RELATIONS).find(key =>
             key.toLowerCase() === faction.toLowerCase()
         );
@@ -64,6 +80,7 @@ export class TargetDiplomacyManager {
 
     /**
      * Get diplomacy status for any target type with consistent fallback logic
+     * PHASE 3: Now prefers GameObject.diplomacy when available
      * @param {Object} targetData - Target data object
      * @returns {string} Diplomacy status ('enemy', 'friendly', 'neutral', 'unknown')
      */
@@ -89,23 +106,41 @@ export class TargetDiplomacyManager {
             return 'unknown';
         }
 
+        // PHASE 3: Try GameObject.diplomacy first (single source of truth)
+        // This uses FactionStandingsManager internally for dynamic diplomacy
+        const gameObject = targetData.gameObject ||
+                          targetData.object?.userData?.gameObject ||
+                          targetData.userData?.gameObject;
+        if (gameObject && typeof gameObject.diplomacy === 'string') {
+            // Update GameObject's discovered state if needed
+            if (!gameObject.discovered && isDiscovered) {
+                gameObject.discovered = true;
+            }
+            const goDiplomacy = gameObject.diplomacy;
+            if (goDiplomacy && goDiplomacy !== 'unknown') {
+                return goDiplomacy;
+            }
+        }
+
         // PHASE 0 ASSERTION: Log discovered objects missing faction data
         // This helps identify data quality issues that should be fixed at the source
-        if (!targetData.faction && !targetData.diplomacy && targetData.type !== 'star') {
-            debug('P1', 'ASSERTION WARNING: Discovered object missing faction/diplomacy:', {
+        if (!targetData.faction && !targetData.diplomacy && targetData.type !== 'star' && !gameObject) {
+            debug('P1', 'ASSERTION WARNING: Discovered object missing faction/diplomacy and no GameObject:', {
                 name: targetData.name,
                 type: targetData.type,
                 id: targetData.id || targetData.object?.uuid
             });
         }
 
-        // For DISCOVERED objects, determine proper faction standing
+        // LEGACY FALLBACK: For objects not yet migrated to GameObject pattern
+        // This will be simplified in Phase 6
+
         // 1. Direct diplomacy property (highest priority)
         if (targetData.diplomacy && targetData.diplomacy !== 'unknown') {
             return targetData.diplomacy;
         }
 
-        // 2. Faction-based diplomacy
+        // 2. Faction-based diplomacy via FactionStandingsManager
         // Skip 'Unknown' faction (placeholder for undiscovered objects) - let it fall through to step 4.5
         if (targetData.faction && targetData.faction !== 'Unknown') {
             const factionDiplomacy = this.getFactionDiplomacy(targetData.faction);

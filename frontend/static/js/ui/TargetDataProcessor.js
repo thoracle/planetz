@@ -9,6 +9,7 @@
  * - Target data normalization to standardized format
  * - Discovery status integration
  * - Special handling for ships, waypoints, beacons, stars
+ * - PHASE 3: Includes GameObject reference when available
  */
 
 import { debug } from '../debug.js';
@@ -156,7 +157,21 @@ export class TargetDataProcessor {
     }
 
     /**
+     * PHASE 3: Find GameObject reference from various sources
+     * @param {Object} targetData - Raw target data
+     * @returns {Object|null} GameObject instance or null
+     */
+    _findGameObject(targetData) {
+        // Try multiple sources for gameObject
+        return targetData.gameObject ||
+               targetData.object?.userData?.gameObject ||
+               this.tcm.currentTarget?.userData?.gameObject ||
+               null;
+    }
+
+    /**
      * Process target data and return standardized format
+     * PHASE 3: Now includes gameObject reference when available
      * @param {Object} targetData - Raw target data
      * @returns {Object|null} Standardized target data
      */
@@ -165,6 +180,9 @@ export class TargetDataProcessor {
             return null;
         }
 
+        // PHASE 3: Find GameObject reference early
+        const gameObject = this._findGameObject(targetData);
+
         // Debug logging for beacons (much less frequent)
         if (targetData.name?.includes('Navigation Beacon') && Math.random() < 0.001) {
             debug('TARGETING', `processTargetData for beacon: ${targetData.name}`, {
@@ -172,6 +190,7 @@ export class TargetDataProcessor {
                 discovered: targetData.discovered,
                 diplomacy: targetData.diplomacy,
                 faction: targetData.faction,
+                hasGameObject: !!gameObject,
                 _isUndiscovered: targetData._isUndiscovered
             });
         }
@@ -265,6 +284,7 @@ export class TargetDataProcessor {
                 faction: 'waypoint',
                 diplomacy: 'waypoint',
                 isDiscovered: true, // Waypoints are always "discovered" since they're mission targets
+                gameObject: gameObject, // PHASE 3: Include GameObject reference
                 ...targetData // Include all original properties
             };
         }
@@ -305,11 +325,24 @@ export class TargetDataProcessor {
                 diplomacy: targetData.diplomacy || shipInstance?.diplomacy,
                 faction: targetData.faction || shipInstance?.faction || targetData.diplomacy || shipInstance?.diplomacy,
                 isDiscovered: isDiscovered,
+                gameObject: gameObject, // PHASE 3: Include GameObject reference
                 ...targetData // Include all original properties
             };
         } else {
             // For non-ship targets, prefer the data we already have from target list
             // If targetData already has the info (from addNonPhysicsTargets), use it
+
+            // PHASE 3: Get diplomacy from GameObject if available, else fall back to legacy
+            const getDiplomacy = () => {
+                if (gameObject && isDiscovered) {
+                    const goDiplomacy = gameObject.diplomacy;
+                    if (goDiplomacy && goDiplomacy !== 'unknown') {
+                        return goDiplomacy;
+                    }
+                }
+                return isDiscovered ? targetData.diplomacy : 'unknown';
+            };
+
             if (targetData.type && targetData.type !== 'unknown') {
                 return {
                     object: this.tcm.currentTarget,
@@ -320,8 +353,9 @@ export class TargetDataProcessor {
                     isMoon: targetData.isMoon || false,
                     isSpaceStation: targetData.isSpaceStation,
                     faction: isDiscovered ? targetData.faction : 'unknown',
-                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
+                    diplomacy: getDiplomacy(),
                     isDiscovered: isDiscovered,
+                    gameObject: gameObject, // PHASE 3: Include GameObject reference
                     ...targetData
                 };
             } else if (targetData.name && targetData.name !== 'Unknown') {
@@ -337,8 +371,9 @@ export class TargetDataProcessor {
                     isMoon: targetData.isMoon || false,
                     isSpaceStation: targetData.isSpaceStation,
                     faction: isDiscovered ? targetData.faction : 'unknown',
-                    diplomacy: isDiscovered ? targetData.diplomacy : 'unknown',
+                    diplomacy: getDiplomacy(),
                     isDiscovered: isDiscovered,
+                    gameObject: gameObject, // PHASE 3: Include GameObject reference
                     ...targetData
                 };
             } else {
@@ -353,8 +388,9 @@ export class TargetDataProcessor {
                     distance: targetData.distance,
                     isMoon: targetData.isMoon || false,
                     faction: isDiscovered ? info?.faction : 'unknown',
-                    diplomacy: isDiscovered ? info?.diplomacy : 'unknown',
+                    diplomacy: getDiplomacy() || (isDiscovered ? info?.diplomacy : 'unknown'),
                     isDiscovered: isDiscovered,
+                    gameObject: gameObject, // PHASE 3: Include GameObject reference
                     ...info
                 };
             }

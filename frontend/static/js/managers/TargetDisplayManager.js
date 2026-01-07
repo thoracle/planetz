@@ -10,6 +10,7 @@
  * - Format distances with appropriate units (Km, Mm, Gm, Tm, Pm, Em)
  * - Get current target data from target computer manager
  * - Get parent planet name for moons
+ * - PHASE 3: Prefer GameObject.diplomacy when available
  */
 
 import { debug } from '../debug.js';
@@ -127,10 +128,24 @@ export class TargetDisplayManager {
         } else if (info?.type === 'star') {
             diplomacyColor = '#ffff00'; // Stars are neutral yellow
         } else {
-            // Convert faction to diplomacy if needed
-            let diplomacy = info?.diplomacy?.toLowerCase();
-            if (!diplomacy && info?.faction) {
-                diplomacy = this.sfm.getFactionDiplomacy(info.faction).toLowerCase();
+            // PHASE 3: Try GameObject.diplomacy first (single source of truth)
+            const gameObject = currentTargetData.gameObject ||
+                              currentTargetData.object?.userData?.gameObject ||
+                              this.sfm.currentTarget?.userData?.gameObject;
+
+            let diplomacy = null;
+
+            // Check GameObject first
+            if (gameObject && typeof gameObject.diplomacy === 'string') {
+                diplomacy = gameObject.diplomacy.toLowerCase();
+            }
+
+            // Fallback to info.diplomacy or faction
+            if (!diplomacy) {
+                diplomacy = info?.diplomacy?.toLowerCase();
+                if (!diplomacy && info?.faction) {
+                    diplomacy = this.sfm.getFactionDiplomacy(info.faction).toLowerCase();
+                }
             }
 
             if (diplomacy === 'enemy') {
@@ -230,6 +245,7 @@ export class TargetDisplayManager {
 
     /**
      * Get current target data from target computer manager or local array
+     * PHASE 3: Ensures gameObject reference is included when available
      * @returns {Object|null} Target data object or null if no valid target
      */
     getCurrentTargetData() {
@@ -240,11 +256,22 @@ export class TargetDisplayManager {
         // Use the target data from TargetComputerManager which has the most up-to-date information
         const targetComputerData = this.sfm.targetComputerManager.getCurrentTargetData();
         if (targetComputerData) {
+            // PHASE 3: Ensure gameObject reference is available
+            if (!targetComputerData.gameObject) {
+                // Try to find gameObject from the Three.js object
+                const gameObject = targetComputerData.object?.userData?.gameObject ||
+                                  this.sfm.currentTarget?.userData?.gameObject;
+                if (gameObject) {
+                    targetComputerData.gameObject = gameObject;
+                }
+            }
+
             // PHASE 0 ASSERTION: Log target data missing essential fields
             if (!targetComputerData.name && !targetComputerData.type) {
                 debug('P1', 'ASSERTION WARNING: getCurrentTargetData returned data without name or type:', {
                     hasObject: !!targetComputerData.object,
                     hasPosition: !!targetComputerData.position,
+                    hasGameObject: !!targetComputerData.gameObject,
                     keys: Object.keys(targetComputerData)
                 });
             }
@@ -255,7 +282,18 @@ export class TargetDisplayManager {
         debug('P1', 'ASSERTION WARNING: getCurrentTargetData falling back to local targetObjects array. TargetComputerManager data unavailable.');
 
         // Fallback to local target objects array
-        return this.sfm.targetObjects[this.sfm.targetIndex];
+        const fallbackData = this.sfm.targetObjects[this.sfm.targetIndex];
+
+        // PHASE 3: Try to attach gameObject to fallback data too
+        if (fallbackData && !fallbackData.gameObject) {
+            const gameObject = fallbackData.object?.userData?.gameObject ||
+                              this.sfm.currentTarget?.userData?.gameObject;
+            if (gameObject) {
+                fallbackData.gameObject = gameObject;
+            }
+        }
+
+        return fallbackData;
     }
 
     /**
