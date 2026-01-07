@@ -12,7 +12,7 @@
  */
 
 import { debug } from '../debug.js';
-import { DOCKING } from '../config/constants.js';
+import { DOCKING } from '../constants/ShipConstants.js';
 
 export class DockingOperationsManager {
     /**

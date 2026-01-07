@@ -82,10 +82,12 @@ export class StarfieldManager {
         this.renderingInitManager = new RenderingInitManager(this);
         this.renderingInitManager.initialize();
 
-        // Create speed indicator
-        this.createSpeedIndicator();
-        
+        // AbortController for centralized event listener cleanup
+        // Must be created before any UI components that need abort signals
+        this._abortController = new AbortController();
+
         // Create ship systems HUD (initially hidden)
+        // Note: Speed indicator created after UtilityManagersInitializer
         this.createShipSystemsHUD();
         this.shipSystemsHUD.style.display = 'none'; // Hide by default
 
@@ -93,9 +95,6 @@ export class StarfieldManager {
         // (targetComputerManager, starChartsManager, proximityDetector3D)
         this.targetingInitManager = new TargetingInitManager(this);
         this.targetingInitManager.initialize();
-
-        // AbortController for centralized event listener cleanup
-        this._abortController = new AbortController();
 
         // InfrastructureInitializer - consolidates 3 infrastructure managers
         this.infrastructureInitializer = new InfrastructureInitializer(this);
@@ -106,10 +105,6 @@ export class StarfieldManager {
         //     this._dockingInitTried = true;
         //     this.initializeSimpleDocking();
         // }
-
-        // Create weapon HUD
-        debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
-        this.createWeaponHUD();
 
         // UIManagersInitializer - consolidates 3 UI managers
         this.uiManagersInitializer = new UIManagersInitializer(this);
@@ -132,6 +127,13 @@ export class StarfieldManager {
         // UtilityManagersInitializer - consolidates 14 utility managers
         this.utilityManagersInitializer = new UtilityManagersInitializer(this);
         this.utilityManagersInitializer.initialize();
+
+        // Create speed indicator (requires statusBarManager from UtilityManagersInitializer)
+        this.createSpeedIndicator();
+
+        // Create weapon HUD (requires weaponHUDManager from UtilityManagersInitializer)
+        debug('COMBAT', '🔫 StarfieldManager constructor: About to create weapon HUD...');
+        this.createWeaponHUD();
 
         // Try to initialize WeaponEffectsManager after a short delay
         // This ensures THREE.js is fully loaded and available
@@ -197,7 +199,8 @@ export class StarfieldManager {
     }
 
     createSpeedIndicator() {
-        this.statusBarManager.createSpeedIndicator();
+        // Access via utilityManagersInitializer directly since this may be called before PropertyProxyInitializer
+        this.utilityManagersInitializer.statusBarManager.createSpeedIndicator();
     }
 
     /**
@@ -205,7 +208,8 @@ export class StarfieldManager {
      * Delegates to ShipSystemsHUDManager
      */
     createShipSystemsHUD() {
-        this.shipSystemsHUDManager.createShipSystemsHUD();
+        // Access via hudInitializer directly since this may be called before PropertyProxyInitializer
+        this.hudInitializer.shipSystemsHUDManager.createShipSystemsHUD();
     }
 
     /**
@@ -327,7 +331,8 @@ export class StarfieldManager {
     }
 
     createWeaponHUD() {
-        this.weaponHUDManager.createWeaponHUD();
+        // Access via utilityManagersInitializer directly since this may be called before PropertyProxyInitializer
+        this.utilityManagersInitializer.weaponHUDManager.createWeaponHUD();
     }
 
     setupWeaponHUDConnectionRetry() {
@@ -339,7 +344,8 @@ export class StarfieldManager {
     }
 
     bindKeyEvents() {
-        this.keyboardInputManager.bindKeyEvents();
+        // Access via inputSystemsInitializer directly since this may be called before PropertyProxyInitializer
+        this.inputSystemsInitializer.keyboardInputManager.bindKeyEvents();
     }
 
     // NOTE: The full keyboard event handling (~1250 lines) has been moved to KeyboardInputManager.js
@@ -380,7 +386,8 @@ export class StarfieldManager {
     }
 
     bindMouseEvents() {
-        this.keyboardInputManager.bindMouseEvents();
+        // Access via inputSystemsInitializer directly since this may be called before PropertyProxyInitializer
+        this.inputSystemsInitializer.keyboardInputManager.bindMouseEvents();
     }
 
     updateSmoothRotation(deltaTime) {
@@ -424,7 +431,8 @@ export class StarfieldManager {
      * Delegated to TimeoutManager
      */
     _setTimeout(callback, delay) {
-        return this.timeoutManager.setTimeout(callback, delay);
+        // Access via infrastructureInitializer directly since this may be called before PropertyProxyInitializer
+        return this.infrastructureInitializer.timeoutManager.setTimeout(callback, delay);
     }
 
     // Star sprite creation delegated to StarfieldRenderer

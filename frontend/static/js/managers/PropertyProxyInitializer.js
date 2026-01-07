@@ -490,6 +490,14 @@ export class PropertyProxyInitializer {
             get: () => sfm.renderingInitManager.starfieldRenderer,
             set: (val) => { sfm.renderingInitManager.starfieldRenderer = val; }
         });
+        Object.defineProperty(sfm, 'starCount', {
+            get: () => sfm.renderingInitManager.starfieldRenderer?.starCount,
+            set: (val) => {
+                if (sfm.renderingInitManager.starfieldRenderer) {
+                    sfm.renderingInitManager.starfieldRenderer.starCount = val;
+                }
+            }
+        });
     }
 
     /**

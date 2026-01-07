@@ -126,7 +126,7 @@ export class KeyboardInputManager {
                     if (impulseEngines && impulseEngines.isOperational()) {
                         // Use the system to set speed - it will handle clamping
                         impulseEngines.setImpulseSpeed(requestedSpeed);
-                        actualSpeed = impulseEngines.impulseSpeed;
+                        actualSpeed = impulseEngines.getImpulseSpeed();
 
                         if (actualSpeed < requestedSpeed) {
                             // Speed was clamped due to engine level
@@ -146,13 +146,15 @@ export class KeyboardInputManager {
                     } else if (actualSpeed > 0 && this.sfm.audioManager.getEngineState() !== 'running') {
                         this.sfm.playEngineStartup(actualSpeed / this.sfm.maxSpeed);
                     } else if (actualSpeed > 0) {
-                        this.sfm.audioManager.updateEnginePitch(actualSpeed / this.sfm.maxSpeed);
+                        this.sfm.audioManager.updateEngineVolume(actualSpeed, this.sfm.maxSpeed);
                     }
                 }
 
                 // Update speed state
                 this.sfm.targetSpeed = actualSpeed;
-                if (actualSpeed > this.sfm.currentSpeed) {
+                if (actualSpeed < this.sfm.currentSpeed) {
+                    this.sfm.decelerating = true;
+                } else {
                     this.sfm.decelerating = false;
                 }
                 this.sfm.playCommandSound();
