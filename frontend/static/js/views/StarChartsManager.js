@@ -2,6 +2,7 @@ import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 import { SCMSpatialGrid } from './starcharts/SCMSpatialGrid.js';
 import { SCMDiscoveryProcessor } from './starcharts/SCMDiscoveryProcessor.js';
+import { GameObjectRegistry } from '../core/GameObjectRegistry.js';
 
 /**
  * StarChartsManager - Advanced discovery-based navigation system
@@ -214,14 +215,25 @@ debug('UTILITY', '🔄 Falling back to Long Range Scanner');
             const sector = this.objectDatabase?.sectors?.[this.currentSector];
             if (!sector) return;
             let count = 0;
+
+            // Helper to set GameObject.discovered (PHASE 4 dual-write)
+            const setGameObjectDiscovered = (id) => {
+                const gameObject = GameObjectRegistry.getById(id);
+                if (gameObject) {
+                    gameObject.discovered = true;
+                }
+            };
+
             if (sector.star?.id) {
                 if (!this.discoveredObjects.has(sector.star.id)) count++;
                 this.discoveredObjects.add(sector.star.id);
+                setGameObjectDiscovered(sector.star.id);
             }
             (sector.objects || []).forEach(obj => {
                 if (obj?.id) {
                     if (!this.discoveredObjects.has(obj.id)) count++;
                     this.discoveredObjects.add(obj.id);
+                    setGameObjectDiscovered(obj.id);
                 }
             });
             const infra = sector.infrastructure || {};
@@ -229,12 +241,14 @@ debug('UTILITY', '🔄 Falling back to Long Range Scanner');
                 if (st?.id) {
                     if (!this.discoveredObjects.has(st.id)) count++;
                     this.discoveredObjects.add(st.id);
+                    setGameObjectDiscovered(st.id);
                 }
             });
             (infra.beacons || []).forEach(b => {
                 if (b?.id) {
                     if (!this.discoveredObjects.has(b.id)) count++;
                     this.discoveredObjects.add(b.id);
+                    setGameObjectDiscovered(b.id);
                 }
             });
             this.saveDiscoveryState();
@@ -254,6 +268,11 @@ debug('UTILITY', `🧪 StarCharts TEST MODE: Discovered all objects in ${this.cu
             sector.infrastructure.beacons.forEach(beacon => {
                 if (beacon?.id && !this.discoveredObjects.has(beacon.id)) {
                     this.discoveredObjects.add(beacon.id);
+                    // PHASE 4: Also set GameObject.discovered
+                    const gameObject = GameObjectRegistry.getById(beacon.id);
+                    if (gameObject) {
+                        gameObject.discovered = true;
+                    }
                     count++;
                 }
             });

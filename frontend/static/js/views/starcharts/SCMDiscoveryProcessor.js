@@ -7,10 +7,12 @@
  * - Batch discovery processing
  * - Discovery notifications
  * - Discovery state management
+ * - PHASE 4: Syncs with GameObject.discovered state
  */
 
 import { debug } from '../../debug.js';
 import { DistanceCalculator } from '../../utils/DistanceCalculator.js';
+import { GameObjectRegistry } from '../../core/GameObjectRegistry.js';
 
 export class SCMDiscoveryProcessor {
     constructor(manager) {
@@ -316,23 +318,37 @@ export class SCMDiscoveryProcessor {
 
     /**
      * Check if object has been discovered
+     * PHASE 4: Checks GameObject.discovered first, falls back to legacy Set
      */
     isDiscovered(input) {
-        if (!input || !this.discoveredObjects) {
+        if (!input) {
             return false;
         }
 
+        // Normalize ID for lookups
+        let normalizedId = null;
         if (typeof input === 'string') {
-            const normalizedId = input.replace(/^a0_/i, 'A0_');
-            return this.discoveredObjects.has(normalizedId);
-        }
-
-        if (typeof input === 'object' && this.manager.targetComputerManager?.constructObjectId) {
+            normalizedId = input.replace(/^a0_/i, 'A0_');
+        } else if (typeof input === 'object' && this.manager.targetComputerManager?.constructObjectId) {
             const objectId = this.manager.targetComputerManager.constructObjectId(input);
             if (objectId) {
-                const normalizedId = objectId.replace(/^a0_/i, 'A0_');
-                return this.discoveredObjects.has(normalizedId);
+                normalizedId = objectId.replace(/^a0_/i, 'A0_');
             }
+        }
+
+        if (!normalizedId) {
+            return false;
+        }
+
+        // PHASE 4: Check GameObject.discovered first (single source of truth)
+        const gameObject = GameObjectRegistry.getById(normalizedId);
+        if (gameObject) {
+            return gameObject.discovered === true;
+        }
+
+        // LEGACY FALLBACK: Check discoveredObjects Set until Phase 6
+        if (this.discoveredObjects) {
+            return this.discoveredObjects.has(normalizedId);
         }
 
         return false;
@@ -365,7 +381,16 @@ export class SCMDiscoveryProcessor {
             return;
         }
 
-        // Add to discovered set
+        // PHASE 4: Update GameObject.discovered state (single source of truth)
+        const gameObject = GameObjectRegistry.getById(normalizedId);
+        if (gameObject) {
+            gameObject.discovered = true;
+            debug('STAR_CHARTS', `Set GameObject.discovered = true for: ${normalizedId}`);
+        } else {
+            debug('STAR_CHARTS', `No GameObject found in registry for: ${normalizedId}`);
+        }
+
+        // DUAL-WRITE: Keep legacy Set in sync until Phase 6
         this.discoveredObjects.add(normalizedId);
         debug('STAR_CHARTS', `FIRST DISCOVERY: ${normalizedId} - Total: ${this.discoveredObjects.size}`);
 
