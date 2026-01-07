@@ -3,6 +3,8 @@ import PlanetGenerator from './planetGenerator.js';
 import { Atmosphere } from './Atmosphere.js';
 import { Cloud } from './Cloud.js';
 import { debug } from './debug.js';
+import { GameObjectFactory } from './core/GameObjectFactory.js';
+import { GameObjectRegistry } from './core/GameObjectRegistry.js';
 
 /**
  * SolarSystemManager - Manages celestial body creation and physics
@@ -233,35 +235,53 @@ debug('UTILITY', 'Restored star system data');
             this.celestialBodies.set('star', star);
 debug('UTILITY', 'Star created and added to scene');
 
-                    // Set name directly on star object for target computer
-        star.name = this.starSystem.star_name || 'Unknown Star';
-        
-        // Add metadata to star object
-        star.userData = {
-            name: this.starSystem.star_name || 'Unknown Star',
-            type: 'star',
-            faction: 'neutral',
-            diplomacy: 'neutral'
-        };
-            
+            // PHASE 2: Create GameObject via factory for single source of truth
+            const starName = this.starSystem.star_name || 'Unknown Star';
+            let gameObject = null;
+            try {
+                gameObject = GameObjectFactory.createStar({
+                    name: starName,
+                    position: { x: 0, y: 0, z: 0 }, // Stars are always at origin
+                    classification: this.starSystem.star_type || 'Unknown',
+                    threeObject: star
+                });
+                debug('UTILITY', `🌟 Created GameObject for star: ${gameObject.id}`);
+            } catch (factoryError) {
+                debug('P1', `Failed to create GameObject for star ${starName}: ${factoryError.message}`);
+            }
+
+            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
+            star.name = starName;
+
+            // Add metadata to star object (backward compatibility)
+            star.userData = {
+                name: starName,
+                type: 'star',
+                faction: 'Neutral',
+                diplomacy: 'neutral',
+                gameObject: gameObject,
+                gameObjectId: gameObject?.id
+            };
+
             // Add physics body for the star
             if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? starSize : Math.min(starSize, 0.5);
-                
+
                 window.spatialManager.addObject(star, {
                     type: 'star',
-                    name: this.starSystem.star_name || 'Unknown Star',
-                    faction: 'neutral', // Stars are neutral
+                    name: starName,
+                    faction: 'Neutral', // Stars are neutral
                     diplomacy: 'neutral',
                     radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'star',
-                    entityId: this.starSystem.star_name || 'Unknown Star',
-                    health: 50000 // Stars are essentially indestructible
+                    entityId: gameObject?.id || starName,
+                    health: 50000, // Stars are essentially indestructible
+                    gameObjectId: gameObject?.id // Link to GameObject
                 });
-                
-debug('UTILITY', `🌟 Star added to spatial tracking: ${this.starSystem.star_name}, radius=${collisionRadius}m`);
+
+debug('UTILITY', `🌟 Star added to spatial tracking: ${starName}, radius=${collisionRadius}m`);
             } else {
                 debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for star');
             }
@@ -409,35 +429,63 @@ debug('UTILITY', '=== Star System Creation Complete ===');
             
             this.scene.add(planet);
             this.celestialBodies.set(`planet_${index}`, planet);
-            
+
+            // PHASE 2: Create GameObject via factory for single source of truth
+            const planetName = planetData.planet_name || `Planet ${index}`;
+            let gameObject = null;
+            try {
+                gameObject = GameObjectFactory.createPlanet({
+                    name: planetName,
+                    position: { x, y, z },
+                    classification: planetData.planet_type || 'Unknown',
+                    faction: planetData.faction || 'Neutral',
+                    discovered: false,
+                    threeObject: planet,
+                    // Additional metadata
+                    government: planetData.government,
+                    economy: planetData.economy,
+                    technology: planetData.technology,
+                    population: planetData.population,
+                    description: planetData.description
+                });
+
+                // Link Three.js mesh to GameObject
+                planet.userData.gameObject = gameObject;
+                planet.userData.gameObjectId = gameObject.id;
+                debug('UTILITY', `🪐 Created GameObject for planet: ${gameObject.id}`);
+            } catch (factoryError) {
+                debug('P1', `Failed to create GameObject for planet ${planetName}: ${factoryError.message}`);
+            }
+
+            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
+            planet.name = planetName;
+            planet.diplomacy = planetData.diplomacy || 'neutral';
+            planet.faction = planetData.faction || planetData.diplomacy || 'Neutral';
+
             // Add physics body for the planet
             if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? planetSize : Math.min(planetSize, 0.5);
-                
-                // Set the name and diplomacy on the planet object for target computer
-                planet.name = planetData.planet_name || `Planet ${index}`;
-                planet.diplomacy = planetData.diplomacy || 'neutral';
-                planet.faction = planetData.diplomacy || 'neutral'; // Use diplomacy as faction for planets
-                
+
                 window.spatialManager.addObject(planet, {
                     type: 'planet',
-                    name: planetData.planet_name || `Planet ${index}`,
+                    name: planetName,
                     radius: collisionRadius, // Match visual mesh size for realistic collision detection
                     entityType: 'planet',
-                    entityId: planetData.planet_name || `Planet ${index}`,
+                    entityId: gameObject?.id || planetName,
                     health: 20000, // Planets are very durable
                     diplomacy: planetData.diplomacy || 'neutral',
-                    faction: planetData.diplomacy || 'neutral', // Use diplomacy as faction for planets
+                    faction: planetData.faction || planetData.diplomacy || 'Neutral',
                     government: planetData.government,
                     economy: planetData.economy,
-                    technology: planetData.technology
+                    technology: planetData.technology,
+                    gameObjectId: gameObject?.id // Link to GameObject
                 });
-                
+
 debug('PHYSICS', `🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
-                
-debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_name || index}, radius=${collisionRadius}m`);
+
+debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetName}, radius=${collisionRadius}m`);
             } else {
                 debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for planets');
             }
@@ -551,33 +599,61 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
             
             this.scene.add(moon);
             this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
-            
-            // Set name and diplomacy directly on moon object for target computer
-            moon.name = moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`;
+
+            // PHASE 2: Create GameObject via factory for single source of truth
+            const moonName = moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`;
+            const parentPlanetObj = planet.userData?.gameObject;
+            const parentPlanetName = parentPlanetObj?.name || planet.name || `Planet ${planetIndex}`;
+            let gameObject = null;
+            try {
+                gameObject = GameObjectFactory.createMoon({
+                    name: moonName,
+                    position: { x: moon.position.x, y: moon.position.y, z: moon.position.z },
+                    classification: moonData.moon_type || 'Unknown',
+                    faction: moonData.faction || 'Neutral',
+                    discovered: false,
+                    threeObject: moon,
+                    parentPlanet: parentPlanetName,
+                    // Additional metadata
+                    government: moonData.government,
+                    economy: moonData.economy
+                });
+
+                // Link Three.js mesh to GameObject
+                moon.userData.gameObject = gameObject;
+                moon.userData.gameObjectId = gameObject.id;
+                debug('UTILITY', `🌙 Created GameObject for moon: ${gameObject.id}`);
+            } catch (factoryError) {
+                debug('P1', `Failed to create GameObject for moon ${moonName}: ${factoryError.message}`);
+            }
+
+            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
+            moon.name = moonName;
             moon.diplomacy = moonData.diplomacy || 'neutral';
-            moon.faction = moonData.diplomacy || 'neutral'; // Use diplomacy as faction for moons
-            
+            moon.faction = moonData.faction || moonData.diplomacy || 'Neutral';
+
             // Add physics body for the moon
             if (window.spatialManager && window.spatialManagerReady) {
                 // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
                 const useRealistic = window.useRealisticCollision !== false; // Default to realistic
                 const collisionRadius = useRealistic ? moonSize : Math.min(moonSize, 0.1);
-                
+
                 window.spatialManager.addObject(moon, {
                     type: 'moon',
-                    name: moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`,
+                    name: moonName,
                     radius: collisionRadius,
                     canCollide: true,
                     isTargetable: true,
                     layer: 'planets',
                     diplomacy: moonData.diplomacy || 'neutral',
-                    faction: moonData.diplomacy || 'neutral', // Use diplomacy as faction for moons
+                    faction: moonData.faction || moonData.diplomacy || 'Neutral',
                     government: moonData.government,
                     economy: moonData.economy,
-                    technology: moonData.technology
+                    technology: moonData.technology,
+                    gameObjectId: gameObject?.id // Link to GameObject
                 });
-                
-debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonData.moon_name || `${planetIndex}_${moonIndex}`}, radius=${collisionRadius}m`);
+
+debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonName}, radius=${collisionRadius}m`);
             } else {
                 debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for moons');
             }
@@ -1045,16 +1121,35 @@ debug('UTILITY', `📋 Loaded ${beaconData.length} beacons from JSON data`);
 
 debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)}, ${(position[1] * INFRASTRUCTURE_SCALE).toFixed(1)}, ${scaledZ.toFixed(1)})`);
 
-                // Set name directly on beacon object for target computer
-                beacon.name = beaconInfo.name;
+                // PHASE 2: Create GameObject via factory for single source of truth
+                const beaconName = beaconInfo.name || `Navigation Beacon ${i + 1}`;
+                let gameObject = null;
+                try {
+                    gameObject = GameObjectFactory.createBeacon({
+                        name: beaconName,
+                        position: { x: scaledX, y: position[1] * INFRASTRUCTURE_SCALE, z: scaledZ },
+                        beaconId: beaconInfo.id,
+                        discovered: false,
+                        threeObject: beacon,
+                        description: beaconInfo.description
+                    });
+                    debug('UTILITY', `📡 Created GameObject for beacon: ${gameObject.id}`);
+                } catch (factoryError) {
+                    debug('P1', `Failed to create GameObject for beacon ${beaconName}: ${factoryError.message}`);
+                }
+
+                // BACKWARD COMPATIBILITY: Set legacy properties on mesh
+                beacon.name = beaconName;
 
                 beacon.userData = {
-                    name: beaconInfo.name,
+                    name: beaconName,
                     type: 'beacon',
                     faction: 'Neutral',
                     isBeacon: true,
                     description: beaconInfo.description,
-                    id: beaconInfo.id
+                    id: beaconInfo.id,
+                    gameObject: gameObject,
+                    gameObjectId: gameObject?.id
                 };
 
                 this.scene.add(beacon);
@@ -1063,11 +1158,13 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)
                 try {
                     if (!this.celestialBodies) this.celestialBodies = new Map();
                     const normalizedId = typeof (beaconInfo.id || '') === 'string' ? (beaconInfo.id || '').replace(/^a0_/i, 'A0_') : (beaconInfo.id || '');
-                    const nameSlug = (beaconInfo.name || '').toLowerCase().replace(/\s+/g, '_');
+                    const nameSlug = (beaconName || '').toLowerCase().replace(/\s+/g, '_');
                     // Multiple keys to improve retrieval paths
                     if (normalizedId) this.celestialBodies.set(normalizedId, beacon);
                     if (normalizedId) this.celestialBodies.set(`beacon_${normalizedId}`, beacon);
                     if (nameSlug) this.celestialBodies.set(`beacon_${nameSlug}`, beacon);
+                    // Also use gameObject ID if available
+                    if (gameObject?.id) this.celestialBodies.set(gameObject.id, beacon);
                 } catch (e) {
                     debug('P1', `⚠️ Failed to register beacon in celestialBodies: ${e?.message || e}`);
                 }
@@ -1076,14 +1173,15 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)
                 if (window.spatialManager && window.spatialManagerReady) {
                     window.spatialManager.addObject(beacon, {
                         type: 'beacon',
-                        name: beaconInfo.name,
+                        name: beaconName,
                         radius: 0.6, // Small collision radius
                         canCollide: true,
                         isTargetable: true,
                         layer: 'stations',
                         entityType: 'beacon',
-                        entityId: beaconInfo.id,
-                        health: 150 // 1–2 laser hits from starter weapons
+                        entityId: gameObject?.id || beaconInfo.id,
+                        health: 150, // 1–2 laser hits from starter weapons
+                        gameObjectId: gameObject?.id // Link to GameObject
                     });
 
                     // Also add to collision manager's station layer
@@ -1091,7 +1189,7 @@ debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)
                         window.collisionManager.addObjectToLayer(beacon, 'stations');
                     }
 
-debug('INFRASTRUCTURE', `📡 Navigation beacon ${beaconInfo.name} added to spatial tracking`);
+debug('INFRASTRUCTURE', `📡 Navigation beacon ${beaconName} added to spatial tracking`);
                 }
 
                 // Track in StarfieldManager so we can clean up on destroy
@@ -1231,12 +1329,32 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
         station.rotation.y = Math.random() * Math.PI * 2;
         station.rotation.z = Math.random() * Math.PI * 2;
 
-        // Set name directly on station object for target computer
-        station.name = stationData.name;
-        
-        // Store station metadata for interactions
+        // PHASE 2: Create GameObject via factory for single source of truth
+        const stationName = stationData.name || 'Unknown Station';
+        let gameObject = null;
+        try {
+            gameObject = GameObjectFactory.createStation({
+                name: stationName,
+                position: { x: position.x, y: position.y, z: position.z },
+                faction: stationData.faction,
+                stationType: stationData.type || 'Space Station',
+                discovered: false,
+                threeObject: station,
+                services: stationData.services || [],
+                description: stationData.description,
+                canDock: true
+            });
+            debug('UTILITY', `🛰️ Created GameObject for station: ${gameObject.id}`);
+        } catch (factoryError) {
+            debug('P1', `Failed to create GameObject for station ${stationName}: ${factoryError.message}`);
+        }
+
+        // BACKWARD COMPATIBILITY: Set legacy properties on mesh
+        station.name = stationName;
+
+        // Store station metadata for interactions (backward compatibility)
         station.userData = {
-            name: stationData.name,
+            name: stationName,
             faction: stationData.faction,
             type: stationData.type,
             description: stationData.description,
@@ -1244,14 +1362,16 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
             intel_brief: stationData.intel_brief || stationData.description,
             discoveryRadius: this.getDiscoveryRadius(), // Dynamic based on target CPU
             isSpaceStation: true,
-            canDock: true // Space stations should be dockable
+            canDock: true, // Space stations should be dockable
+            gameObject: gameObject,
+            gameObjectId: gameObject?.id
         };
 
         // Add station to spatial manager with metadata
         if (window.spatialManager) {
             window.spatialManager.addObject(station, {
                 type: 'station',
-                name: stationData.name,
+                name: stationName,
                 faction: stationData.faction,
                 diplomacy: this.getFactionDiplomacy(stationData.faction),
                 radius: stationData.size,
@@ -1259,7 +1379,8 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
                 isTargetable: true,
                 layer: 'stations',
                 entityType: 'station',
-                entityId: `station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`
+                entityId: gameObject?.id || `station_${stationName.toLowerCase().replace(/\s+/g, '_')}`,
+                gameObjectId: gameObject?.id // Link to GameObject
             });
         }
 

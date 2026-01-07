@@ -16,6 +16,7 @@ import './ship/systems/services/SimpleProjectileService.js'; // Load simplified 
 import './utils/ErrorReporter.js'; // Error reporting system for debugging
 import { SmartDebugManager } from './utils/DebugManager.js'; // Smart debug logging system
 import { debug } from './debug.js';
+import { GameObjectFactory } from './core/GameObjectFactory.js'; // GameObject Factory Pattern
 
 // VERSION TRACKING
 const APP_VERSION = '2.1.0-atomic-discovery';
@@ -531,10 +532,15 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
     // Initialize the universe and then generate the initial star system
     try {
         await viewManager.galacticChart.fetchUniverseData();
-    
+
         // Ensure universe data is shared with SolarSystemManager
         if (viewManager.galacticChart.universe) {
             solarSystemManager.universe = viewManager.galacticChart.universe;
+
+            // Initialize GameObjectFactory for the starting sector
+            GameObjectFactory.initialize('A0');
+            debug('UTILITY', '✅ GameObjectFactory initialized for sector A0');
+
             // Generate initial star system for sector A0
             const success = await solarSystemManager.generateStarSystem('A0');
             if (success) {
