@@ -311,7 +311,12 @@ debug('AI', `🤖 AI removed from ${ship.shipType}`);
                         ship.position = new THREE.Vector3();
                     }
                     ship.position.copy(mesh.position);
-                    ship.mesh = mesh; // Store mesh reference
+                    // PHASE 5: Use linkMesh to connect mesh to GameObject
+                    if (ship.linkMesh) {
+                        ship.linkMesh(mesh);
+                    } else {
+                        ship.mesh = mesh; // Legacy fallback
+                    }
                 }
             }
         }

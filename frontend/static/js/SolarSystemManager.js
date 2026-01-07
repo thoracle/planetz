@@ -874,25 +874,27 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
     }
 
     getCelestialBodyInfo(body) {
+        // PHASE 5: Check for GameObject first (single source of truth)
+        const gameObject = body?.userData?.gameObject;
+
         // First try to get metadata from spatial manager (includes faction info)
         if (window.spatialManager && body) {
             const metadata = window.spatialManager.getMetadata(body);
             if (metadata) {
-                // console.log(`🔍 SolarSystemManager.getCelestialBodyInfo: Found spatial metadata for ${metadata.name}:`, {
-                //     name: metadata.name,
-                //     type: metadata.type,
-                //     faction: metadata.faction,
-                //     diplomacy: metadata.diplomacy
-                // });
+                // PHASE 5: Use GameObject.diplomacy when available
+                const diplomacy = gameObject?.diplomacy || metadata.diplomacy;
+                const faction = gameObject?.faction || metadata.faction || 'Unknown';
+
                 return {
                     name: metadata.name || 'Unknown',
                     type: metadata.type || 'unknown',
                     classification: metadata.classification || metadata.type || 'Unknown',
-                    faction: metadata.faction || 'Unknown',
-                    diplomacy: metadata.diplomacy,
+                    faction: faction,
+                    diplomacy: diplomacy,
                     description: metadata.description || 'No description available.',
-                    intel_brief: metadata.intel_brief || metadata.faction ? `${metadata.type || 'Object'} operated by ${metadata.faction}` : 'No intelligence data available.',
+                    intel_brief: metadata.intel_brief || faction !== 'Unknown' ? `${metadata.type || 'Object'} operated by ${faction}` : 'No intelligence data available.',
                     canDock: !!metadata.canDock,
+                    gameObject: gameObject, // PHASE 5: Include gameObject reference
                     ...metadata
                 };
             }
@@ -910,14 +912,19 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
         
         // Defensive: if body carries station flags in userData, force station info
         if (!key && body && body.userData && (body.userData.type === 'station' || body.userData.isSpaceStation)) {
+            // PHASE 5: Use GameObject for faction/diplomacy when available
+            const faction = gameObject?.faction || body.userData.faction || 'Unknown';
+            const diplomacy = gameObject?.diplomacy || body.userData.diplomacy;
             return {
                 name: body.userData.name || 'Unknown Station',
                 type: 'station',
                 classification: body.userData.stationType || body.userData.type || 'Space Station',
-                faction: body.userData.faction || 'Unknown',
+                faction: faction,
+                diplomacy: diplomacy,
                 description: body.userData.description || 'Space station facility.',
-                intel_brief: body.userData.faction ? `${body.userData.stationType || 'Station'} operated by ${body.userData.faction}` : 'Space station facility.',
-                canDock: !!body.userData.canDock
+                intel_brief: faction !== 'Unknown' ? `${body.userData.stationType || 'Station'} operated by ${faction}` : 'Space station facility.',
+                canDock: !!body.userData.canDock,
+                gameObject: gameObject
             };
         }
 
@@ -936,14 +943,19 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
         // Handle space stations
         if (key.startsWith('station_')) {
             if (body && body.userData) {
+                // PHASE 5: Use GameObject for faction/diplomacy when available
+                const faction = gameObject?.faction || body.userData.faction || 'Unknown';
+                const diplomacy = gameObject?.diplomacy || body.userData.diplomacy;
                 return {
                     name: body.userData.name || 'Unknown Station',
                     type: 'station',
                     classification: body.userData.type || 'Space Station',
-                    faction: body.userData.faction || 'Unknown',
+                    faction: faction,
+                    diplomacy: diplomacy,
                     description: body.userData.description || 'Space station facility.',
-                    intel_brief: `${body.userData.type} operated by ${body.userData.faction}`,
-                    canDock: body.userData.canDock || false
+                    intel_brief: `${body.userData.type} operated by ${faction}`,
+                    canDock: body.userData.canDock || false,
+                    gameObject: gameObject
                 };
             }
             return {

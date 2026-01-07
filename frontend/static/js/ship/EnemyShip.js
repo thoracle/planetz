@@ -1,25 +1,65 @@
 import { getEnemyShipConfig, validateShipConfig } from './ShipConfigs.js';
 import { debug } from '../debug.js';
+import { GameObjectFactory } from '../core/GameObjectFactory.js';
 
 /**
  * EnemyShip class - simplified enemy vessels with only essential combat systems
  * Based on enemy ship configurations with minimal systems
+ *
+ * PHASE 5: Now creates GameObject via GameObjectFactory for single source of truth
  */
 export default class EnemyShip {
-    constructor(enemyShipType = 'enemy_fighter') {
+    constructor(config = 'enemy_fighter') {
+        // PHASE 5: Support both string and object configuration
+        let enemyShipType;
+        let initialPosition = null;
+        let faction = null;
+
+        if (typeof config === 'object') {
+            // Object-based configuration (from AmbientShipManager)
+            enemyShipType = config.shipType || 'enemy_fighter';
+            initialPosition = config.position || null;
+            faction = config.faction || null;
+            this.isAmbient = config.isAmbient || false;
+            this.behaviorType = config.behaviorType || null;
+            this.isLeader = config.isLeader || false;
+        } else {
+            // String-based configuration (legacy)
+            enemyShipType = config;
+        }
+
         // Get enemy ship configuration
         this.shipConfig = getEnemyShipConfig(enemyShipType);
-        
+
         // Validate configuration
         if (!validateShipConfig(this.shipConfig)) {
             throw new Error(`Invalid enemy ship configuration for ${enemyShipType}`);
         }
-        
+
         // Ship identification
         this.shipType = enemyShipType;
         this.isEnemy = true;
+        this.faction = faction || 'Crimson Raider Clans'; // Default enemy faction
         this.diplomacy = 'enemy';
         this.shipName = `${this.shipConfig.name}`;
+
+        // PHASE 5: Create GameObject via factory for single source of truth
+        this.gameObject = null;
+        try {
+            this.gameObject = GameObjectFactory.createShip({
+                name: this.shipName,
+                faction: this.faction,
+                shipType: this.shipType,
+                position: initialPosition ? {
+                    x: initialPosition.x,
+                    y: initialPosition.y,
+                    z: initialPosition.z
+                } : { x: 0, y: 0, z: 0 }
+            });
+            debug('UTILITY', `Created GameObject for ship: ${this.gameObject.id}`);
+        } catch (factoryError) {
+            debug('P1', `Failed to create GameObject for ship ${this.shipName}: ${factoryError.message}`);
+        }
         
         // Base stats from configuration
         this.baseSpeed = this.shipConfig.baseSpeed;
@@ -556,6 +596,29 @@ debug('P1', 'Failed to show lucky hit feedback:', error.message);
     }
 
     /**
+     * PHASE 5: Link mesh to GameObject for single source of truth
+     * Call this after the mesh is created externally
+     * @param {THREE.Object3D} mesh - The Three.js mesh for this ship
+     */
+    linkMesh(mesh) {
+        this.mesh = mesh;
+        if (mesh && this.gameObject) {
+            // Link GameObject to mesh via userData
+            mesh.userData.gameObject = this.gameObject;
+            mesh.userData.gameObjectId = this.gameObject.id;
+            // Also set legacy properties for backward compatibility
+            mesh.userData.faction = this.faction;
+            mesh.userData.diplomacy = this.diplomacy;
+            mesh.userData.isEnemy = true;
+            mesh.userData.shipName = this.shipName;
+            mesh.userData.shipType = this.shipType;
+            // Update GameObject's threeObject reference
+            this.gameObject._threeObject = mesh;
+            debug('UTILITY', `Linked mesh to GameObject: ${this.gameObject.id}`);
+        }
+    }
+
+    /**
      * Dispose of enemy ship resources and clean up timers
      * Call this when the enemy ship is being removed from the game
      */
@@ -582,6 +645,11 @@ debug('P1', 'Failed to show lucky hit feedback:', error.message);
 
         // Clear AI reference
         this.ai = null;
+
+        // PHASE 5: Clean up GameObject reference
+        if (this.gameObject) {
+            this.gameObject = null;
+        }
 
         // Clear mesh reference
         this.mesh = null;

@@ -2,21 +2,24 @@ import { debug } from '../debug.js';
 
 /**
  * AmbientShipManager.js
- * 
+ *
  * Manages non-player ships that populate the galaxy with dynamic activities:
  * - Trade convoys running between stations
  * - Patrol ships securing trade routes
  * - Pirates attempting extortion and raiding
  * - Exploration vessels on scientific missions
  * - Diplomatic escorts and VIP transports
- * 
+ *
  * Creates a living, breathing galaxy where ships have their own goals and missions.
+ *
+ * PHASE 5: Uses FactionStandingsManager for dynamic faction relations
  */
 
 import * as THREE from 'three';
 import EnemyShip from '../ship/EnemyShip.js';
 import { EnemyAI } from './EnemyAI.js';
 import { getAIConfig } from './AIConfigs.js';
+import { FactionStandingsManager } from '../core/FactionStandingsManager.js';
 
 export class AmbientShipManager {
     constructor(scene, camera, starfieldManager) {
@@ -88,7 +91,8 @@ export class AmbientShipManager {
             }
         };
         
-        // Faction relationships (affects behavior toward player)
+        // LEGACY: Faction relationships - will be removed in Phase 6
+        // Now uses FactionStandingsManager.getDiplomacyStatus() via getFactionRelation()
         this.factionRelations = {
             'Terran Republic Alliance': 'friendly',
             'Zephyrian Collective': 'friendly',
@@ -160,22 +164,51 @@ debug('UTILITY', `🚢 Generated ${this.tradeRoutes.length} trade routes between
     }
     
     /**
+     * Get faction relation status using FactionStandingsManager
+     * PHASE 5: Uses dynamic standings instead of static lookup
+     * @param {string} faction - Faction name
+     * @returns {string} 'friendly', 'neutral', or 'hostile'
+     */
+    getFactionRelation(faction) {
+        if (!faction) return 'neutral';
+
+        // PHASE 5: Use FactionStandingsManager as primary source
+        try {
+            const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
+            if (diplomacy) {
+                // Map 'enemy' to 'hostile' for consistency with this class
+                return diplomacy === 'enemy' ? 'hostile' : diplomacy;
+            }
+        } catch (e) {
+            debug('AI', `FactionStandingsManager lookup failed for "${faction}": ${e.message}`);
+        }
+
+        // LEGACY FALLBACK: Static relations (will be removed in Phase 6)
+        return this.factionRelations[faction] || 'neutral';
+    }
+
+    /**
      * Calculate risk factor for a trade route based on faction relations
+     * PHASE 5: Uses getFactionRelation() for dynamic standings
      */
     calculateRouteRisk(stationA, stationB) {
         const factionA = stationA.faction;
         const factionB = stationB.faction;
-        
+
+        // Get current faction relations via FactionStandingsManager
+        const relationA = this.getFactionRelation(factionA);
+        const relationB = this.getFactionRelation(factionB);
+
         // Routes between hostile factions are risky
-        if (this.factionRelations[factionA] === 'hostile' || this.factionRelations[factionB] === 'hostile') {
+        if (relationA === 'hostile' || relationB === 'hostile') {
             return Math.random() * 0.6 + 0.4; // 0.4 to 1.0
         }
-        
+
         // Routes between friendly factions are safer
-        if (this.factionRelations[factionA] === 'friendly' && this.factionRelations[factionB] === 'friendly') {
+        if (relationA === 'friendly' && relationB === 'friendly') {
             return Math.random() * 0.3; // 0.0 to 0.3
         }
-        
+
         // Mixed routes have moderate risk
         return Math.random() * 0.5 + 0.2; // 0.2 to 0.7
     }
