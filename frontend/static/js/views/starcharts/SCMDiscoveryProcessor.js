@@ -340,15 +340,18 @@ export class SCMDiscoveryProcessor {
             return false;
         }
 
-        // PHASE 4: Check GameObject.discovered first (single source of truth)
+        // PHASE 6: Check GameObject.discovered (single source of truth)
         const gameObject = GameObjectRegistry.getById(normalizedId);
         if (gameObject) {
             return gameObject.discovered === true;
         }
 
-        // LEGACY FALLBACK: Check discoveredObjects Set until Phase 6
-        if (this.discoveredObjects) {
-            return this.discoveredObjects.has(normalizedId);
+        // PHASE 6 FALLBACK: discoveredObjects Set still needed for:
+        // - Objects created before GameObjectFactory integration
+        // - Cross-sector persistence (registry is per-sector)
+        if (this.discoveredObjects && this.discoveredObjects.has(normalizedId)) {
+            debug('STAR_CHARTS', `FALLBACK: ${normalizedId} not in registry, using discoveredObjects Set`);
+            return true;
         }
 
         return false;

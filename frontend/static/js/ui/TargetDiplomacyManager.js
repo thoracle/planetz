@@ -15,20 +15,7 @@
 import { debug } from '../debug.js';
 import { FactionStandingsManager } from '../core/FactionStandingsManager.js';
 
-// Legacy faction relationship mappings (kept for backward compatibility)
-// PHASE 3: This will be removed in Phase 6 when all code uses FactionStandingsManager
-const FACTION_RELATIONS = {
-    'Terran Republic Alliance': 'friendly',
-    'Zephyrian Collective': 'friendly',
-    'Scientists Consortium': 'friendly',
-    'Free Trader Consortium': 'neutral',
-    'Nexus Corporate Syndicate': 'neutral',
-    'Ethereal Wanderers': 'neutral',
-    'Draconis Imperium': 'neutral',
-    'Crimson Raider Clans': 'enemy',
-    'Shadow Consortium': 'enemy',
-    'Void Cult': 'enemy'
-};
+// PHASE 6: Legacy FACTION_RELATIONS removed - now using FactionStandingsManager exclusively
 
 export class TargetDiplomacyManager {
     /**
@@ -41,41 +28,26 @@ export class TargetDiplomacyManager {
 
     /**
      * Convert faction name to diplomacy status
-     * PHASE 3: Now uses FactionStandingsManager as primary source
+     * PHASE 6: Uses FactionStandingsManager exclusively (single source of truth)
      * @param {string} faction - Faction name
      * @returns {string} Diplomacy status ('friendly', 'neutral', 'enemy')
      */
     getFactionDiplomacy(faction) {
-        // Log null/undefined faction for debugging (data quality issue)
+        // Null/undefined faction defaults to neutral
         if (!faction) {
             debug('TARGETING', `getFactionDiplomacy: null/undefined faction, defaulting to 'neutral'`);
             return 'neutral';
         }
 
-        // PHASE 3: Use FactionStandingsManager as primary source
-        // This provides dynamic standings that can change during gameplay
-        try {
-            const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
-            if (diplomacy) {
-                return diplomacy;
-            }
-        } catch (e) {
-            debug('TARGETING', `FactionStandingsManager lookup failed for "${faction}": ${e.message}`);
+        // PHASE 6: FactionStandingsManager is the single source of truth
+        const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
+        if (diplomacy) {
+            return diplomacy;
         }
 
-        // LEGACY FALLBACK: Case-insensitive lookup in static relations
-        // This will be removed in Phase 6
-        const factionKey = Object.keys(FACTION_RELATIONS).find(key =>
-            key.toLowerCase() === faction.toLowerCase()
-        );
-
-        // Log unknown faction for debugging (possible typo or missing faction)
-        if (!factionKey) {
-            debug('TARGETING', `getFactionDiplomacy: Unknown faction "${faction}", defaulting to 'neutral'`);
-            return 'neutral';
-        }
-
-        return FACTION_RELATIONS[factionKey];
+        // Unknown faction - log and return neutral
+        debug('TARGETING', `getFactionDiplomacy: Unknown faction "${faction}", defaulting to 'neutral'`);
+        return 'neutral';
     }
 
     /**

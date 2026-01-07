@@ -91,21 +91,8 @@ export class AmbientShipManager {
             }
         };
         
-        // LEGACY: Faction relationships - will be removed in Phase 6
-        // Now uses FactionStandingsManager.getDiplomacyStatus() via getFactionRelation()
-        this.factionRelations = {
-            'Terran Republic Alliance': 'friendly',
-            'Zephyrian Collective': 'friendly',
-            'Scientists Consortium': 'friendly',
-            'Free Trader Consortium': 'neutral',
-            'Nexus Corporate Syndicate': 'neutral',
-            'Ethereal Wanderers': 'neutral',
-            'Draconis Imperium': 'neutral',
-            'Crimson Raider Clans': 'hostile',
-            'Shadow Consortium': 'hostile',
-            'Void Cult': 'hostile'
-        };
-        
+        // PHASE 6: Legacy factionRelations removed - now using FactionStandingsManager exclusively
+
         // Trade routes (station to station)
         this.tradeRoutes = [];
         this.currentSector = null;
@@ -165,26 +152,21 @@ debug('UTILITY', `🚢 Generated ${this.tradeRoutes.length} trade routes between
     
     /**
      * Get faction relation status using FactionStandingsManager
-     * PHASE 5: Uses dynamic standings instead of static lookup
+     * PHASE 6: Uses FactionStandingsManager exclusively (single source of truth)
      * @param {string} faction - Faction name
      * @returns {string} 'friendly', 'neutral', or 'hostile'
      */
     getFactionRelation(faction) {
         if (!faction) return 'neutral';
 
-        // PHASE 5: Use FactionStandingsManager as primary source
-        try {
-            const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
-            if (diplomacy) {
-                // Map 'enemy' to 'hostile' for consistency with this class
-                return diplomacy === 'enemy' ? 'hostile' : diplomacy;
-            }
-        } catch (e) {
-            debug('AI', `FactionStandingsManager lookup failed for "${faction}": ${e.message}`);
+        // PHASE 6: FactionStandingsManager is the single source of truth
+        const diplomacy = FactionStandingsManager.getDiplomacyStatus(faction);
+        if (diplomacy) {
+            // Map 'enemy' to 'hostile' for consistency with this class
+            return diplomacy === 'enemy' ? 'hostile' : diplomacy;
         }
 
-        // LEGACY FALLBACK: Static relations (will be removed in Phase 6)
-        return this.factionRelations[faction] || 'neutral';
+        return 'neutral';
     }
 
     /**
