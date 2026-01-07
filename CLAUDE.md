@@ -170,6 +170,31 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 - `FlockingBehavior.js`, `FlockingManager.js` - Formation flying
 - `ThreatAssessment.js`, `WeaponTargeting.js` - Tactical AI
 
+#### Core Infrastructure (`frontend/static/js/core/`)
+
+**GameObject Factory Pattern** - Single source of truth for all game objects:
+
+- `GameObject.js` - Base class with immutable ID, computed diplomacy
+  - Immutable: `id`, `type`, `name`, `sector`
+  - Static: `faction`, `classification`
+  - Mutable: `_position`, `_discovered`
+  - Computed: `diplomacy` getter queries FactionStandingsManager dynamically
+
+- `GameObjectFactory.js` - Singleton factory with validation
+  - `createPlanet(data)`, `createStation(data)`, `createBeacon(data)`, `createShip(data)`
+  - Throws on missing required fields (fail-fast pattern)
+
+- `GameObjectRegistry.js` - Centralized registry with type/sector indexing
+  - `getById(id)`, `getByType(type)`, `getBySector(sector)`
+  - Per-sector storage with automatic cleanup on sector change
+
+- `FactionStandingsManager.js` - Player faction standings singleton
+  - `getStanding(faction)` → -100 to +100
+  - `getDiplomacyStatus(faction)` → 'enemy' | 'neutral' | 'friendly'
+  - `modifyStanding(faction, delta, reason)` → updates + notifies listeners
+
+- `IDGenerator.js` - Consistent ID generation across all object types
+
 #### Critical Architecture Notes
 
 1. **ES6 Module System**: Frontend uses native ES6 imports/exports. All JavaScript files must use proper import/export syntax.
@@ -181,9 +206,11 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 
 3. **Three.js Systems**: Game uses Three.js for 3D rendering, NOT Ammo.js physics. Collision detection is raycast-based via `SimpleCollisionManager.js`.
 
-4. **Equipment Synchronization**: After docking and equipment changes, `initializeShipSystems()` forces refresh of ship systems from card configuration. WeaponSyncManager ensures weapon HUD shows current loadout.
+4. **GameObject Pattern**: All game objects (planets, moons, stations, beacons, ships) are created via `GameObjectFactory` and registered in `GameObjectRegistry`. Access diplomacy via `gameObject.diplomacy` getter which queries `FactionStandingsManager` dynamically.
 
-5. **Debug System**: Smart debug logging via `SmartDebugManager` with channel-based filtering. Debug channels configured in `frontend/static/js/debug-config.json`.
+5. **Equipment Synchronization**: After docking and equipment changes, `initializeShipSystems()` forces refresh of ship systems from card configuration. WeaponSyncManager ensures weapon HUD shows current loadout.
+
+6. **Debug System**: Smart debug logging via `SmartDebugManager` with channel-based filtering. Debug channels configured in `frontend/static/js/debug-config.json`.
 
 ### Backend Architecture (Python/Flask)
 
@@ -345,9 +372,12 @@ debugStatus();                      // Show current channel status
 3. **Logging**: Use Flask app logger, configured in `create_app()`
 
 ### File Organization Rules
+- Core infrastructure: `frontend/static/js/core/` (GameObject, Factory, Registry, FactionStandings)
 - Ship systems: `frontend/static/js/ship/systems/`
 - UI components: `frontend/static/js/ui/`
 - View managers: `frontend/static/js/views/`
+- Extracted managers: `frontend/static/js/managers/`
+- Constants: `frontend/static/js/constants/`
 - Backend routes: `backend/routes/`
 - Backend core: `backend/*.py`
 - Documentation: `docs/`
@@ -423,6 +453,13 @@ Functionality has been extracted into focused manager classes in `frontend/stati
 - Issue: Arrows not showing for undiscovered/unknown targets when off-screen
 - Solution: Increased arrow z-index to 25000, fixed flexbox centering
 
+### GameObject Factory Pattern Refactor ✅ COMPLETED (2026-01)
+- **Single Source of Truth**: All game objects now created via `GameObjectFactory`
+- **FactionStandingsManager**: Centralized faction standings (removed duplicate FACTION_RELATIONS from 3 files)
+- **Computed Diplomacy**: `GameObject.diplomacy` getter queries standings dynamically
+- **Discovery State**: `GameObject.discovered` is primary source (with cross-sector fallback)
+- **Key Files**: `core/GameObject.js`, `core/GameObjectFactory.js`, `core/GameObjectRegistry.js`, `core/FactionStandingsManager.js`
+
 ## Known Issues & Technical Debt
 
 ### Testing Mode Configuration
@@ -487,15 +524,20 @@ The codebase has addressed major technical debt:
    - 103 explicit clearTimeout/clearInterval calls, 113 cleanup pattern usages
    - **Usage**: Use `this.sfm._setTimeout()` or implement `_pendingTimeouts` Set pattern
 
-**GameObject Factory Pattern**: Planned refactor to create single source of truth for game objects (planets, stations, ships) with:
-- Unified GameObject class with factory pattern
-- FactionStandingsManager for dynamic player-faction relationships
-- Fail-fast assertions instead of defensive programming
-- Elimination of fallback chains that mask bugs
+**GameObject Factory Pattern**: ✅ COMPLETE - Single source of truth for all game objects:
+- `GameObject.js` - Base class with immutable ID, computed diplomacy
+- `GameObjectFactory.js` - Singleton factory with validation (fail-fast)
+- `GameObjectRegistry.js` - Centralized registry with type/sector indexing
+- `FactionStandingsManager.js` - Player faction standings singleton (replaces duplicate FACTION_RELATIONS)
+- `IDGenerator.js` - Consistent ID generation
+
+Key integrations:
+- `SolarSystemManager.js` - Creates planets/moons/stations via factory
+- `EnemyShip.js` - Creates ships via factory with mesh linking
+- `SCMDiscoveryProcessor.js` - Uses `GameObject.discovered` as primary source
+- `TargetDiplomacyManager.js` - Uses `FactionStandingsManager.getDiplomacyStatus()`
 
 **Philosophy**: Fail fast instead of defensive programming. When data is missing, throw clear errors pointing to the fix location rather than silently falling back to defaults that mask bugs.
-
-**Note**: Current code is production-ready. Refactoring is for long-term maintainability, not immediate necessity.
 
 ## Debug Helpers & Browser Console Commands
 
@@ -554,11 +596,12 @@ Comprehensive docs in `docs/` directory:
 
 1. **Fail Fast**: Don't use defensive programming - throw clear errors instead of masking bugs with fallbacks
 2. **Debug System**: ALWAYS use `debug(channel, message)` instead of `console.log()`
-3. **Testing Mode**: Game currently configured with `NO_PERSISTENCE = true` for clean testing. Disable for production.
-4. **Modular Systems**: Each ship system is independent, communicates via managers
-5. **Card-Based Progression**: All ship capabilities derived from equipped cards
-6. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
-7. **Production Ready**: Core systems complete and tested, focus on polish and content expansion
+3. **Single Source of Truth**: Use `GameObjectFactory` for object creation, `FactionStandingsManager` for faction standings, `GameObject.discovered` for discovery state
+4. **Testing Mode**: Game currently configured with `NO_PERSISTENCE = true` for clean testing. Disable for production.
+5. **Modular Systems**: Each ship system is independent, communicates via managers
+6. **Card-Based Progression**: All ship capabilities derived from equipped cards
+7. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
+8. **Production Ready**: Core systems complete and tested, focus on polish and content expansion
 
 ## Quick Reference
 
