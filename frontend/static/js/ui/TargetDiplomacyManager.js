@@ -68,8 +68,11 @@ export class TargetDiplomacyManager {
      * @returns {string} Diplomacy status ('enemy', 'friendly', 'neutral', 'unknown')
      */
     getTargetDiplomacy(targetData) {
+        // PHASE 0 ASSERTION: Fail fast if targetData is null
+        // This surfaces bugs where callers pass invalid data instead of masking with 'unknown'
         if (!targetData) {
-            return 'unknown';
+            debug('P1', 'ASSERTION FAILED: getTargetDiplomacy called with null/undefined targetData. Fix calling code.');
+            return 'unknown'; // Keep fallback during transition
         }
 
         // SPECIAL CASE: Stars always show as neutral regardless of faction or diplomacy properties
@@ -84,6 +87,16 @@ export class TargetDiplomacyManager {
         if (!isDiscovered) {
             // Undiscovered objects should have unknown diplomacy
             return 'unknown';
+        }
+
+        // PHASE 0 ASSERTION: Log discovered objects missing faction data
+        // This helps identify data quality issues that should be fixed at the source
+        if (!targetData.faction && !targetData.diplomacy && targetData.type !== 'star') {
+            debug('P1', 'ASSERTION WARNING: Discovered object missing faction/diplomacy:', {
+                name: targetData.name,
+                type: targetData.type,
+                id: targetData.id || targetData.object?.uuid
+            });
         }
 
         // For DISCOVERED objects, determine proper faction standing

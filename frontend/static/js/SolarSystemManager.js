@@ -334,9 +334,15 @@ debug('UTILITY', '=== Star System Creation Complete ===');
     }
 
     async createPlanet(planetData, index, maxPlanets) {
+        // PHASE 0 ASSERTION: Validate required planet data
         if (!planetData || typeof planetData !== 'object') {
-            debug('P1', `Invalid planet data for index ${index}`);
+            debug('P1', `ASSERTION FAILED: createPlanet called with invalid planetData at index ${index}. Fix data source.`);
             return;
+        }
+
+        // PHASE 0 ASSERTION: Log planets missing essential identifiers
+        if (!planetData.planet_name) {
+            debug('P1', `ASSERTION WARNING: Planet at index ${index} missing planet_name. Using fallback name.`);
         }
 
         try {
@@ -465,9 +471,15 @@ debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetData.planet_nam
     }
 
     async createMoon(moonData, planetIndex, moonIndex) {
+        // PHASE 0 ASSERTION: Validate required moon data
         if (!moonData || typeof moonData !== 'object') {
-            debug('P1', `Invalid moon data for planet ${planetIndex}, moon ${moonIndex}`);
+            debug('P1', `ASSERTION FAILED: createMoon called with invalid moonData for planet ${planetIndex}, moon ${moonIndex}. Fix data source.`);
             return;
+        }
+
+        // PHASE 0 ASSERTION: Log moons missing essential identifiers
+        if (!moonData.moon_name) {
+            debug('P1', `ASSERTION WARNING: Moon at planet ${planetIndex}, index ${moonIndex} missing moon_name. Using fallback name.`);
         }
 
         try {
@@ -1125,6 +1137,24 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
      * Create a space station mesh
      */
     createSpaceStation(stationData) {
+        // PHASE 0 ASSERTION: Validate required station data
+        if (!stationData || typeof stationData !== 'object') {
+            debug('P1', 'ASSERTION FAILED: createSpaceStation called with invalid stationData. Fix data source.');
+            return null;
+        }
+
+        // PHASE 0 ASSERTION: Log stations missing essential identifiers
+        if (!stationData.name) {
+            debug('P1', 'ASSERTION WARNING: Station missing name. Using fallback name.');
+        }
+        if (!stationData.faction) {
+            debug('P1', `ASSERTION WARNING: Station "${stationData.name || 'Unknown'}" missing faction. This will cause diplomacy issues.`);
+        }
+        if (!stationData.position) {
+            debug('P1', `ASSERTION FAILED: Station "${stationData.name || 'Unknown'}" missing position. Cannot create station.`);
+            return null;
+        }
+
         // Handle position conversion from JSON array to THREE.Vector3
         let position;
         if (Array.isArray(stationData.position)) {

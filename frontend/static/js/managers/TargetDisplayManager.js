@@ -240,8 +240,19 @@ export class TargetDisplayManager {
         // Use the target data from TargetComputerManager which has the most up-to-date information
         const targetComputerData = this.sfm.targetComputerManager.getCurrentTargetData();
         if (targetComputerData) {
+            // PHASE 0 ASSERTION: Log target data missing essential fields
+            if (!targetComputerData.name && !targetComputerData.type) {
+                debug('P1', 'ASSERTION WARNING: getCurrentTargetData returned data without name or type:', {
+                    hasObject: !!targetComputerData.object,
+                    hasPosition: !!targetComputerData.position,
+                    keys: Object.keys(targetComputerData)
+                });
+            }
             return targetComputerData;
         }
+
+        // PHASE 0 ASSERTION: Log when falling back to local array
+        debug('P1', 'ASSERTION WARNING: getCurrentTargetData falling back to local targetObjects array. TargetComputerManager data unavailable.');
 
         // Fallback to local target objects array
         return this.sfm.targetObjects[this.sfm.targetIndex];
