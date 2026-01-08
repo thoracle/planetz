@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PlanetZ** (aka "Star F*ckers") is a 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. Built with Python/Flask backend and Three.js frontend, it combines classic space simulation elements with modern web technologies and an NFT-inspired card collection system for ship upgrades.
 
-**Version**: 2.1.0-atomic-discovery
-**Status**: Production-ready (~98% complete)
-**Current Branch**: `achievements` (active development)
+**Version**: 2.1.1-security-hardening
+**Status**: Production-ready with persistence enabled
+**Current Branch**: `main` (production)
 
 ### Core Systems (Fully Implemented)
 - **3D Space Combat** - Weapons, targeting, shields with raycasting collision detection
@@ -223,10 +223,17 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 - Initializes mission system
 
 #### Route Blueprints (`backend/routes/`)
-- `main.py` - Main HTML serving
+- `main.py` - Main HTML serving (with path traversal protection)
 - `api.py` - Game API endpoints
 - `universe.py` - Universe generation API
 - `missions.py` - Mission system API
+
+#### Security (`backend/auth.py`)
+Admin endpoints require authentication via `@require_admin_key` decorator:
+- Protected endpoints: `/api/missions/admin/*`, `/api/debug-config`
+- Auth via `X-Admin-Key` header or `admin_key` query parameter
+- Set `ADMIN_API_KEY` environment variable for production
+- Development mode allows access without key (with warning logged)
 
 #### Core Backend Modules
 - `verse.py` - Procedural universe generation
@@ -288,14 +295,17 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 - Station services for full restoration
 - Auto-repair priority management
 
-#### Testing Mode Configuration
-**IMPORTANT**: Game has testing mode in `StarfieldManager.js`:
+#### Production Mode (Default)
+Game persistence is **enabled by default**. Player progress, discoveries, and missions are saved between sessions.
+
 ```javascript
+// StarfieldManager.js & MissionSystemCoordinator.js
 const TESTING_CONFIG = {
-    NO_PERSISTENCE: true  // Currently ACTIVE - clears data between sessions
+    NO_PERSISTENCE: false  // Production mode - saves persist
 }
 ```
-Change to `false` for production to enable save/load functionality.
+
+To enable testing mode (clears data between sessions), set `NO_PERSISTENCE: true` in both files.
 
 ### Undock Cooldown System
 Post-launch targeting has 10-second warmup with:
@@ -417,7 +427,15 @@ After god class extraction refactoring, major files are now much smaller:
 
 Functionality has been extracted into focused manager classes in `frontend/static/js/managers/`.
 
-## Recent Major Fixes (2025)
+## Recent Major Fixes (2025-2026)
+
+### Security Hardening & Production Mode ✅ COMPLETED (2026-01)
+- **Path Traversal Fix**: `/test/<path>` endpoint now validates filenames, whitelists extensions, checks resolved paths
+- **Admin Authentication**: New `@require_admin_key` decorator protects admin endpoints
+- **Production Mode Enabled**: `NO_PERSISTENCE=false` - game state, discoveries, missions now persist
+- **Debug Flags Disabled**: `DEBUG_LOG_HITSCAN`, `DEBUG_PROJECTILES` set to false
+- **Persistence Re-enabled**: `StarChartsManager.js` and `game_state.py` save/load functions restored
+- **Key Files**: `backend/auth.py` (new), `backend/routes/main.py`, `backend/config.py`
 
 ### Discovery & Targeting System Overhaul ✅ COMPLETED
 **All critical issues resolved** - comprehensive fix for discovery/targeting bugs:
@@ -461,9 +479,6 @@ Functionality has been extracted into focused manager classes in `frontend/stati
 - **Key Files**: `core/GameObject.js`, `core/GameObjectFactory.js`, `core/GameObjectRegistry.js`, `core/FactionStandingsManager.js`
 
 ## Known Issues & Technical Debt
-
-### Testing Mode Configuration
-Testing mode currently clears missions between sessions (`NO_PERSISTENCE = true`). For production, set to `false` in `StarfieldManager.js`.
 
 ### Browser Compatibility
 - Requires WebGL support
@@ -597,11 +612,11 @@ Comprehensive docs in `docs/` directory:
 1. **Fail Fast**: Don't use defensive programming - throw clear errors instead of masking bugs with fallbacks
 2. **Debug System**: ALWAYS use `debug(channel, message)` instead of `console.log()`
 3. **Single Source of Truth**: Use `GameObjectFactory` for object creation, `FactionStandingsManager` for faction standings, `GameObject.discovered` for discovery state
-4. **Testing Mode**: Game currently configured with `NO_PERSISTENCE = true` for clean testing. Disable for production.
+4. **Production Mode**: Game configured with `NO_PERSISTENCE = false` - progress persists between sessions
 5. **Modular Systems**: Each ship system is independent, communicates via managers
 6. **Card-Based Progression**: All ship capabilities derived from equipped cards
 7. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
-8. **Production Ready**: Core systems complete and tested, focus on polish and content expansion
+8. **Security First**: Admin endpoints protected via `@require_admin_key`, path traversal prevented
 
 ## Quick Reference
 
@@ -624,4 +639,4 @@ Comprehensive docs in `docs/` directory:
 - JavaScript Files: ~7,700 LOC
 - Python Files: ~3,300 LOC
 - Architecture: Fully modular ES6+ with Three.js native physics
-- Branch: `achievements` (active development)
+- Branch: `main` (production)
