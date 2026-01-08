@@ -496,7 +496,7 @@ debug('UTILITY', '✅ Three.js spatial and collision systems ready');
         
         // Now that spatial systems are ready, initialize SimpleDockingManager
         if (starfieldManager && typeof starfieldManager.initializeSimpleDocking === 'function') {
-            starfieldManager.initializeSimpleDocking();
+            starfieldManager.initializeSimpleDocking(SimpleDockingManager);
         }
     } else {
         debug('P1', '❌ Failed to initialize Three.js systems');

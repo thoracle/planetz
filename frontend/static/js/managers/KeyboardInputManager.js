@@ -944,19 +944,8 @@ export class KeyboardInputManager {
                 }
             }
 
-            // Autofire toggle key binding (A)
-            if (commandKey === 'a') {
-                if (!this.sfm.isDocked) {
-                    const ship = this.sfm.viewManager?.getShip();
-                    if (ship && ship.weaponSystem) {
-                        ship.weaponSystem.toggleAutofire();
-                        this.sfm.playCommandSound();
-                    }
-                }
-            }
-
-            // Diplomacy HUD toggle key binding (F)
-            if (commandKey === 'f') {
+            // Diplomacy HUD toggle key binding (D)
+            if (commandKey === 'd') {
                 if (!this.sfm.isDocked) {
                     if (this.sfm.diplomacyHUD) {
                         // CRITICAL: Dismiss conflicting HUDs to prevent overlap
@@ -979,6 +968,37 @@ export class KeyboardInputManager {
                         'DIPLOMACY UNAVAILABLE',
                         'Diplomacy systems offline while docked'
                     );
+                }
+            }
+
+            // Autofire toggle key binding (/)
+            if (commandKey === '/') {
+                if (!this.sfm.isDocked) {
+                    const ship = this.sfm.viewManager?.getShip();
+                    if (ship && ship.weaponSystem) {
+                        ship.weaponSystem.toggleAutofire();
+                        this.sfm.playCommandSound();
+                    } else {
+                        this.sfm.playCommandFailedSound();
+                    }
+                } else {
+                    this.sfm.playCommandFailedSound();
+                }
+            }
+
+            // Create training targets key binding (Q)
+            if (commandKey === 'q') {
+                if (!this.sfm.isDocked) {
+                    if (this.sfm.createTargetDummyShips) {
+                        this.sfm.createTargetDummyShips(3);
+                        this.sfm.playCommandSound();
+                        debug('AI', 'Training targets spawned via Q key');
+                    } else {
+                        this.sfm.playCommandFailedSound();
+                        debug('P1', 'createTargetDummyShips not available');
+                    }
+                } else {
+                    this.sfm.playCommandFailedSound();
                 }
             }
 

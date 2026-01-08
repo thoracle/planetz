@@ -70,18 +70,26 @@ export class DockingOperationsManager {
 
     /**
      * Initialize physics-based docking when physics system is ready
+     * @param {Class} SimpleDockingManagerClass - The SimpleDockingManager class to instantiate
      */
-    initializeSimpleDocking() {
+    initializeSimpleDocking(SimpleDockingManagerClass) {
+        // Store the class reference for later use (e.g., during docking attempts)
+        if (SimpleDockingManagerClass) {
+            this._SimpleDockingManagerClass = SimpleDockingManagerClass;
+        }
+
         if (window.spatialManagerReady && window.collisionManagerReady && !this.sfm.simpleDockingManager) {
-            const SimpleDockingManager = this.sfm.SimpleDockingManager;
-            if (SimpleDockingManager) {
-                this.sfm.simpleDockingManager = new SimpleDockingManager(
+            const ClassToUse = this._SimpleDockingManagerClass;
+            if (ClassToUse) {
+                this.sfm.simpleDockingManager = new ClassToUse(
                     this.sfm,
                     window.spatialManager,
                     window.collisionManager
                 );
                 debug('UTILITY', 'Simple docking system initialized');
                 this.sfm.simpleDockingManager.startDockingMonitoring();
+            } else {
+                debug('P1', 'SimpleDockingManager class not available');
             }
         } else if (!this.sfm.simpleDockingManager) {
             debug('P1', `Cannot initialize SimpleDockingManager: spatialManagerReady=${window.spatialManagerReady}, collisionManagerReady=${window.collisionManagerReady}`);

@@ -46,8 +46,8 @@ export class StarfieldAudioManager {
         // Ensure AudioContext is running
         this.ensureAudioContextRunning();
         
-        // Load audio files from static directory
-        const audioBasePath = 'static/audio/';
+        // Load audio files from static directory (absolute path for reliable loading)
+        const audioBasePath = '/static/audio/';
         this.loadEngineAudio(`${audioBasePath}engines.wav`);
         this.loadCommandAudio(`${audioBasePath}command.wav`);
         this.loadCommandFailedAudio(`${audioBasePath}command_failed.mp3`);
@@ -263,8 +263,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
             this.ensureAudioContextRunning();
             this.commandSound.play();
         } else if (!this.commandSoundLoaded) {
-            // Fallback: generate a success beep using Web Audio API
-            this.generateCommandSuccessBeep();
+            debug('P1', 'Cannot play command sound - audio file not loaded (command.wav)');
         }
     }
 
@@ -276,8 +275,7 @@ debug('UTILITY', '🎵 AudioContext resumed successfully');
             this.ensureAudioContextRunning();
             this.commandFailedSound.play();
         } else if (!this.commandFailedSoundLoaded) {
-            // Fallback: generate a low-pitched beep using Web Audio API
-            this.generateCommandFailedBeep();
+            debug('P1', 'Cannot play command failed sound - audio file not loaded (command_failed.mp3)');
         }
     }
 

@@ -43,8 +43,7 @@ export class CommandAudioManager {
         if (this.sfm.audioManager) {
             this.sfm.audioManager.playCommandSound();
         } else {
-            // Fallback if audio manager is not available
-            this.generateCommandSuccessBeep();
+            debug('P1', 'Cannot play command sound - audioManager not available');
         }
     }
 
@@ -95,8 +94,7 @@ export class CommandAudioManager {
         if (this.sfm.audioManager) {
             this.sfm.audioManager.playCommandFailedSound();
         } else {
-            // Fallback if audio manager is not available
-            this.generateCommandFailedBeep();
+            debug('P1', 'Cannot play command failed sound - audioManager not available');
         }
     }
 

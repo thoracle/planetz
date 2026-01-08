@@ -531,8 +531,8 @@ export class StarfieldManager {
         return this.dockingOperationsManager.canDockWithLogging(target);
     }
 
-    initializeSimpleDocking() {
-        this.dockingOperationsManager.initializeSimpleDocking();
+    initializeSimpleDocking(SimpleDockingManagerClass) {
+        this.dockingOperationsManager.initializeSimpleDocking(SimpleDockingManagerClass);
     }
 
     showDockingInterface(target) {

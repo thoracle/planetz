@@ -8,7 +8,7 @@
  * - C key: Star Charts toggle
  * - F/A keys: Fore/Aft view switching
  * - S key: Shield toggle (delegated to StarfieldManager)
- * - D key: Damage control (delegated to StarfieldManager)
+ * - D key: Diplomacy Report (delegated to KeyboardInputManager)
  */
 
 import { debug } from '../../debug.js';
@@ -54,17 +54,19 @@ export class VMKeyboardHandler {
                 event.preventDefault();
                 event.stopPropagation();
             } else if (key === 'd') {
-                // Damage control - handled by StarfieldManager
+                // Diplomacy Report - handled by KeyboardInputManager
                 event.preventDefault();
                 event.stopPropagation();
-                debug('COMBAT', 'Damage control key pressed - handled by StarfieldManager');
+                debug('FACTION', 'Diplomacy key pressed - handled by KeyboardInputManager');
             } else if (!isDocked && key === 'f' && (this.vm.currentView === VIEW_TYPES.AFT || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
+                this.vm.starfieldManager?.playCommandSound();
                 this.vm.setView(VIEW_TYPES.FORE);
             } else if (!isDocked && key === 'a' && (this.vm.currentView === VIEW_TYPES.FORE || isGalacticChartVisible || isLongRangeScannerVisible)) {
                 event.preventDefault();
                 event.stopPropagation();
+                this.vm.starfieldManager?.playCommandSound();
                 this.vm.setView(VIEW_TYPES.AFT);
             }
         };
