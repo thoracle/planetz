@@ -90,7 +90,30 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 
 ## 🎉 Latest Issues Solved
 
-### **Console Violation Cleanup - Complete** ✅ **JUST COMPLETED** *(Jan 1, 2026)*
+### **Keyboard Mappings & Audio System** ✅ **JUST COMPLETED** *(Jan 8, 2026)*
+- **Issue**: Keyboard mappings didn't match ESC help menu documentation; audio played fallback beeps instead of actual sound files
+- **Root Causes**:
+  - F key was mapped to Diplomacy (should be Fore View)
+  - A key was mapped to Autofire (should be Aft View)
+  - D key fell through to Damage Control (should be Diplomacy)
+  - / and Q keys were not implemented
+  - Audio path was relative (`static/audio/`) causing loading failures
+  - Fallback beeps silently masked audio loading problems
+- **Solution**:
+  - Fixed keyboard mappings in `KeyboardInputManager.js` and `VMKeyboardHandler.js`
+  - Added sound effects for F/A view switching
+  - Implemented / key for Autofire toggle, Q key for training targets
+  - Fixed audio path to absolute (`/static/audio/`)
+  - Removed fallback beeps - now logs clear errors when audio fails
+- **Files**: `KeyboardInputManager.js`, `VMKeyboardHandler.js`, `StarfieldAudioManager.js`, `CommandAudioManager.js`
+
+### **Docking System Silent Failure** ✅ **FIXED** *(Jan 8, 2026)*
+- **Issue**: Clicking dock button in docking modal failed silently
+- **Root Cause**: `SimpleDockingManager` class was imported in `app.js` but never passed to `StarfieldManager`, so `DockingOperationsManager.initializeSimpleDocking()` couldn't instantiate it
+- **Solution**: Pass `SimpleDockingManager` class through the initialization chain and store for deferred use
+- **Files**: `app.js`, `StarfieldManager.js`, `DockingOperationsManager.js`
+
+### **Console Violation Cleanup - Complete** ✅ **COMPLETED** *(Jan 1, 2026)*
 - **Issue**: 200+ `console.log/warn/error` statements scattered across codebase instead of using `debug()` system
 - **Solution**: Systematic migration to `debug(channel, message)` pattern across all major files
 - **Files Fixed (21 total)**:
@@ -234,17 +257,31 @@ debugStatus()              // Show all debug channel states
 
 ## 🎮 Game Controls Reference
 
-**Essential Controls:**
+**Navigation:**
+- **F** - Forward (Fore) View
+- **A** - Aft View
+- **Arrow Keys** - Ship attitude control
+- **0-9 Keys** - Impulse engine speed
+
+**Systems:**
 - **ESC** - Help Screen 2.0 (modal interface)
+- **D** - Diplomacy Report
+- **O** - Operations Report (Damage Control)
+- **S** - Shield toggle
+- **L** - Long Range Scanner
+- **G** - Galactic Chart
+- **P** - Proximity Detector
+
+**Combat:**
 - **TAB** - Cycle targets
-- **Z,X** - Cycle Sub-system targets
+- **T** - Toggle Target Computer
+- **Z,X** - Cycle sub-system targets
 - **<,>** - Cycle weapon selection
 - **SPACE** - Fire weapons
-- **Arrow Keys** - Ship movement
-- **0-9 Keys** - Ship impulse engine speed
+- **/** - Toggle Autofire
 
-**Debug Controls:**
-- **H** - Shows message to use ESC instead
+**Debug:**
+- **Q** - Spawn training targets
 - **F12** - Browser console for debug commands
 
 ## 💡 Quick Start Tips
