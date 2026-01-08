@@ -73,6 +73,11 @@ export class ViewStateManager {
         if (!this.sfm.isDocked) {
             this.view = viewType === 'SCANNER' ? 'LONG RANGE' : viewType.toUpperCase();
 
+            // Also update viewManager.currentView so F/A key handlers work correctly
+            if (this.sfm.viewManager && (this.view === 'FORE' || this.view === 'AFT')) {
+                this.sfm.viewManager.currentView = this.view.toLowerCase();
+            }
+
             // Update camera rotation based on view (only for flight views)
             if (this.view === 'AFT') {
                 this.sfm.camera.rotation.set(0, Math.PI, 0); // 180 degrees around Y axis

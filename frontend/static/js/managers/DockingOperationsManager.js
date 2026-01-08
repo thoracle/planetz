@@ -493,6 +493,9 @@ export class DockingOperationsManager {
         const viewToRestore = this.sfm.previousView === 'AFT' ? 'AFT' : 'FORE';
         this.sfm.view = viewToRestore;
 
+        // Also update viewManager.currentView so F/A key handlers work correctly
+        this.sfm.viewManager.currentView = viewToRestore.toLowerCase();
+
         // Update camera rotation
         if (viewToRestore === 'AFT') {
             this.sfm.camera.rotation.set(0, Math.PI, 0);
