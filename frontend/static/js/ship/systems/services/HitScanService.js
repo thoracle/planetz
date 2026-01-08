@@ -8,7 +8,7 @@ import { debug } from '../../../debug.js';
  * Optimized for retro space shooter gameplay.
  */
 
-const DEBUG_LOG_HITSCAN = true;
+const DEBUG_LOG_HITSCAN = false;
 
 /**
  * Simple weapon hit detection using Three.js Raycaster

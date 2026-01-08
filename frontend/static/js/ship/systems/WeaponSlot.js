@@ -10,7 +10,7 @@ import { debug } from '../../debug.js';
 import { WeaponCard } from './WeaponCard.js';
 // HitScanService is now accessed via window.HitScanService (no import needed)
 
-const DEBUG_LOG_HITSCAN = true;
+const DEBUG_LOG_HITSCAN = false;
 
 // Feature flag to enable simplified center-ray firing path safely
 const USE_SIMPLE_FIRING = true;

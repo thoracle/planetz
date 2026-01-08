@@ -8,11 +8,15 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
     STATIC_FOLDER = str(Path(__file__).parent.parent / 'frontend' / 'static')
     PORT = 5001  # Set default port to 5001
-    
+
+    # Admin API key for protected endpoints
+    # Set via ADMIN_API_KEY environment variable
+    ADMIN_API_KEY = os.getenv('ADMIN_API_KEY')
+
     # Logging settings
     LOG_LEVEL = 'INFO'
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    
+
     # API settings
     API_PREFIX = '/api/v1'
     
@@ -54,13 +58,14 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    
+
     @classmethod
     def init_app(cls, app):
         """Production-specific initialization."""
         Config.init_app(app)
-        # Set production-specific settings here
+        # Require security keys in production
         assert os.getenv('SECRET_KEY'), 'SECRET_KEY environment variable is required in production'
+        assert os.getenv('ADMIN_API_KEY'), 'ADMIN_API_KEY environment variable is required in production'
 
 
 # Configuration dictionary

@@ -15,11 +15,14 @@ Key Features:
 """
 
 import json
+import logging
 import os
 from typing import Dict, List, Optional, Any, Set
 from backend.id_generator import ObjectIDGenerator
 from backend.diplomacy_manager import DiplomacyManager
 from backend.game_time import get_game_time
+
+logger = logging.getLogger(__name__)
 
 
 class GameStateManager:
@@ -271,16 +274,7 @@ class GameStateManager:
         return expired
 
     def save_state(self) -> None:
-        """
-        Save the current game state to persistent storage.
-        DEBUGGING: Discovery persistence disabled - skip saving discovery state
-        """
-        print(f"🔧 DEBUG MODE: Game state saving disabled - persistence disabled for debugging")
-        print(f"   - Discovery count in memory: {len(self.player_discoveries)}")
-        print(f"   - Mission states in memory: {len(self.mission_states)}")
-        
-        # COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
-        """
+        """Save the current game state to persistent storage."""
         try:
             state_data = {
                 'universe_seed': self.universe_seed,
@@ -297,25 +291,16 @@ class GameStateManager:
                 json.dump(state_data, f, indent=2)
 
             self.last_save_time = get_game_time()
-            print(f"💾 Game state saved to {self.state_file}")
+            logger.info(f"Game state saved to {self.state_file}")
 
         except Exception as e:
-            print(f"❌ Failed to save game state: {e}")
-        """
+            logger.error(f"Failed to save game state: {e}")
 
     def load_state(self) -> None:
-        """
-        Load game state from persistent storage.
-        DEBUGGING: Discovery persistence disabled - skip loading discovery state
-        """
-        print(f"🔧 DEBUG MODE: Game state loading disabled - starting fresh each session")
-        print(f"   - Discovery persistence disabled for debugging")
-        
-        # COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
-        """
+        """Load game state from persistent storage."""
         try:
             if not os.path.exists(self.state_file):
-                print(f"📄 No existing game state file found: {self.state_file}")
+                logger.info(f"No existing game state file found: {self.state_file}")
                 return
 
             with open(self.state_file, 'r') as f:
@@ -323,7 +308,7 @@ class GameStateManager:
 
             # Validate version compatibility
             if state_data.get('version') != '1.0':
-                print(f"⚠️ Game state version mismatch: {state_data.get('version')}")
+                logger.warning(f"Game state version mismatch: {state_data.get('version')}")
                 return
 
             # Load state data
@@ -334,14 +319,10 @@ class GameStateManager:
 
             self.last_save_time = state_data.get('last_save_time', get_game_time())
 
-            print(f"📂 Game state loaded from {self.state_file}")
-            print(f"   - Object states: {len(self.object_states)}")
-            print(f"   - Discoveries: {len(self.player_discoveries)}")
-            print(f"   - Missions: {len(self.mission_states)}")
+            logger.info(f"Game state loaded: {len(self.object_states)} objects, {len(self.player_discoveries)} discoveries, {len(self.mission_states)} missions")
 
         except Exception as e:
-            print(f"❌ Failed to load game state: {e}")
-        """
+            logger.error(f"Failed to load game state: {e}")
 
     def get_stats(self) -> Dict[str, Any]:
         """

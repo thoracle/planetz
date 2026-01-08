@@ -160,20 +160,6 @@ debug('UTILITY', 'StarChartsManager: Initializing...');
             // Load discovery state
             await this.loadDiscoveryState();
 
-            // DEBUGGING: Auto-discovery disabled - no test mode or beacon auto-discovery
-            debug('UTILITY', '🔧 DEBUG MODE: Auto-discovery disabled (test mode and beacon auto-discovery)');
-            
-            // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
-            /*
-            // Optional test mode: auto-discover everything in current sector for parity testing
-            if (this.isTestDiscoverAllEnabled()) {
-                this.discoverAllInCurrentSector();
-            }
-
-            // TEMPORARY FIX: Auto-discover beacons for debugging
-            this.autoDiscoverBeacons();
-            */
-            
             // Initialize spatial grid
             this.initializeSpatialGrid();
             
@@ -683,16 +669,7 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     
     // Discovery state persistence
     async loadDiscoveryState() {
-        //Load discovery state from localStorage with metadata
-        // DEBUGGING: Discovery persistence disabled - always start fresh
-
-        debug('UTILITY', '🔧 DEBUG MODE: Discovery persistence disabled - starting fresh each session');
-        
-        // Always initialize with fresh state for debugging
-        this.initializeDiscoveryState();
-
-        // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
-        /*
+        // Load discovery state from localStorage with metadata
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const savedState = localStorage.getItem(key);
@@ -706,41 +683,29 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
                     this.discoveryMetadata = new Map(Object.entries(state.metadata));
                 }
 
-debug('UTILITY', `📂 Loaded discovery state: ${this.discoveredObjects.size} objects discovered`);
-debug('UTILITY', `📊 Discovery metadata: ${this.discoveryMetadata.size} entries`);
+                debug('UTILITY', `Loaded discovery state: ${this.discoveredObjects.size} objects discovered`);
+                debug('UTILITY', `Discovery metadata: ${this.discoveryMetadata.size} entries`);
             } else {
-                // Initialize with star always discovered
+                // Initialize with fresh state
                 this.initializeDiscoveryState();
             }
 
         } catch (error) {
-            console.error('❌ Failed to load discovery state:', error);
-            // Initialize with star always discovered
+            debug('P1', `Failed to load discovery state: ${error}`);
+            // Initialize with fresh state on error
             this.initializeDiscoveryState();
         }
-        */
     }
     
     initializeDiscoveryState() {
-        //Initialize discovery state with completely empty state - no objects discovered
-        
-        // DEBUGGING: Start completely fresh - no objects discovered, including central star
-        // Players must fly within 10km of SOL (or any object) to discover it
+        // Initialize discovery state with empty state - no objects discovered
+        // Players must fly within 10km of any object (including SOL) to discover it
         // this.discoveredObjects is already initialized as empty Set in constructor
-        
-        debug('UTILITY', '🌟 Initialized discovery state - COMPLETELY FRESH (no objects discovered)');
-        debug('UTILITY', `📊 Total discovered objects: ${this.discoveredObjects.size}`);
-        debug('UTILITY', `🎯 Players must fly within 10km of any object (including SOL) to discover it`);
+        debug('UTILITY', `Initialized discovery state - fresh start (${this.discoveredObjects.size} objects)`);
     }
 
     saveDiscoveryState() {
-        //Save discovery state to localStorage with metadata
-        // DEBUGGING: Discovery persistence disabled - no saving to localStorage
-
-        debug('UTILITY', `🔧 DEBUG MODE: Discovery save skipped - persistence disabled (${this.discoveredObjects.size} objects in memory)`);
-        
-        // COMMENTED OUT FOR DEBUGGING - Re-enable when discovery system is stable
-        /*
+        // Save discovery state to localStorage with metadata
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
             const state = {
@@ -752,12 +717,11 @@ debug('UTILITY', `📊 Discovery metadata: ${this.discoveryMetadata.size} entrie
             };
 
             localStorage.setItem(key, JSON.stringify(state));
-debug('UTILITY', `💾 Saved discovery state: ${this.discoveredObjects.size} objects`);
+            debug('UTILITY', `Saved discovery state: ${this.discoveredObjects.size} objects`);
 
         } catch (error) {
-            console.error('❌ Failed to save discovery state:', error);
+            debug('P1', `Failed to save discovery state: ${error}`);
         }
-        */
     }
     
     // Mission waypoint system

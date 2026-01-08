@@ -11,6 +11,7 @@ from typing import Dict, List, Any, Optional
 from backend.mission_system import MissionManager, Mission, MissionState, Objective
 from backend.mission_integration import MissionIntegration
 from backend.game_state import GameStateManager
+from backend.auth import require_admin_key
 
 logger = logging.getLogger(__name__)
 
@@ -709,8 +710,9 @@ def handle_cargo_loaded():
 # Admin/Debug Endpoints
 
 @missions_bp.route('/api/missions/admin/cleanup', methods=['POST'])
+@require_admin_key
 def cleanup_old_missions():
-    """Cleanup old completed missions (admin endpoint)"""
+    """Cleanup old completed missions (admin endpoint, requires authentication)"""
     if not mission_manager:
         return jsonify({'error': 'Mission system not initialized'}), 500
     
@@ -732,8 +734,9 @@ def cleanup_old_missions():
 
 
 @missions_bp.route('/api/missions/admin/migrate_storage', methods=['POST'])
+@require_admin_key
 def migrate_storage():
-    """Migrate mission storage to database (admin endpoint)"""
+    """Migrate mission storage to database (admin endpoint, requires authentication)"""
     if not mission_manager:
         return jsonify({'error': 'Mission system not initialized'}), 500
     

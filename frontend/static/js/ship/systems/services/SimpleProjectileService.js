@@ -9,7 +9,7 @@ import { debug } from '../../../debug.js';
 
 import * as THREE from 'three';
 
-const DEBUG_PROJECTILES = true;
+const DEBUG_PROJECTILES = false;
 
 export class SimpleProjectile {
     constructor(config) {

@@ -92,25 +92,50 @@ def health_check():
 
 @bp.route('/test/<path:filename>')
 def serve_test_files(filename):
-    """Serve test files from the test directory."""
+    """Serve test files from the test directory.
+
+    Security: Validates filename to prevent path traversal attacks.
+    """
+    # Reject path traversal attempts
+    if '..' in filename or filename.startswith('/'):
+        logger.warning(f"Path traversal attempt blocked: {filename}")
+        return "Invalid filename", 400
+
+    # Whitelist allowed extensions for test files
+    ALLOWED_EXTENSIONS = {'.html', '.js', '.css', '.json', '.png', '.jpg', '.svg'}
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        logger.warning(f"Blocked test file with disallowed extension: {filename}")
+        return "File type not allowed", 403
+
     try:
         test_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'test'))
+
+        # Resolve the full path and verify it's within test_dir
+        requested_path = os.path.abspath(os.path.join(test_dir, filename))
+        if not requested_path.startswith(test_dir + os.sep):
+            logger.warning(f"Path escape attempt blocked: {filename} resolved to {requested_path}")
+            return "Invalid filename", 400
+
         logger.info(f"Serving test file: {filename} from {test_dir}")
-        
+
         mime_type = get_mime_type(filename)
         response = send_from_directory(
             test_dir,
             filename,
             mimetype=mime_type
         )
-        
+
         # Add no-cache headers for test files
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-        
+
         logger.info(f"Successfully served test file: {filename}")
         return response
+    except FileNotFoundError:
+        logger.error(f"Test file not found: {filename}")
+        return "File not found", 404
     except Exception as e:
         logger.error(f"Error serving test file {filename}: {str(e)}")
-        return f"Error serving test file: {filename}", 404 
+        return "Server error", 500 

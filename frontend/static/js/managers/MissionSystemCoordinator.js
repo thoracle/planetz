@@ -19,7 +19,7 @@ import { MissionEventService } from '../services/MissionEventService.js';
 
 // TESTING CONFIGURATION - must match StarfieldManager
 const TESTING_CONFIG = {
-    NO_PERSISTENCE: true
+    NO_PERSISTENCE: false
 };
 
 export class MissionSystemCoordinator {

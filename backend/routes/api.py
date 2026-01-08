@@ -4,6 +4,7 @@ import logging
 from backend.PlanetTypes import PLANET_CLASSES
 from backend.verse import generate_planet, calculate_checksum
 from backend.ShipConfigs import SHIP_CONFIGS, REPAIR_PRICING, CRITICAL_SYSTEMS, get_ship_config, get_available_ship_types, validate_ship_config
+from backend.auth import require_admin_key
 import hashlib
 # import numpy as np  # Temporarily commented out - not used in this file
 from backend.planetGenerator import PlanetGenerator
@@ -697,8 +698,9 @@ def get_repair_kits():
 # =============================================================================
 
 @api_bp.route('/api/debug-config', methods=['GET'])
+@require_admin_key
 def get_debug_config():
-    """Get current debug configuration."""
+    """Get current debug configuration (requires authentication)."""
     try:
         import os
         import json
@@ -727,8 +729,9 @@ def get_debug_config():
         }), 500
 
 @api_bp.route('/api/debug-config', methods=['POST'])
+@require_admin_key
 def save_debug_config():
-    """Save debug configuration to file."""
+    """Save debug configuration to file (requires authentication)."""
     try:
         import os
         import json

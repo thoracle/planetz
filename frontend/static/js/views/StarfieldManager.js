@@ -18,8 +18,9 @@ import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 // TESTING CONFIGURATION
 const TESTING_CONFIG = {
     // Set to true for testing phase - clears all persistent data on game start
-    NO_PERSISTENCE: true,
-    
+    // Set to false for production - enables save/load functionality
+    NO_PERSISTENCE: false,
+
     // Future testing options:
     // RESET_PLAYER_PROGRESS: true,
     // RESET_SHIP_CONFIG: true,
