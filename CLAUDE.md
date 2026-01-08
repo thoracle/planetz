@@ -298,14 +298,29 @@ Admin endpoints require authentication via `@require_admin_key` decorator:
 #### Production Mode (Default)
 Game persistence is **enabled by default**. Player progress, discoveries, and missions are saved between sessions.
 
-```javascript
-// StarfieldManager.js & MissionSystemCoordinator.js
-const TESTING_CONFIG = {
-    NO_PERSISTENCE: false  // Production mode - saves persist
-}
+#### Testing Mode (URL Parameter)
+To disable persistence for testing, add `?testing=true` to the URL:
+
+```
+http://localhost:5001/?testing=true
 ```
 
-To enable testing mode (clears data between sessions), set `NO_PERSISTENCE: true` in both files.
+**What testing mode does:**
+- Skips loading saved discovery state (fresh start each session)
+- Skips saving discovery state to localStorage
+- Skips loading/saving mission progress
+- Shows "TESTING MODE" HUD notification on startup
+
+**Implementation:**
+```javascript
+// StarfieldManager.js exports isTestingMode() and TESTING_CONFIG
+const isTestingMode = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('testing') === 'true';
+};
+```
+
+Other modules import from StarfieldManager: `import { isTestingMode, TESTING_CONFIG } from './StarfieldManager.js'`
 
 ### Undock Cooldown System
 Post-launch targeting has 10-second warmup with:

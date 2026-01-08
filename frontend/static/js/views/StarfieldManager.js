@@ -15,11 +15,17 @@ import { WeaponEffectsManager } from '../ship/systems/WeaponEffectsManager.js';
 import { debug } from '../debug.js';
 import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 
+// Check for testing mode via query parameter: ?testing=true
+const isTestingMode = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('testing') === 'true';
+};
+
 // TESTING CONFIGURATION
+// Use ?testing=true in URL to enable testing mode (disables persistence)
 const TESTING_CONFIG = {
-    // Set to true for testing phase - clears all persistent data on game start
-    // Set to false for production - enables save/load functionality
-    NO_PERSISTENCE: false,
+    // Reads from URL query parameter - no code changes needed to toggle
+    NO_PERSISTENCE: isTestingMode(),
 
     // Future testing options:
     // RESET_PLAYER_PROGRESS: true,
@@ -27,6 +33,9 @@ const TESTING_CONFIG = {
     // RESET_CREDITS: true,
     // RESET_FACTION_STANDINGS: true
 };
+
+// Export for other modules to check
+export { isTestingMode, TESTING_CONFIG };
 
 // Constants
 import { SHIP_MOVEMENT, DOCKING } from '../constants/ShipConstants.js';
@@ -118,6 +127,14 @@ export class StarfieldManager {
         // Initialize mission system after a short delay to ensure all systems are ready
         this._setTimeout(() => {
             this.gameLogicInitializer.initializeMissionSystem();
+
+            // Show testing mode indicator if active
+            if (isTestingMode()) {
+                debug('P1', 'TESTING MODE ACTIVE - Persistence disabled');
+                this._setTimeout(() => {
+                    this.showHUDEphemeral('TESTING MODE', 'Persistence disabled - progress will not be saved', 8000);
+                }, 1000);
+            }
         }, 2000);
 
         // Bind keyboard events

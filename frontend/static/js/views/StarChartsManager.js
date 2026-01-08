@@ -3,6 +3,7 @@ import { DistanceCalculator } from '../utils/DistanceCalculator.js';
 import { SCMSpatialGrid } from './starcharts/SCMSpatialGrid.js';
 import { SCMDiscoveryProcessor } from './starcharts/SCMDiscoveryProcessor.js';
 import { GameObjectRegistry } from '../core/GameObjectRegistry.js';
+import { isTestingMode } from './StarfieldManager.js';
 
 /**
  * StarChartsManager - Advanced discovery-based navigation system
@@ -669,6 +670,13 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     
     // Discovery state persistence
     async loadDiscoveryState() {
+        // Skip loading in testing mode - always start fresh
+        if (isTestingMode()) {
+            debug('UTILITY', 'Testing mode: Skipping discovery state load');
+            this.initializeDiscoveryState();
+            return;
+        }
+
         // Load discovery state from localStorage with metadata
         try {
             const key = `star_charts_discovery_${this.currentSector}`;
@@ -705,6 +713,12 @@ debug('UTILITY', `   - Generated: ${this.objectDatabase.metadata.generation_time
     }
 
     saveDiscoveryState() {
+        // Skip saving in testing mode
+        if (isTestingMode()) {
+            debug('UTILITY', `Testing mode: Skipping discovery state save (${this.discoveredObjects.size} objects in memory)`);
+            return;
+        }
+
         // Save discovery state to localStorage with metadata
         try {
             const key = `star_charts_discovery_${this.currentSector}`;

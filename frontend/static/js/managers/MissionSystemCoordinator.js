@@ -16,11 +16,7 @@ import { MissionNotificationHandler } from '../ui/MissionNotificationHandler.js'
 import { MissionEventHandler } from '../ui/MissionEventHandler.js';
 import { MissionAPIService } from '../services/MissionAPIService.js';
 import { MissionEventService } from '../services/MissionEventService.js';
-
-// TESTING CONFIGURATION - must match StarfieldManager
-const TESTING_CONFIG = {
-    NO_PERSISTENCE: false
-};
+import { TESTING_CONFIG } from '../views/StarfieldManager.js';
 
 export class MissionSystemCoordinator {
     /**
