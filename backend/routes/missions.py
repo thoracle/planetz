@@ -115,7 +115,7 @@ def get_available_missions():
         
     except Exception as e:
         logger.error(f"❌ Get available missions failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/active', methods=['GET'])
@@ -142,7 +142,7 @@ def get_active_missions():
         
     except Exception as e:
         logger.error(f"❌ Get active missions failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/active/clear', methods=['POST'])
@@ -167,7 +167,7 @@ def clear_active_missions():
         
     except Exception as e:
         logger.error(f"❌ Clear active missions failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>', methods=['GET'])
@@ -198,7 +198,7 @@ def get_mission_details(mission_id: str):
         raise
     except Exception as e:
         logger.error(f"❌ Get mission details failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/accept_legacy', methods=['POST'])
@@ -238,7 +238,7 @@ def accept_mission_legacy(mission_id: str):
         
     except Exception as e:
         logger.error(f"❌ Accept mission failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/progress', methods=['POST'])
@@ -297,7 +297,7 @@ def update_mission_progress(mission_id: str):
         
     except Exception as e:
         logger.error(f"❌ Update mission progress failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/botch', methods=['POST'])
@@ -341,7 +341,7 @@ def botch_mission(mission_id: str):
         
     except Exception as e:
         logger.error(f"❌ Botch mission failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/unbotch', methods=['POST'])
@@ -376,7 +376,7 @@ def unbotch_mission(mission_id: str):
         
     except Exception as e:
         logger.error(f"❌ Unbotch mission failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/abandon', methods=['POST'])
@@ -407,7 +407,7 @@ def abandon_mission(mission_id: str):
         
     except Exception as e:
         logger.error(f"❌ Abandon mission failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/generate', methods=['POST'])
@@ -467,7 +467,7 @@ def generate_mission():
         raise
     except Exception as e:
         logger.error(f"❌ Generate mission failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/templates', methods=['GET'])
@@ -486,7 +486,7 @@ def get_mission_templates():
         
     except Exception as e:
         logger.error(f"❌ Get mission templates failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/stats', methods=['GET'])
@@ -512,7 +512,7 @@ def get_mission_stats():
         
     except Exception as e:
         logger.error(f"❌ Get mission stats failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # Game Event Endpoints (for mission progress integration)
@@ -563,7 +563,7 @@ def handle_enemy_destroyed():
         
     except Exception as e:
         logger.error(f"❌ Handle enemy destroyed failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/events/location_reached', methods=['POST'])
@@ -610,7 +610,7 @@ def handle_location_reached():
         
     except Exception as e:
         logger.error(f"❌ Handle location reached failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/events/cargo_delivered', methods=['POST'])
@@ -672,7 +672,7 @@ def handle_cargo_delivered():
         
     except Exception as e:
         logger.error(f"❌ Handle cargo delivered failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/events/cargo_loaded', methods=['POST'])
@@ -724,7 +724,7 @@ def handle_cargo_loaded():
         
     except Exception as e:
         logger.error(f"❌ Handle cargo loaded failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # Admin/Debug Endpoints
@@ -755,7 +755,7 @@ def cleanup_old_missions():
         raise
     except Exception as e:
         logger.error(f"❌ Cleanup old missions failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/admin/migrate_storage', methods=['POST'])
@@ -781,7 +781,7 @@ def migrate_storage():
         
     except Exception as e:
         logger.error(f"❌ Storage migration failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # Phase 4: Mission System Integration with GameStateManager
@@ -804,7 +804,7 @@ def update_mission_discovery():
 
     except Exception as e:
         logger.error(f"❌ Mission discovery update failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/discovery/status', methods=['GET'])
@@ -827,7 +827,7 @@ def get_mission_discovery_status():
 
     except Exception as e:
         logger.error(f"❌ Mission discovery status failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/discover', methods=['POST'])
@@ -850,7 +850,7 @@ def discover_mission(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Mission discovery failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/make_available', methods=['POST'])
@@ -869,7 +869,7 @@ def make_mission_available(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Make mission available failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/accept', methods=['POST'])
@@ -895,7 +895,7 @@ def accept_mission(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Mission acceptance failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/<mission_id>/complete', methods=['POST'])
@@ -925,7 +925,7 @@ def complete_mission(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Mission completion failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/state/<mission_id>', methods=['GET'])
@@ -951,7 +951,7 @@ def get_mission_state(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Get mission state failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/state/<mission_id>', methods=['PUT'])
@@ -975,7 +975,7 @@ def update_mission_state(mission_id):
 
     except Exception as e:
         logger.error(f"❌ Update mission state failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @missions_bp.route('/api/missions/templates/generate', methods=['POST'])
@@ -1010,4 +1010,4 @@ def generate_mission_from_template():
 
     except Exception as e:
         logger.error(f"❌ Mission generation failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
