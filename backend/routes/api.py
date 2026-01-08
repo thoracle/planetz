@@ -5,6 +5,16 @@ from backend.PlanetTypes import PLANET_CLASSES
 from backend.verse import generate_planet, calculate_checksum
 from backend.ShipConfigs import SHIP_CONFIGS, REPAIR_PRICING, CRITICAL_SYSTEMS, get_ship_config, get_available_ship_types, validate_ship_config
 from backend.auth import require_admin_key
+from backend.validation import (
+    ValidationError, handle_validation_errors,
+    validate_string, validate_int, validate_float, validate_bool,
+    validate_list, validate_dict, validate_enum,
+    validate_coordinates, validate_seed, validate_damage_amount,
+    validate_repair_amount, validate_energy_amount, validate_credits,
+    validate_system_name, validate_ship_type, validate_faction,
+    validate_planet_parameters, validate_debug_config,
+    MAX_COORDINATE, MIN_COORDINATE
+)
 import hashlib
 # import numpy as np  # Temporarily commented out - not used in this file
 from backend.planetGenerator import PlanetGenerator
@@ -142,24 +152,25 @@ def generate_planet_endpoint():
         }), 500
 
 @api_bp.route('/api/chunk-data', methods=['GET'])
+@handle_validation_errors
 def get_chunk_data():
     try:
-        # Get chunk coordinates from query parameters
-        x = int(request.args.get('x', 0))
-        y = int(request.args.get('y', 0))
-        z = int(request.args.get('z', 0))
-        
-        # Get planet parameters from query parameters
-        planet_type = request.args.get('planetType', 'Class-M')
-        seed = int(request.args.get('seed', 0))
-        
+        # Validate and get chunk coordinates
+        x = validate_int(request.args.get('x', 0), 'x', min_val=MIN_COORDINATE, max_val=MAX_COORDINATE)
+        y = validate_int(request.args.get('y', 0), 'y', min_val=MIN_COORDINATE, max_val=MAX_COORDINATE)
+        z = validate_int(request.args.get('z', 0), 'z', min_val=MIN_COORDINATE, max_val=MAX_COORDINATE)
+
         # Validate planet type
+        planet_type = request.args.get('planetType', 'Class-M')
         if planet_type not in PLANET_CLASSES:
-            return jsonify({'error': 'Invalid planet type'}), 400
-        
+            raise ValidationError(f"Invalid planet type. Must be one of: {', '.join(PLANET_CLASSES.keys())}", 'planetType')
+
+        # Validate seed
+        seed = validate_seed(request.args.get('seed', 0), required=False) or 0
+
         # Get planet parameters
         params = PLANET_CLASSES[planet_type]
-        
+
         # Create planet generator with parameters
         generator = PlanetGenerator(
             noise_scale=params['noise_scale'],
@@ -169,23 +180,26 @@ def get_chunk_data():
             terrain_height=params['terrain_height'],
             seed=seed
         )
-        
+
         # Generate chunk data
         chunk_size = 16  # Must match frontend chunk size
         density_field = generator.generate_chunk_density_field(x, y, z, chunk_size)
-        
+
         # Convert to list for JSON serialization
         density_field_list = density_field.tolist()
-        
+
         return jsonify({
             'densityField': density_field_list,
             'x': x,
             'y': y,
             'z': z
         })
-        
+
+    except ValidationError:
+        raise
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        logger.error(f"Error getting chunk data: {str(e)}")
+        return jsonify({'error': 'Failed to generate chunk data'}), 500 
 
 # =============================================================================
 # SHIP SYSTEM API ENDPOINTS
@@ -301,40 +315,47 @@ def get_system_status(system_name):
         }), 500
 
 @api_bp.route('/api/ship/systems/<system_name>/damage', methods=['POST'])
+@handle_validation_errors
 def apply_system_damage(system_name):
     """Apply damage to a specific ship system."""
     try:
+        # Validate system name from URL
+        validated_system = validate_system_name(system_name)
+
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No damage data provided'
-            }), 400
-        
-        damage_amount = data.get('damage', 0)
-        damage_type = data.get('damageType', 'kinetic')
-        
+            raise ValidationError('No damage data provided', 'body')
+
+        # Validate damage amount (must be positive, max 10.0)
+        damage_amount = validate_damage_amount(data.get('damage'))
         if damage_amount <= 0:
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid damage amount'
-            }), 400
-        
+            raise ValidationError('Damage amount must be positive', 'damage')
+
+        # Validate damage type
+        damage_type = validate_enum(
+            data.get('damageType', 'kinetic'),
+            'damageType',
+            ['kinetic', 'energy', 'explosive', 'radiation', 'emp'],
+            required=False
+        ) or 'kinetic'
+
         # In a real implementation, this would apply damage to the ship system
         # For now, return a mock response
         result = {
-            'systemName': system_name,
+            'systemName': validated_system,
             'damageApplied': damage_amount,
             'damageType': damage_type,
             'newHealth': max(0, 1.0 - damage_amount),  # Mock calculation
             'systemStatus': 'operational' if (1.0 - damage_amount) > 0.2 else 'critical'
         }
-        
+
         return jsonify({
             'status': 'success',
-            'message': f'Applied {damage_amount} {damage_type} damage to {system_name}',
+            'message': f'Applied {damage_amount} {damage_type} damage to {validated_system}',
             'data': result
         })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error applying damage to {system_name}: {str(e)}")
         return jsonify({
@@ -343,49 +364,56 @@ def apply_system_damage(system_name):
         }), 500
 
 @api_bp.route('/api/ship/systems/<system_name>/repair', methods=['POST'])
+@handle_validation_errors
 def repair_system(system_name):
     """Repair a specific ship system."""
     try:
+        # Validate system name from URL
+        validated_system = validate_system_name(system_name)
+
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No repair data provided'
-            }), 400
-        
-        repair_amount = data.get('repairAmount', 0)
-        repair_type = data.get('repairType', 'standard')
-        
+            raise ValidationError('No repair data provided', 'body')
+
+        # Validate repair amount (0.0 to 1.0)
+        repair_amount = validate_repair_amount(data.get('repairAmount'))
         if repair_amount <= 0:
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid repair amount'
-            }), 400
-        
+            raise ValidationError('Repair amount must be positive', 'repairAmount')
+
+        # Validate repair type
+        repair_type = validate_enum(
+            data.get('repairType', 'standard'),
+            'repairType',
+            ['standard', 'emergency', 'field'],
+            required=False
+        ) or 'standard'
+
         # Calculate repair cost
         base_cost = REPAIR_PRICING['baseCosts']['system'] * repair_amount
-        is_critical = system_name in CRITICAL_SYSTEMS
+        is_critical = validated_system in CRITICAL_SYSTEMS
         critical_multiplier = REPAIR_PRICING['baseCosts']['critical'] if is_critical else 1.0
         emergency_multiplier = REPAIR_PRICING['baseCosts']['emergency'] if repair_type == 'emergency' else 1.0
-        
+
         total_cost = int(base_cost * critical_multiplier * emergency_multiplier)
-        
+
         # In a real implementation, this would repair the ship system
         # For now, return a mock response
         result = {
-            'systemName': system_name,
+            'systemName': validated_system,
             'repairAmount': repair_amount,
             'repairType': repair_type,
             'cost': total_cost,
             'newHealth': min(1.0, repair_amount),  # Mock calculation
             'systemStatus': 'operational'
         }
-        
+
         return jsonify({
             'status': 'success',
-            'message': f'Repaired {system_name} by {repair_amount * 100}%',
+            'message': f'Repaired {validated_system} by {repair_amount * 100}%',
             'data': result
         })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error repairing {system_name}: {str(e)}")
         return jsonify({
@@ -394,6 +422,7 @@ def repair_system(system_name):
         }), 500
 
 @api_bp.route('/api/ship/energy', methods=['GET', 'POST'])
+@handle_validation_errors
 def manage_ship_energy():
     """Get or update ship energy status."""
     try:
@@ -406,23 +435,27 @@ def manage_ship_energy():
                 'rechargeRate': 50,
                 'consumptionRate': 0
             }
-            
+
             return jsonify({
                 'status': 'success',
                 'data': energy_status
             })
-        
+
         elif request.method == 'POST':
             data = request.get_json()
             if not data:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No energy data provided'
-                }), 400
-            
-            action = data.get('action')
-            amount = data.get('amount', 0)
-            
+                raise ValidationError('No energy data provided', 'body')
+
+            # Validate action
+            action = validate_enum(
+                data.get('action'),
+                'action',
+                ['consume', 'recharge']
+            )
+
+            # Validate amount
+            amount = validate_energy_amount(data.get('amount', 0))
+
             if action == 'consume':
                 # Mock energy consumption
                 result = {
@@ -439,16 +472,13 @@ def manage_ship_energy():
                     'success': True,
                     'newEnergy': min(5000, amount)
                 }
-            else:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Invalid energy action'
-                }), 400
-            
+
             return jsonify({
                 'status': 'success',
                 'data': result
             })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error managing ship energy: {str(e)}")
         return jsonify({
@@ -457,43 +487,48 @@ def manage_ship_energy():
         }), 500
 
 @api_bp.route('/api/station/repair/costs', methods=['POST'])
+@handle_validation_errors
 def get_repair_costs():
     """Get repair cost estimates for ship systems."""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No ship data provided'
-            }), 400
-        
-        ship_type = data.get('shipType', 'light_fighter')
-        systems = data.get('systems', {})
-        hull_damage = data.get('hullDamage', 0)
-        faction = data.get('faction', 'neutral')
-        
+            raise ValidationError('No ship data provided', 'body')
+
+        # Validate inputs
+        ship_type = validate_ship_type(data.get('shipType', 'light_fighter'))
+        systems = validate_dict(data.get('systems', {}), 'systems', required=False) or {}
+        hull_damage = validate_float(data.get('hullDamage', 0), 'hullDamage', min_val=0, max_val=1.0, required=False) or 0
+        faction = validate_faction(data.get('faction', 'neutral'))
+
         # Calculate repair costs
         costs = {}
-        
+
         # Hull repair cost
         if hull_damage > 0:
             hull_cost = REPAIR_PRICING['baseCosts']['hull'] * hull_damage
             ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
             faction_multiplier = REPAIR_PRICING['factionDiscounts'].get(faction, 1.0)
             costs['hull'] = int(hull_cost * ship_multiplier * faction_multiplier)
-        
+
         # System repair costs
         for system_name, system_data in systems.items():
-            if system_data.get('health', 1.0) < 1.0:
+            # Validate system name
+            try:
+                validate_system_name(system_name)
+            except ValidationError:
+                continue  # Skip invalid system names
+
+            if isinstance(system_data, dict) and system_data.get('health', 1.0) < 1.0:
                 damage = 1.0 - system_data.get('health', 1.0)
                 base_cost = REPAIR_PRICING['baseCosts']['system'] * damage
                 is_critical = system_name in CRITICAL_SYSTEMS
                 critical_multiplier = REPAIR_PRICING['baseCosts']['critical'] if is_critical else 1.0
                 ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
                 faction_multiplier = REPAIR_PRICING['factionDiscounts'].get(faction, 1.0)
-                
+
                 costs[system_name] = int(base_cost * critical_multiplier * ship_multiplier * faction_multiplier)
-        
+
         return jsonify({
             'status': 'success',
             'data': {
@@ -503,6 +538,8 @@ def get_repair_costs():
                 'totalCost': sum(costs.values())
             }
         })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error calculating repair costs: {str(e)}")
         return jsonify({
@@ -511,44 +548,42 @@ def get_repair_costs():
         }), 500
 
 @api_bp.route('/api/station/repair/hull', methods=['POST'])
+@handle_validation_errors
 def repair_hull():
     """Repair ship hull damage."""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No repair data provided'
-            }), 400
-        
-        hull_damage = data.get('hullDamage', 0)
-        ship_type = data.get('shipType', 'light_fighter')
-        emergency = data.get('emergency', False)
-        credits = data.get('credits', 0)
-        
+            raise ValidationError('No repair data provided', 'body')
+
+        # Validate inputs
+        hull_damage = validate_float(data.get('hullDamage'), 'hullDamage', min_val=0, max_val=1.0)
+        ship_type = validate_ship_type(data.get('shipType', 'light_fighter'))
+        emergency = validate_bool(data.get('emergency', False), 'emergency', required=False) or False
+        credits = validate_credits(data.get('credits', 0))
+
         if hull_damage <= 0:
-            return jsonify({
-                'status': 'error',
-                'message': 'No hull damage to repair'
-            }), 400
-        
+            raise ValidationError('No hull damage to repair', 'hullDamage')
+
         # Calculate cost
         base_cost = REPAIR_PRICING['baseCosts']['hull'] * hull_damage
         ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
         emergency_multiplier = REPAIR_PRICING['baseCosts']['emergency'] if emergency else 1.0
         total_cost = int(base_cost * ship_multiplier * emergency_multiplier)
-        
+
         if credits < total_cost:
             return jsonify({
                 'status': 'error',
-                'message': 'Insufficient credits for hull repair'
+                'message': 'Insufficient credits for hull repair',
+                'required': total_cost,
+                'available': credits
             }), 400
-        
+
         # Calculate repair time
         repair_time = REPAIR_PRICING['repairTimes']['hull'] * hull_damage
         if emergency:
             repair_time = int(repair_time * REPAIR_PRICING['repairTimes']['emergency'])
-        
+
         result = {
             'repairType': 'hull',
             'hullDamage': hull_damage,
@@ -557,12 +592,14 @@ def repair_hull():
             'emergency': emergency,
             'creditsRemaining': credits - total_cost
         }
-        
+
         return jsonify({
             'status': 'success',
             'message': 'Hull repair completed',
             'data': result
         })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error repairing hull: {str(e)}")
         return jsonify({
@@ -571,27 +608,28 @@ def repair_hull():
         }), 500
 
 @api_bp.route('/api/station/repair/systems', methods=['POST'])
+@handle_validation_errors
 def repair_systems():
     """Repair selected ship systems."""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No repair data provided'
-            }), 400
-        
-        selected_systems = data.get('selectedSystems', [])
-        ship_type = data.get('shipType', 'light_fighter')
-        emergency = data.get('emergency', False)
-        credits = data.get('credits', 0)
-        systems_data = data.get('systems', {})
-        
+            raise ValidationError('No repair data provided', 'body')
+
+        # Validate inputs
+        selected_systems = validate_list(
+            data.get('selectedSystems', []),
+            'selectedSystems',
+            max_length=20,
+            item_validator=lambda x, n: validate_system_name(x)
+        )
+        ship_type = validate_ship_type(data.get('shipType', 'light_fighter'))
+        emergency = validate_bool(data.get('emergency', False), 'emergency', required=False) or False
+        credits = validate_credits(data.get('credits', 0))
+        systems_data = validate_dict(data.get('systems', {}), 'systems', required=False) or {}
+
         if not selected_systems:
-            return jsonify({
-                'status': 'error',
-                'message': 'No systems selected for repair'
-            }), 400
+            raise ValidationError('No systems selected for repair', 'selectedSystems')
         
         # Calculate total cost and time
         total_cost = 0
@@ -650,6 +688,8 @@ def repair_systems():
             'message': f'Repaired {len(repair_results)} systems',
             'data': result
         })
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error repairing systems: {str(e)}")
         return jsonify({
@@ -730,6 +770,7 @@ def get_debug_config():
 
 @api_bp.route('/api/debug-config', methods=['POST'])
 @require_admin_key
+@handle_validation_errors
 def save_debug_config():
     """Save debug configuration to file (requires authentication)."""
     try:
@@ -738,17 +779,10 @@ def save_debug_config():
 
         data = request.get_json()
         if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No configuration data provided'
-            }), 400
+            raise ValidationError('No configuration data provided', 'body')
 
-        # Validate required fields
-        if 'channels' not in data or 'version' not in data:
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid configuration format'
-            }), 400
+        # Validate debug config structure
+        validated_config = validate_debug_config(data)
 
         # Save to file
         config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'debug-config.json')
@@ -757,7 +791,7 @@ def save_debug_config():
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
         with open(config_path, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(validated_config, f, indent=2)
 
         logger.info(f"Debug configuration saved to {config_path}")
 
@@ -766,6 +800,8 @@ def save_debug_config():
             'message': 'Debug configuration saved successfully'
         })
 
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Error saving debug config: {str(e)}")
         return jsonify({

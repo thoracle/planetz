@@ -1,6 +1,10 @@
 from flask import Blueprint, jsonify, request
 from backend.verse import generate_star_system, generate_universe
 from backend.positioning_enhancement import PositioningEnhancement
+from backend.validation import (
+    ValidationError, handle_validation_errors,
+    validate_seed, validate_num_systems
+)
 import logging
 import os
 from dotenv import load_dotenv
@@ -8,53 +12,58 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 universe_bp = Blueprint('universe', __name__)
 
 @universe_bp.route('/generate_star_system')
+@handle_validation_errors
 def generate_star_system_route():
     try:
-        seed = request.args.get('seed')
-        # Try to convert seed to integer if provided
-        if seed:
-            try:
-                seed = int(seed)
-            except ValueError:
-                # If conversion fails, use the string as is
-                pass
-        
+        # Validate seed if provided
+        seed_param = request.args.get('seed')
+        seed = None
+        if seed_param:
+            seed = validate_seed(seed_param, required=False)
+
         # Generate base star system
         star_system = generate_star_system(seed)
-        
+
         # Enhance with positioning data for better gameplay
         enhancer = PositioningEnhancement()
         enhanced_system = enhancer.enhance_star_system(star_system)
-        
+
         return jsonify(enhanced_system)
+    except ValidationError:
+        raise
     except Exception as e:
-        logging.error(f"Error generating star system: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error generating star system: {str(e)}")
+        return jsonify({'error': 'Failed to generate star system'}), 500
 
 @universe_bp.route('/generate_universe')
+@handle_validation_errors
 def generate_universe_route():
     try:
         # Use environment seed by default, fallback to request seed if provided
         env_seed = os.getenv('UNIVERSE_SEED')
-        seed = request.args.get('seed', env_seed)
-        num_systems = request.args.get('num_systems', default=90, type=int)  # Default to 90 systems (9x10 grid)
-        
-        # Handle seed conversion more gracefully
-        if seed:
+        seed_param = request.args.get('seed', env_seed)
+
+        # Validate and convert seed
+        seed = None
+        if seed_param:
             try:
-                seed = int(seed)
-            except ValueError:
+                seed = validate_seed(seed_param, required=False)
+            except ValidationError:
                 # If seed is not a valid integer, use hash of the string
-                seed = hash(seed) & 0xFFFFFFFF
-        else:
-            # If no seed provided, use None (will use default behavior)
-            seed = None
-        
+                seed = hash(str(seed_param)) & 0xFFFFFFFF
+
+        # Validate num_systems (with bounds to prevent DoS)
+        num_systems_param = request.args.get('num_systems', 90)
+        num_systems = validate_num_systems(num_systems_param)
+
         universe = generate_universe(num_systems, seed)
         return jsonify(universe)
+    except ValidationError:
+        raise
     except Exception as e:
-        logging.error(f"Error generating universe: {str(e)}")
-        return jsonify({'error': str(e)}), 500 
+        logger.error(f"Error generating universe: {str(e)}")
+        return jsonify({'error': 'Failed to generate universe'}), 500 

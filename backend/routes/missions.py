@@ -12,6 +12,11 @@ from backend.mission_system import MissionManager, Mission, MissionState, Object
 from backend.mission_integration import MissionIntegration
 from backend.game_state import GameStateManager
 from backend.auth import require_admin_key
+from backend.validation import (
+    ValidationError, handle_validation_errors,
+    validate_mission_id, validate_string, validate_int, validate_dict,
+    validate_enum, TEMPLATE_ID_PATTERN
+)
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +171,7 @@ def clear_active_missions():
 
 
 @missions_bp.route('/api/missions/<mission_id>', methods=['GET'])
+@handle_validation_errors
 def get_mission_details(mission_id: str):
     """
     Get detailed information about a specific mission
@@ -173,18 +179,23 @@ def get_mission_details(mission_id: str):
     """
     if not mission_manager:
         return jsonify({'error': 'Mission system not initialized'}), 500
-    
+
     try:
-        mission = mission_manager.get_mission(mission_id)
+        # Validate mission_id format
+        validated_id = validate_mission_id(mission_id)
+
+        mission = mission_manager.get_mission(validated_id)
         if not mission:
-            return jsonify({'error': f'Mission not found: {mission_id}'}), 404
-        
+            return jsonify({'error': f'Mission not found: {validated_id}'}), 404
+
         return jsonify({
             'mission': mission.to_dict(),
             'state': mission.get_state(),
             'progress': mission.get_progress()
         })
-        
+
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"❌ Get mission details failed: {e}")
         return jsonify({'error': str(e)}), 500
@@ -400,6 +411,7 @@ def abandon_mission(mission_id: str):
 
 
 @missions_bp.route('/api/missions/generate', methods=['POST'])
+@handle_validation_errors
 def generate_mission():
     """
     Generate a procedural mission from template
@@ -407,30 +419,36 @@ def generate_mission():
     """
     if not mission_manager:
         return jsonify({'error': 'Mission system not initialized'}), 500
-    
+
     try:
         data = request.get_json() or {}
-        template_id = data.get('template_id')
-        player_data = data.get('player_data', {})
-        location = data.get('location', 'unknown')
-        
-        if not template_id:
-            return jsonify({'error': 'template_id is required'}), 400
+
+        # Validate template_id
+        template_id = validate_string(
+            data.get('template_id'),
+            'template_id',
+            max_length=50,
+            pattern=TEMPLATE_ID_PATTERN
+        )
+
+        # Validate optional fields
+        player_data = validate_dict(data.get('player_data', {}), 'player_data', required=False) or {}
+        location = validate_string(data.get('location', 'unknown'), 'location', max_length=100, required=False) or 'unknown'
 
         # Safety: validate template exists before attempting generation
-        if mission_manager and template_id not in mission_manager.templates:
+        if template_id not in mission_manager.templates:
             available = sorted(list(mission_manager.templates.keys()))
             return jsonify({
                 'error': f"Unknown template_id '{template_id}'",
                 'available_templates': available
             }), 400
-        
+
         mission = mission_manager.generate_procedural_mission(
             template_id=template_id,
             player_data=player_data,
             location=location
         )
-        
+
         if mission:
             return jsonify({
                 'success': True,
@@ -444,7 +462,9 @@ def generate_mission():
                 'error': f"Failed to generate mission from template '{template_id}'",
                 'available_templates': available
             }), 400
-        
+
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"❌ Generate mission failed: {e}")
         return jsonify({'error': str(e)}), 500
@@ -711,23 +731,28 @@ def handle_cargo_loaded():
 
 @missions_bp.route('/api/missions/admin/cleanup', methods=['POST'])
 @require_admin_key
+@handle_validation_errors
 def cleanup_old_missions():
     """Cleanup old completed missions (admin endpoint, requires authentication)"""
     if not mission_manager:
         return jsonify({'error': 'Mission system not initialized'}), 500
-    
+
     try:
         data = request.get_json() or {}
-        days_old = data.get('days_old', 30)
-        
+
+        # Validate days_old (must be positive, max 365 days)
+        days_old = validate_int(data.get('days_old', 30), 'days_old', min_val=1, max_val=365, required=False) or 30
+
         archived_count = mission_manager.cleanup_old_missions(days_old)
-        
+
         return jsonify({
             'success': True,
             'archived_count': archived_count,
             'message': f'Archived {archived_count} missions older than {days_old} days'
         })
-        
+
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"❌ Cleanup old missions failed: {e}")
         return jsonify({'error': str(e)}), 500
