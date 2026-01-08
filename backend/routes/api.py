@@ -168,8 +168,9 @@ def get_chunk_data():
         # Validate seed
         seed = validate_seed(request.args.get('seed', 0), required=False) or 0
 
-        # Get planet parameters
-        params = PLANET_CLASSES[planet_type]
+        # Get planet parameters (nested under 'params' key in PLANET_CLASSES)
+        planet_data = PLANET_CLASSES[planet_type]
+        params = planet_data['params']
 
         # Create planet generator with parameters
         generator = PlanetGenerator(
