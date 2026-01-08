@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PlanetZ** (aka "Star F*ckers") is a 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. Built with Python/Flask backend and Three.js frontend, it combines classic space simulation elements with modern web technologies and an NFT-inspired card collection system for ship upgrades.
 
-**Version**: 2.1.1-security-hardening
+**Version**: 2.1.2-input-validation
 **Status**: Production-ready with persistence enabled
 **Current Branch**: `main` (production)
 
@@ -235,6 +235,45 @@ Admin endpoints require authentication via `@require_admin_key` decorator:
 - Set `ADMIN_API_KEY` environment variable for production
 - Development mode allows access without key (with warning logged)
 
+#### Input Validation (`backend/validation.py`)
+Centralized validation module protects all API endpoints:
+
+**Type Validators:**
+- `validate_string(value, field_name, max_length, pattern, required)`
+- `validate_int(value, field_name, min_val, max_val, required)`
+- `validate_float(value, field_name, min_val, max_val, required)`
+- `validate_bool(value, field_name, required)`
+- `validate_list(value, field_name, max_length, item_validator, required)`
+- `validate_dict(value, field_name, required)`
+- `validate_enum(value, field_name, allowed_values, required)`
+
+**Domain-Specific Validators:**
+- `validate_mission_id(id)` - Alphanumeric + underscores/dashes, max 100 chars
+- `validate_system_name(name)` - Ship system names, max 50 chars
+- `validate_ship_type(type)` - Valid ship type identifiers
+- `validate_faction(faction)` - Valid faction names
+- `validate_coordinates(x, y, z)` - Range: -10000 to +10000
+- `validate_seed(seed)` - Range: 0 to 2^32-1
+- `validate_damage_amount(amount)` - Range: 0 to 10.0
+- `validate_repair_amount(amount)` - Range: 0 to 1.0
+- `validate_credits(credits)` - Range: 0 to 10^9
+- `validate_num_systems(num)` - Range: 1 to 500 (DoS protection)
+
+**Usage:**
+```python
+from backend.validation import (
+    ValidationError, handle_validation_errors,
+    validate_int, validate_string, validate_enum
+)
+
+@api_bp.route('/api/example', methods=['POST'])
+@handle_validation_errors
+def example_endpoint():
+    data = request.get_json()
+    amount = validate_int(data.get('amount'), 'amount', min_val=0, max_val=100)
+    # ValidationError automatically returns 400 with field name and message
+```
+
 #### Core Backend Modules
 - `verse.py` - Procedural universe generation
 - `game_state.py` - Game state management
@@ -444,6 +483,14 @@ Functionality has been extracted into focused manager classes in `frontend/stati
 
 ## Recent Major Fixes (2025-2026)
 
+### API Input Validation ✅ COMPLETED (2026-01)
+- **Centralized Validation Module**: New `backend/validation.py` with reusable validators
+- **Type Safety**: All API inputs validated for type, range, and format
+- **DoS Protection**: `num_systems` capped at 500, coordinates capped at ±10000
+- **Injection Prevention**: Pattern matching for mission IDs, system names (blocks `<script>` etc.)
+- **Consistent Errors**: `@handle_validation_errors` decorator returns structured JSON errors
+- **Protected Endpoints**: `api.py` (chunk-data, ship systems, station repair), `universe.py` (generate), `missions.py` (generate, cleanup)
+
 ### Security Hardening & Production Mode ✅ COMPLETED (2026-01)
 - **Path Traversal Fix**: `/test/<path>` endpoint now validates filenames, whitelists extensions, checks resolved paths
 - **Admin Authentication**: New `@require_admin_key` decorator protects admin endpoints
@@ -632,6 +679,7 @@ Comprehensive docs in `docs/` directory:
 6. **Card-Based Progression**: All ship capabilities derived from equipped cards
 7. **Real-Time Synchronization**: Systems synchronize state changes immediately (e.g., WeaponSyncManager)
 8. **Security First**: Admin endpoints protected via `@require_admin_key`, path traversal prevented
+9. **Input Validation**: All API endpoints use `backend/validation.py` validators - never trust user input
 
 ## Quick Reference
 
