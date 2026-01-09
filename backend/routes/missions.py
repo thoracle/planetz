@@ -99,11 +99,15 @@ def get_available_missions():
     try:
         location = request.args.get('location')
         faction_standings_str = request.args.get('faction_standings')
-        
+
         faction_standings = None
         if faction_standings_str:
             import json
-            faction_standings = json.loads(faction_standings_str)
+            try:
+                faction_standings = json.loads(faction_standings_str)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid faction_standings JSON: {e}")
+                return jsonify({'error': 'Invalid faction_standings JSON format'}), 400
         
         available_missions = mission_manager.get_available_missions(
             location=location,
