@@ -1,5 +1,6 @@
 """Authentication utilities for admin endpoints."""
 import os
+import hmac
 import functools
 import logging
 from flask import request, jsonify, current_app
@@ -18,26 +19,21 @@ def require_admin_key(f):
     - ADMIN_API_KEY environment variable, OR
     - Flask app config ADMIN_API_KEY
 
-    In development mode (DEBUG=True), if no key is configured,
-    admin endpoints are accessible without authentication (with warning).
+    Authentication is ALWAYS required, even in DEBUG mode.
+    If no ADMIN_API_KEY is configured, admin endpoints return 503.
     """
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         # Get the expected admin key
         expected_key = os.getenv('ADMIN_API_KEY') or current_app.config.get('ADMIN_API_KEY')
 
-        # In development with no key configured, allow access with warning
+        # Always require authentication - no bypass even in DEBUG mode
         if not expected_key:
-            if current_app.debug:
-                logger.warning(
-                    f"Admin endpoint '{f.__name__}' accessed without auth "
-                    "(no ADMIN_API_KEY configured, DEBUG mode)"
-                )
-                return f(*args, **kwargs)
-            else:
-                # In production, reject if no key is configured
-                logger.error(f"Admin endpoint '{f.__name__}' blocked: ADMIN_API_KEY not configured")
-                return jsonify({'error': 'Admin access not configured'}), 503
+            logger.error(
+                f"Admin endpoint '{f.__name__}' blocked: ADMIN_API_KEY not configured. "
+                "Set ADMIN_API_KEY environment variable to enable admin access."
+            )
+            return jsonify({'error': 'Admin access not configured'}), 503
 
         # Get the provided key from header or query param
         provided_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
@@ -58,10 +54,9 @@ def require_admin_key(f):
 
 
 def _secure_compare(a: str, b: str) -> bool:
-    """Constant-time string comparison to prevent timing attacks."""
-    if len(a) != len(b):
-        return False
-    result = 0
-    for x, y in zip(a.encode(), b.encode()):
-        result |= x ^ y
-    return result == 0
+    """Constant-time string comparison to prevent timing attacks.
+
+    Uses hmac.compare_digest which is designed to prevent timing attacks
+    by comparing in constant time regardless of string length or content.
+    """
+    return hmac.compare_digest(a.encode('utf-8'), b.encode('utf-8'))
