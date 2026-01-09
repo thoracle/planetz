@@ -33,7 +33,7 @@ def load_starter_infrastructure_template() -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         logger.error(f"Error parsing infrastructure JSON: {e}")
         return {'stations': [], 'beacons': []}
-    except Exception as e:
+    except (IOError, OSError) as e:
         logger.error(f"Error loading infrastructure file: {e}")
         return {'stations': [], 'beacons': []}
 

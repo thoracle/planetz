@@ -564,5 +564,5 @@ class EconomicSystem:
 
         except FileNotFoundError:
             logger.warning(f"📄 Economic data file not found: {filename}")
-        except Exception as e:
+        except (json.JSONDecodeError, TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ Failed to load economic data: {e}")

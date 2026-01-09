@@ -110,7 +110,7 @@ class MissionStorageManager:
             save_time = time.time() - start_time
             self.performance_monitor.record_save_time(save_time)
             return result
-        except Exception as e:
+        except (IOError, OSError, TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ Failed to save mission: {e}")
             return False
     
@@ -123,7 +123,7 @@ class MissionStorageManager:
             load_time = time.time() - start_time
             self.performance_monitor.record_load_time(load_time)
             return result
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"❌ Failed to load mission {mission_id}: {e}")
             return None
     
@@ -136,7 +136,7 @@ class MissionStorageManager:
             load_time = time.time() - start_time
             self.performance_monitor.record_load_time(load_time)
             return result
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"❌ Failed to load missions: {e}")
             return []
     
@@ -149,7 +149,7 @@ class MissionStorageManager:
             query_time = time.time() - start_time
             self.performance_monitor.record_query_time(query_time)
             return result
-        except Exception as e:
+        except (TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ Failed to query missions: {e}")
             return []
     
@@ -157,7 +157,7 @@ class MissionStorageManager:
         """Delete mission"""
         try:
             return self.storage_backend.delete_mission(mission_id)
-        except Exception as e:
+        except (IOError, OSError) as e:
             logger.error(f"❌ Failed to delete mission {mission_id}: {e}")
             return False
     
@@ -200,8 +200,8 @@ class MissionStorageManager:
             
             logger.info(f"🔄 Migration complete: {migrated_count}/{len(json_missions)} missions migrated to {new_storage_type}")
             return True
-            
-        except Exception as e:
+
+        except (IOError, OSError, TypeError, KeyError, ValueError, RuntimeError) as e:
             logger.error(f"❌ Migration failed: {e}")
             return False
     
@@ -225,8 +225,8 @@ class MissionStorageManager:
                 shutil.move(completed_dir, os.path.join(archive_dir, 'completed'))
             
             logger.info(f"🗄️ JSON files archived to {archive_dir}")
-            
-        except Exception as e:
+
+        except (IOError, OSError) as e:
             logger.error(f"❌ Failed to archive JSON files: {e}")
     
     def get_performance_stats(self) -> Dict[str, Any]:
@@ -271,10 +271,10 @@ class JSONFileStorage:
             filepath = os.path.join(target_dir, f"{mission_id}.json")
             with open(filepath, 'w') as f:
                 json.dump(mission_data, f, indent=2)
-            
+
             return True
-            
-        except Exception as e:
+
+        except (IOError, OSError, TypeError, KeyError) as e:
             logger.error(f"❌ JSON save failed: {e}")
             return False
     
@@ -287,7 +287,7 @@ class JSONFileStorage:
                 try:
                     with open(filepath, 'r') as f:
                         return json.load(f)
-                except Exception as e:
+                except (IOError, OSError, json.JSONDecodeError) as e:
                     logger.error(f"❌ JSON load failed for {filepath}: {e}")
         
         return None
@@ -306,7 +306,7 @@ class JSONFileStorage:
                             with open(filepath, 'r') as f:
                                 mission_data = json.load(f)
                                 missions.append(mission_data)
-                        except Exception as e:
+                        except (IOError, OSError, json.JSONDecodeError) as e:
                             logger.error(f"❌ Failed to load {filepath}: {e}")
         
         return missions
@@ -337,7 +337,7 @@ class JSONFileStorage:
                 try:
                     os.remove(filepath)
                     return True
-                except Exception as e:
+                except (IOError, OSError) as e:
                     logger.error(f"❌ Failed to delete {filepath}: {e}")
         
         return False
@@ -400,8 +400,8 @@ class SQLiteStorage:
             conn.close()
             
             logger.info(f"📊 SQLite database initialized: {self.db_path}")
-            
-        except Exception as e:
+
+        except (IOError, OSError) as e:
             logger.error(f"❌ SQLite initialization failed: {e}")
             raise
     
@@ -455,11 +455,11 @@ class SQLiteStorage:
             conn.commit()
             conn.close()
             return True
-            
-        except Exception as e:
+
+        except (TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ SQLite save failed: {e}")
             return False
-    
+
     def load_mission(self, mission_id: str) -> Optional[Dict[str, Any]]:
         """Load mission from SQLite database"""
         import sqlite3
@@ -475,13 +475,13 @@ class SQLiteStorage:
             
             if row:
                 return json.loads(row[0])
-            
+
             return None
-            
-        except Exception as e:
+
+        except (json.JSONDecodeError, TypeError, KeyError) as e:
             logger.error(f"❌ SQLite load failed: {e}")
             return None
-    
+
     def load_all_missions(self) -> List[Dict[str, Any]]:
         """Load all missions from SQLite database"""
         import sqlite3
@@ -494,13 +494,13 @@ class SQLiteStorage:
             rows = cursor.fetchall()
             
             conn.close()
-            
+
             return [json.loads(row[0]) for row in rows]
-            
-        except Exception as e:
+
+        except (json.JSONDecodeError, TypeError, KeyError) as e:
             logger.error(f"❌ SQLite load all failed: {e}")
             return []
-    
+
     def query_missions(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Query missions with SQL filtering"""
         import sqlite3
@@ -528,29 +528,29 @@ class SQLiteStorage:
             rows = cursor.fetchall()
             
             conn.close()
-            
+
             return [json.loads(row[0]) for row in rows]
-            
-        except Exception as e:
+
+        except (json.JSONDecodeError, TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ SQLite query failed: {e}")
             return []
-    
+
     def delete_mission(self, mission_id: str) -> bool:
         """Delete mission from SQLite database"""
         import sqlite3
-        
+
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('DELETE FROM objectives WHERE mission_id = ?', (mission_id,))
             cursor.execute('DELETE FROM missions WHERE id = ?', (mission_id,))
-            
+
             conn.commit()
             conn.close()
             return True
-            
-        except Exception as e:
+
+        except (IOError, OSError) as e:
             logger.error(f"❌ SQLite delete failed: {e}")
             return False
 
@@ -624,7 +624,7 @@ class PostgreSQLStorage:
         except ImportError:
             logger.error("❌ psycopg2 not installed - PostgreSQL backend unavailable")
             raise
-        except Exception as e:
+        except (IOError, OSError) as e:
             logger.error(f"❌ PostgreSQL initialization failed: {e}")
             raise
     
@@ -690,11 +690,11 @@ class PostgreSQLStorage:
             conn.commit()
             conn.close()
             return True
-            
-        except Exception as e:
+
+        except (TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ PostgreSQL save failed: {e}")
             return False
-    
+
     def load_mission(self, mission_id: str) -> Optional[Dict[str, Any]]:
         """Load mission from PostgreSQL database"""
         try:
@@ -710,13 +710,13 @@ class PostgreSQLStorage:
             
             if row:
                 return row[0]  # JSONB is automatically decoded
-            
+
             return None
-            
-        except Exception as e:
+
+        except (TypeError, KeyError) as e:
             logger.error(f"❌ PostgreSQL load failed: {e}")
             return None
-    
+
     def load_all_missions(self) -> List[Dict[str, Any]]:
         """Load all missions from PostgreSQL database"""
         try:
@@ -729,13 +729,13 @@ class PostgreSQLStorage:
             rows = cursor.fetchall()
             
             conn.close()
-            
+
             return [row[0] for row in rows]
-            
-        except Exception as e:
+
+        except (TypeError, KeyError) as e:
             logger.error(f"❌ PostgreSQL load all failed: {e}")
             return []
-    
+
     def query_missions(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Query missions with advanced PostgreSQL filtering"""
         try:
@@ -769,28 +769,28 @@ class PostgreSQLStorage:
             rows = cursor.fetchall()
             
             conn.close()
-            
+
             return [row[0] for row in rows]
-            
-        except Exception as e:
+
+        except (TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ PostgreSQL query failed: {e}")
             return []
-    
+
     def delete_mission(self, mission_id: str) -> bool:
         """Delete mission from PostgreSQL database"""
         try:
             import psycopg2
-            
+
             conn = psycopg2.connect(**self.connection_params)
             cursor = conn.cursor()
-            
+
             # Objectives will be deleted automatically due to CASCADE
             cursor.execute('DELETE FROM missions WHERE id = %s', (mission_id,))
-            
+
             conn.commit()
             conn.close()
             return True
-            
-        except Exception as e:
+
+        except (IOError, OSError) as e:
             logger.error(f"❌ PostgreSQL delete failed: {e}")
             return False

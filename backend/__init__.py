@@ -30,7 +30,7 @@ class ColoredStreamHandler(StreamHandler):
                 msg = f"{Colors.YELLOW}{msg}{Colors.RESET}"
             self.stream.write(msg + self.terminator)
             self.flush()
-        except Exception:
+        except (IOError, OSError, ValueError):
             self.handleError(record)
 
 def create_app(config_name):

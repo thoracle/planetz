@@ -293,7 +293,7 @@ class GameStateManager:
             self.last_save_time = get_game_time()
             logger.info(f"Game state saved to {self.state_file}")
 
-        except Exception as e:
+        except (IOError, OSError, TypeError) as e:
             logger.error(f"Failed to save game state: {e}")
 
     def load_state(self) -> None:
@@ -321,7 +321,7 @@ class GameStateManager:
 
             logger.info(f"Game state loaded: {len(self.object_states)} objects, {len(self.player_discoveries)} discoveries, {len(self.mission_states)} missions")
 
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"Failed to load game state: {e}")
 
     def get_stats(self) -> Dict[str, Any]:
