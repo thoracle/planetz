@@ -83,5 +83,50 @@ def create_app(config_name):
     # Initialize mission system
     with app.app_context():
         init_mission_system(app)
-    
+
+    # Add security headers to all responses
+    @app.after_request
+    def add_security_headers(response):
+        # Prevent MIME type sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+
+        # Prevent clickjacking
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+
+        # XSS protection (legacy but still useful for older browsers)
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+
+        # Control referrer information
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+        # Restrict browser features
+        response.headers['Permissions-Policy'] = (
+            'accelerometer=(), camera=(), geolocation=(), gyroscope=(), '
+            'magnetometer=(), microphone=(), payment=(), usb=()'
+        )
+
+        # Content Security Policy
+        # Allow self for most resources, with specific exceptions for Three.js/WebGL
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Three.js needs eval for shaders
+            "style-src 'self' 'unsafe-inline'",  # Allow inline styles
+            "img-src 'self' data: blob:",  # Allow data URIs and blobs for textures
+            "font-src 'self'",
+            "connect-src 'self'",  # API calls
+            "media-src 'self' blob:",  # Audio/video
+            "object-src 'none'",  # Block plugins
+            "frame-ancestors 'self'",  # Prevent embedding
+            "base-uri 'self'",
+            "form-action 'self'",
+            "worker-src 'self' blob:",  # Web workers
+        ]
+        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+
+        # HSTS - only enable in production with HTTPS
+        if not app.debug and os.getenv('ENABLE_HSTS', 'false').lower() == 'true':
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+        return response
+
     return app 
