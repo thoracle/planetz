@@ -1,5 +1,6 @@
 """API routes for the application."""
 from flask import Blueprint, jsonify, request
+import json
 import logging
 from backend.PlanetTypes import PLANET_CLASSES
 from backend.verse import generate_planet, calculate_checksum
@@ -52,7 +53,7 @@ def get_planet_types():
             'status': 'success',
             'data': PLANET_CLASSES
         })
-    except Exception as e:
+    except (TypeError, KeyError) as e:
         logger.error(f"Error getting planet types: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -105,7 +106,7 @@ def update_planet_config():
             }
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error updating planet config: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -152,7 +153,7 @@ def generate_planet_endpoint():
             }
         })
 
-    except Exception as e:
+    except (TypeError, ValueError, KeyError, RuntimeError) as e:
         logger.error(f"Error generating planet: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -207,9 +208,9 @@ def get_chunk_data():
 
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError, RuntimeError) as e:
         logger.error(f"Error getting chunk data: {str(e)}")
-        return jsonify({'error': 'Failed to generate chunk data'}), 500 
+        return jsonify({'error': 'Failed to generate chunk data'}), 500
 
 # =============================================================================
 # SHIP SYSTEM API ENDPOINTS
@@ -229,7 +230,7 @@ def get_ship_types():
                 'configs': ship_configs
             }
         })
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error getting ship types: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -251,7 +252,7 @@ def get_ship_config_endpoint(ship_type):
             'status': 'success',
             'data': config
         })
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error getting ship config for {ship_type}: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -291,7 +292,7 @@ def get_ship_status():
             'status': 'success',
             'data': ship_status
         })
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error processing ship status: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -317,7 +318,7 @@ def get_system_status(system_name):
             'status': 'success',
             'data': system_status
         })
-    except Exception as e:
+    except (TypeError, KeyError) as e:
         logger.error(f"Error getting system status for {system_name}: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -367,7 +368,7 @@ def apply_system_damage(system_name):
         })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error applying damage to {system_name}: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -426,7 +427,7 @@ def repair_system(system_name):
         })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error repairing {system_name}: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -492,7 +493,7 @@ def manage_ship_energy():
             })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error managing ship energy: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -554,7 +555,7 @@ def get_repair_costs():
         })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error calculating repair costs: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -615,7 +616,7 @@ def repair_hull():
         })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error repairing hull: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -706,7 +707,7 @@ def repair_systems():
         })
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, ValueError, KeyError) as e:
         logger.error(f"Error repairing systems: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -743,7 +744,7 @@ def get_repair_kits():
             'status': 'success',
             'data': repair_kits
         })
-    except Exception as e:
+    except (TypeError, KeyError) as e:
         logger.error(f"Error getting repair kits: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -779,7 +780,7 @@ def get_debug_config():
                 'message': 'Debug configuration file not found'
             }), 404
 
-    except Exception as e:
+    except (IOError, OSError, json.JSONDecodeError) as e:
         logger.error(f"Error getting debug config: {str(e)}")
         return jsonify({
             'status': 'error',
@@ -821,7 +822,7 @@ def save_debug_config():
 
     except ValidationError:
         raise
-    except Exception as e:
+    except (IOError, OSError, TypeError) as e:
         logger.error(f"Error saving debug config: {str(e)}")
         return jsonify({
             'status': 'error',

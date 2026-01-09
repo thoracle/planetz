@@ -1,5 +1,6 @@
 """Main routes for serving the frontend application."""
 from flask import Blueprint, send_from_directory, current_app, jsonify
+from werkzeug.exceptions import NotFound
 import logging
 import mimetypes
 import os
@@ -34,8 +35,11 @@ def index():
         response.headers['Expires'] = '0'
         
         return response
-    except Exception as e:
-        logger.error(f"Error serving index.html: {str(e)}")
+    except (FileNotFoundError, NotFound):
+        logger.error("index.html not found")
+        return "Frontend application not found", 404
+    except OSError as e:
+        logger.error(f"OS error serving index.html: {e}")
         return "Error serving frontend application", 500
 
 @bp.route('/frontend/static/<path:path>')
@@ -62,9 +66,12 @@ def serve_static_files(path):
         
         logger.info(f"Successfully served static file: {path}")
         return response
-    except Exception as e:
-        logger.error(f"Error serving static file {path}: {str(e)}")
-        return f"Error serving static file: {path}", 404
+    except (FileNotFoundError, NotFound):
+        logger.warning(f"Static file not found: {path}")
+        return f"Static file not found: {path}", 404
+    except OSError as e:
+        logger.error(f"OS error serving static file {path}: {e}")
+        return f"Error serving static file: {path}", 500
 
 @bp.route('/<path:path>')
 def serve_frontend_routes(path):
@@ -81,9 +88,12 @@ def serve_frontend_routes(path):
         # For all other paths, serve index.html (for client-side routing)
         logger.info(f"Serving index.html for route: {path}")
         return send_from_directory(current_app.static_folder, 'index.html', mimetype='text/html')
-    except Exception as e:
-        logger.error(f"Error serving file {path}: {str(e)}")
-        return f"Error serving file: {path}", 404 
+    except (FileNotFoundError, NotFound):
+        logger.warning(f"Route not found, index.html missing: {path}")
+        return f"Page not found: {path}", 404
+    except OSError as e:
+        logger.error(f"OS error serving route {path}: {e}")
+        return f"Error serving file: {path}", 500
 
 @bp.route('/health')
 def health_check():
@@ -133,9 +143,9 @@ def serve_test_files(filename):
 
         logger.info(f"Successfully served test file: {filename}")
         return response
-    except FileNotFoundError:
-        logger.error(f"Test file not found: {filename}")
+    except (FileNotFoundError, NotFound):
+        logger.warning(f"Test file not found: {filename}")
         return "File not found", 404
-    except Exception as e:
-        logger.error(f"Error serving test file {filename}: {str(e)}")
-        return "Server error", 500 
+    except OSError as e:
+        logger.error(f"OS error serving test file {filename}: {e}")
+        return "Server error", 500

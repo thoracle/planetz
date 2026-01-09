@@ -40,9 +40,15 @@ def generate_star_system_route():
         return jsonify(enhanced_system)
     except ValidationError:
         raise
-    except Exception as e:
-        logger.error(f"Error generating star system: {str(e)}")
+    except (TypeError, ValueError) as e:
+        logger.error(f"Invalid parameter for star system generation: {e}")
+        return jsonify({'error': 'Invalid generation parameters'}), 400
+    except (KeyError, AttributeError) as e:
+        logger.error(f"Data error generating star system: {e}")
         return jsonify({'error': 'Failed to generate star system'}), 500
+    except RuntimeError as e:
+        logger.error(f"Runtime error generating star system: {e}")
+        return jsonify({'error': 'Generation failed'}), 500
 
 @universe_bp.route('/generate_universe')
 @limiter.limit(RATE_LIMIT_EXPENSIVE)
@@ -70,6 +76,12 @@ def generate_universe_route():
         return jsonify(universe)
     except ValidationError:
         raise
-    except Exception as e:
-        logger.error(f"Error generating universe: {str(e)}")
-        return jsonify({'error': 'Failed to generate universe'}), 500 
+    except (TypeError, ValueError) as e:
+        logger.error(f"Invalid parameter for universe generation: {e}")
+        return jsonify({'error': 'Invalid generation parameters'}), 400
+    except (KeyError, AttributeError) as e:
+        logger.error(f"Data error generating universe: {e}")
+        return jsonify({'error': 'Failed to generate universe'}), 500
+    except RuntimeError as e:
+        logger.error(f"Runtime error generating universe: {e}")
+        return jsonify({'error': 'Generation failed'}), 500

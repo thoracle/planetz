@@ -123,7 +123,7 @@ def get_available_missions():
             'location': location
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get available missions failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -151,7 +151,7 @@ def get_active_missions():
             'count': len(missions_data)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get active missions failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -177,7 +177,7 @@ def clear_active_missions():
             'message': f'Cleared {cleared_count} active missions'
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Clear active missions failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -209,7 +209,7 @@ def get_mission_details(mission_id: str):
 
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get mission details failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -250,7 +250,7 @@ def accept_mission_legacy(mission_id: str):
                 'error': 'Failed to accept mission'
             }), 400
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Accept mission failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -310,7 +310,7 @@ def update_mission_progress(mission_id: str):
                 'error': 'Failed to update mission progress'
             }), 400
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Update mission progress failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -355,7 +355,7 @@ def botch_mission(mission_id: str):
                 'error': 'Failed to botch mission'
             }), 400
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Botch mission failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -391,7 +391,7 @@ def unbotch_mission(mission_id: str):
                 'error': 'Mission was not botched or cannot be unbotched'
             }), 400
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Unbotch mission failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -423,7 +423,7 @@ def abandon_mission(mission_id: str):
                 'error': 'Failed to abandon mission'
             }), 400
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Abandon mission failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -484,7 +484,7 @@ def generate_mission():
 
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError, RuntimeError) as e:
         logger.error(f"❌ Generate mission failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -504,7 +504,7 @@ def get_mission_templates():
             'count': len(templates)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get mission templates failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -531,7 +531,7 @@ def get_mission_stats():
             'cascade_stats': cascade_stats
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get mission stats failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -583,7 +583,7 @@ def handle_enemy_destroyed():
             'count': len(updated_missions)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Handle enemy destroyed failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -631,7 +631,7 @@ def handle_location_reached():
             'count': len(updated_missions)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Handle location reached failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -694,7 +694,7 @@ def handle_cargo_delivered():
             'count': len(updated_missions)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Handle cargo delivered failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -747,7 +747,7 @@ def handle_cargo_loaded():
             'count': len(updated_missions)
         })
         
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Handle cargo loaded failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -779,7 +779,7 @@ def cleanup_old_missions():
 
     except ValidationError:
         raise
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError, RuntimeError) as e:
         logger.error(f"❌ Cleanup old missions failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -806,7 +806,7 @@ def migrate_storage():
                 'error': 'Storage migration failed'
             }), 500
         
-    except Exception as e:
+    except (IOError, OSError, RuntimeError) as e:
         logger.error(f"❌ Storage migration failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -830,7 +830,7 @@ def update_mission_discovery():
             'total_discovered': len(mission_integration.get_discovered_missions())
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Mission discovery update failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -854,7 +854,7 @@ def get_mission_discovery_status():
             'statistics': stats
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Mission discovery status failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -878,7 +878,7 @@ def discover_mission(mission_id):
             'discovery_method': discovery_method
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Mission discovery failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -898,7 +898,7 @@ def make_mission_available(mission_id):
             'mission_id': mission_id
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Make mission available failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -925,7 +925,7 @@ def accept_mission(mission_id):
                 'error': 'Mission not available for acceptance'
             }), 400
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Mission acceptance failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -956,7 +956,7 @@ def complete_mission(mission_id):
                 'error': 'Mission could not be completed'
             }), 400
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Mission completion failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -983,7 +983,7 @@ def get_mission_state(mission_id):
                 'error': 'Mission state not found'
             }), 404
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Get mission state failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -1008,7 +1008,7 @@ def update_mission_state(mission_id):
             'updates': data
         })
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"❌ Update mission state failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -1044,6 +1044,6 @@ def generate_mission_from_template():
                 'error': 'Mission generation failed'
             }), 500
 
-    except Exception as e:
+    except (TypeError, KeyError, AttributeError, RuntimeError) as e:
         logger.error(f"❌ Mission generation failed: {e}")
         return jsonify({'error': 'Internal server error'}), 500
