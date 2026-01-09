@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PlanetZ** (aka "Star F*ckers") is a 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. Built with Python/Flask backend and Three.js frontend, it combines classic space simulation elements with modern web technologies and an NFT-inspired card collection system for ship upgrades.
 
-**Version**: 2.1.3-security-hardening
-**Status**: Production-ready with persistence enabled
+**Version**: 2.1.4-security-complete
+**Status**: Production-ready with full security hardening
 **Current Branch**: `main` (production)
 
 ### Core Systems (Fully Implemented)
@@ -250,6 +250,44 @@ Flask-Cors with secure defaults:
 - Development: Allows `localhost:5001` and `127.0.0.1:5001`
 - Configurable via `CORS_ORIGINS` env var (comma-separated)
 - Exposes rate limit headers for frontend access
+
+**Security Headers (`backend/__init__.py`):**
+All responses include security headers via `@app.after_request`:
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| X-Content-Type-Options | `nosniff` | Prevent MIME sniffing attacks |
+| X-Frame-Options | `SAMEORIGIN` | Prevent clickjacking |
+| X-XSS-Protection | `1; mode=block` | XSS filter for older browsers |
+| Referrer-Policy | `strict-origin-when-cross-origin` | Control referrer leakage |
+| Permissions-Policy | Restricts unused features | Block camera, mic, geolocation, etc. |
+| Content-Security-Policy | See below | Controls allowed resources |
+| Strict-Transport-Security | Optional via `ENABLE_HSTS=true` | Force HTTPS in production |
+
+**Content Security Policy (CSP):**
+```
+default-src 'self';
+script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://mrdoob.github.io;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+img-src 'self' data: blob:;
+font-src 'self' https://fonts.gstatic.com;
+connect-src 'self';
+media-src 'self' blob:;
+object-src 'none';
+frame-ancestors 'self';
+worker-src 'self' blob:;
+```
+- Allows trusted CDNs for Three.js, dat-gui, stats.js, Google Fonts
+- `'unsafe-eval'` required for Three.js shader compilation
+- `blob:` and `data:` for textures and audio
+
+**Exception Handling:**
+All backend files use specific exception types (no broad `except Exception`):
+- TypeError, ValueError, KeyError, AttributeError for data errors
+- IOError, OSError for file operations
+- json.JSONDecodeError for JSON parsing
+- RuntimeError for runtime failures
+- ~87 broad exception handlers replaced with specific types
 
 #### Input Validation (`backend/validation.py`)
 Centralized validation module protects all API endpoints:
@@ -512,10 +550,12 @@ Functionality has been extracted into focused manager classes in `frontend/stati
 - **Admin Auth Fix**: Removed DEBUG mode bypass - authentication now always required
 - **Timing Attack Fix**: Replaced custom `_secure_compare` with `hmac.compare_digest()`
 - **CORS Configuration**: Flask-Cors with restrictive defaults, configurable via `CORS_ORIGINS` env var
+- **Security Headers**: Added CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- **Exception Handling**: Replaced ~87 broad `except Exception` blocks with specific exception types across all backend files
 - **Error Message Sanitization**: Replaced 27 instances of `str(e)` with generic "Internal server error"
 - **JSON Parsing Safety**: Added try/except for `json.loads()` in missions endpoint
 - **Print → Logger**: Replaced ~28 print statements with proper logger calls across 6 backend files
-- **Key Files**: `backend/__init__.py`, `backend/auth.py`, `backend/routes/*.py`
+- **Key Files**: `backend/__init__.py`, `backend/auth.py`, `backend/routes/*.py`, `backend/mission_system/*.py`
 
 ### Security Hardening Phase 1 ✅ COMPLETED (2026-01)
 - **Path Traversal Fix**: `/test/<path>` endpoint now validates filenames, whitelists extensions, checks resolved paths
