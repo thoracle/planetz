@@ -9,8 +9,11 @@ classes, and diplomacy states.
 
 import json
 import os
+import logging
 from typing import Dict, List, Optional, Any
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class ReferenceDataManager:
@@ -55,7 +58,7 @@ class ReferenceDataManager:
             }
 
         except Exception as e:
-            print(f"Error loading reference data: {e}")
+            logger.error(f"Error loading reference data: {e}")
             # Continue with empty data structures
 
     def _load_json_file(self, filename: str) -> Dict[str, Any]:
@@ -71,17 +74,17 @@ class ReferenceDataManager:
         file_path = self._data_dir / filename
 
         if not file_path.exists():
-            print(f"Warning: Reference data file not found: {file_path}")
+            logger.warning(f"Reference data file not found: {file_path}")
             return {}
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
-            print(f"Error parsing {filename}: {e}")
+            logger.error(f"Error parsing {filename}: {e}")
             return {}
         except Exception as e:
-            print(f"Error loading {filename}: {e}")
+            logger.error(f"Error loading {filename}: {e}")
             return {}
 
     def _get_latest_update_time(self) -> Optional[str]:

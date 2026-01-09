@@ -14,8 +14,11 @@ Key Features:
 """
 
 import json
+import logging
 import os
 from typing import Dict, List, Optional, Any
+
+logger = logging.getLogger(__name__)
 
 
 class StarChartsAdapter:
@@ -41,21 +44,21 @@ class StarChartsAdapter:
         """
         try:
             if not os.path.exists(self._file_path):
-                print(f"Warning: Star Charts file not found: {self._file_path}")
+                logger.warning(f"Star Charts file not found: {self._file_path}")
                 return False
 
             with open(self._file_path, 'r', encoding='utf-8') as f:
                 self.star_charts_data = json.load(f)
 
             self._data_loaded = True
-            print(f"✅ Loaded Star Charts database: {self.star_charts_data.get('metadata', {}).get('total_sectors', 'unknown')} sectors")
+            logger.info(f"Loaded Star Charts database: {self.star_charts_data.get('metadata', {}).get('total_sectors', 'unknown')} sectors")
             return True
 
         except json.JSONDecodeError as e:
-            print(f"❌ Error parsing Star Charts JSON: {e}")
+            logger.error(f"Error parsing Star Charts JSON: {e}")
             return False
         except Exception as e:
-            print(f"❌ Error loading Star Charts data: {e}")
+            logger.error(f"Error loading Star Charts data: {e}")
             return False
 
     def get_sector_data(self, sector: str) -> Optional[Dict[str, Any]]:
@@ -111,7 +114,7 @@ class StarChartsAdapter:
             return None
 
         except Exception as e:
-            print(f"Error finding object {object_id}: {e}")
+            logger.error(f"Error finding object {object_id}: {e}")
             return None
 
     def get_all_sector_objects(self, sector: str) -> List[str]:

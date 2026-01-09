@@ -98,7 +98,7 @@ class GameStateManager:
         if self.auto_save_enabled:
             self.save_state()
 
-        print(f"📝 Updated state for {object_id}: {list(updates.keys())}")
+        logger.debug(f"Updated state for {object_id}: {list(updates.keys())}")
 
     def destroy_object(self, object_id: str, destroyed_by: Optional[str] = None) -> None:
         """
@@ -160,7 +160,7 @@ class GameStateManager:
                 'discovered_at': get_game_time()
             })
 
-            print(f"🗺️ Marked as discovered: {object_id}")
+            logger.debug(f"Marked as discovered: {object_id}")
 
     def get_diplomacy(self, faction_a: str, faction_b: str) -> str:
         """
@@ -185,7 +185,7 @@ class GameStateManager:
             state (str): New diplomacy state
         """
         # This would be implemented when we have a full diplomacy system
-        print(f"📜 Diplomacy updated: {faction_a} vs {faction_b} = {state}")
+        logger.debug(f"Diplomacy updated: {faction_a} vs {faction_b} = {state}")
 
     def get_mission_state(self, mission_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -353,4 +353,4 @@ class GameStateManager:
         if os.path.exists(self.state_file):
             os.remove(self.state_file)
 
-        print("🔄 Game state reset to initial values")
+        logger.info("Game state reset to initial values")

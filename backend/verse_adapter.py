@@ -13,6 +13,9 @@ Key Features:
 - Maintains compatibility with existing systems
 """
 
+import logging
+import time
+
 from backend.verse import (
     generate_star_system,
     generate_starter_system,
@@ -20,7 +23,8 @@ from backend.verse import (
     get_universe_seed_from_env
 )
 from backend.data_adapter import DataStructureAdapter
-import time
+
+logger = logging.getLogger(__name__)
 
 
 class VerseAdapter:
@@ -87,7 +91,7 @@ class VerseAdapter:
             return None
 
         except Exception as e:
-            print(f"Error getting static data for {object_id}: {e}")
+            logger.error(f"Error getting static data for {object_id}: {e}")
             return None
 
     def get_sector_objects(self, sector):
@@ -165,7 +169,7 @@ class VerseAdapter:
                 return sector_data
 
         except Exception as e:
-            print(f"Error generating sector {sector}: {e}")
+            logger.error(f"Error generating sector {sector}: {e}")
 
         return None
 

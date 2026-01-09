@@ -147,7 +147,7 @@ class DiplomacyManager:
             bool: True if state was set successfully, False otherwise
         """
         if state not in self.diplomacy_states:
-            print(f"❌ Invalid diplomacy state: {state}")
+            logger.warning(f"Invalid diplomacy state: {state}")
             return False
 
         if faction_a not in self.diplomacy_matrix:
@@ -164,7 +164,7 @@ class DiplomacyManager:
         # Record the change
         self._record_diplomacy_change(faction_a, faction_b, old_state, state)
 
-        print(f"📜 Diplomacy updated: {faction_a} ↔ {faction_b} = {state}")
+        logger.debug(f"Diplomacy updated: {faction_a} <-> {faction_b} = {state}")
         return True
 
     def _record_diplomacy_change(self, faction_a: str, faction_b: str,
@@ -320,7 +320,7 @@ class DiplomacyManager:
         }
 
         if event_type not in event_effects:
-            print(f"⚠️ Unknown diplomatic event type: {event_type}")
+            logger.warning(f"Unknown diplomatic event type: {event_type}")
             return False
 
         effect = event_effects[event_type]
@@ -344,7 +344,7 @@ class DiplomacyManager:
             if new_state != current_state:
                 self.set_diplomacy(faction_a, faction_b, new_state)
 
-        print(f"📜 Diplomatic event: {effect['description']} ({faction_a} ↔ {faction_b})")
+        logger.debug(f"Diplomatic event: {effect['description']} ({faction_a} <-> {faction_b})")
         return True
 
     def _calculate_new_state(self, current_state: str, change: int) -> str:

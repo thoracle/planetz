@@ -7,11 +7,12 @@ including stations, beacons, and other persistent structures.
 """
 
 import json
+import logging
+import math
 import os
 from typing import Dict, List, Optional, Any
 
-
-import math
+logger = logging.getLogger(__name__)
 
 def load_starter_infrastructure_template() -> Dict[str, Any]:
     """
@@ -23,17 +24,17 @@ def load_starter_infrastructure_template() -> Dict[str, Any]:
     file_path = 'data/starter_system_infrastructure.json'
 
     if not os.path.exists(file_path):
-        print(f"Warning: Infrastructure file not found: {file_path}")
+        logger.warning(f"Infrastructure file not found: {file_path}")
         return {'stations': [], 'beacons': []}
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        print(f"Error parsing infrastructure JSON: {e}")
+        logger.error(f"Error parsing infrastructure JSON: {e}")
         return {'stations': [], 'beacons': []}
     except Exception as e:
-        print(f"Error loading infrastructure file: {e}")
+        logger.error(f"Error loading infrastructure file: {e}")
         return {'stations': [], 'beacons': []}
 
 
@@ -223,16 +224,14 @@ def load_and_validate_infrastructure() -> Optional[Dict[str, Any]]:
     validation_errors = validate_infrastructure_data(infrastructure_data)
 
     if validation_errors:
-        print("Infrastructure validation errors:")
+        logger.error("Infrastructure validation errors:")
         for error in validation_errors:
-            print(f"  - {error}")
+            logger.error(f"  - {error}")
         return None
 
-    # Print stats
+    # Log stats
     stats = get_infrastructure_stats(infrastructure_data)
-    print("Infrastructure loaded successfully:")
-    print(f"  - {stats['total_stations']} stations")
-    print(f"  - {stats['total_beacons']} beacons")
-    print(f"  - {stats['total_infrastructure']} total infrastructure objects")
+    logger.info(f"Infrastructure loaded successfully: {stats['total_stations']} stations, "
+                f"{stats['total_beacons']} beacons, {stats['total_infrastructure']} total objects")
 
     return infrastructure_data
