@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PlanetZ** (aka "Star F*ckers") is a 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. Built with Python/Flask backend and Three.js frontend, it combines classic space simulation elements with modern web technologies and an NFT-inspired card collection system for ship upgrades.
 
-**Version**: 2.1.2-input-validation
+**Version**: 2.1.3-security-hardening
 **Status**: Production-ready with persistence enabled
 **Current Branch**: `main` (production)
 
@@ -228,12 +228,28 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 - `universe.py` - Universe generation API
 - `missions.py` - Mission system API
 
-#### Security (`backend/auth.py`)
+#### Security Infrastructure
+
+**Authentication (`backend/auth.py`):**
 Admin endpoints require authentication via `@require_admin_key` decorator:
 - Protected endpoints: `/api/missions/admin/*`, `/api/debug-config`
 - Auth via `X-Admin-Key` header or `admin_key` query parameter
-- Set `ADMIN_API_KEY` environment variable for production
-- Development mode allows access without key (with warning logged)
+- Set `ADMIN_API_KEY` environment variable (required even in DEBUG mode)
+- Uses `hmac.compare_digest()` for timing-attack resistant comparison
+
+**Rate Limiting (`backend/__init__.py`):**
+Flask-Limiter protects all API endpoints:
+- Global defaults: 200/day, 50/hour per IP
+- Standard endpoints: 30 requests/minute
+- Expensive endpoints (generation): 10 requests/minute
+- Admin endpoints: 5 requests/minute
+
+**CORS (`backend/__init__.py`):**
+Flask-Cors with secure defaults:
+- Production: Same-origin only (no cross-origin requests)
+- Development: Allows `localhost:5001` and `127.0.0.1:5001`
+- Configurable via `CORS_ORIGINS` env var (comma-separated)
+- Exposes rate limit headers for frontend access
 
 #### Input Validation (`backend/validation.py`)
 Centralized validation module protects all API endpoints:
@@ -491,7 +507,17 @@ Functionality has been extracted into focused manager classes in `frontend/stati
 - **Consistent Errors**: `@handle_validation_errors` decorator returns structured JSON errors
 - **Protected Endpoints**: `api.py` (chunk-data, ship systems, station repair), `universe.py` (generate), `missions.py` (generate, cleanup)
 
-### Security Hardening & Production Mode ✅ COMPLETED (2026-01)
+### Security Hardening Phase 2 ✅ COMPLETED (2026-01)
+- **Rate Limiting**: Flask-Limiter on all API endpoints (30/min standard, 10/min expensive, 5/min admin)
+- **Admin Auth Fix**: Removed DEBUG mode bypass - authentication now always required
+- **Timing Attack Fix**: Replaced custom `_secure_compare` with `hmac.compare_digest()`
+- **CORS Configuration**: Flask-Cors with restrictive defaults, configurable via `CORS_ORIGINS` env var
+- **Error Message Sanitization**: Replaced 27 instances of `str(e)` with generic "Internal server error"
+- **JSON Parsing Safety**: Added try/except for `json.loads()` in missions endpoint
+- **Print → Logger**: Replaced ~28 print statements with proper logger calls across 6 backend files
+- **Key Files**: `backend/__init__.py`, `backend/auth.py`, `backend/routes/*.py`
+
+### Security Hardening Phase 1 ✅ COMPLETED (2026-01)
 - **Path Traversal Fix**: `/test/<path>` endpoint now validates filenames, whitelists extensions, checks resolved paths
 - **Admin Authentication**: New `@require_admin_key` decorator protects admin endpoints
 - **Production Mode Enabled**: `NO_PERSISTENCE=false` - game state, discoveries, missions now persist
