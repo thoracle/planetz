@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from backend.verse import generate_star_system, generate_universe
 from backend.positioning_enhancement import PositioningEnhancement
+from backend import limiter
 from backend.validation import (
     ValidationError, handle_validation_errors,
     validate_seed, validate_num_systems
@@ -15,7 +16,11 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 universe_bp = Blueprint('universe', __name__)
 
+# Rate limit configurations - expensive generation operations
+RATE_LIMIT_EXPENSIVE = "10 per minute"
+
 @universe_bp.route('/generate_star_system')
+@limiter.limit(RATE_LIMIT_EXPENSIVE)
 @handle_validation_errors
 def generate_star_system_route():
     try:
@@ -40,6 +45,7 @@ def generate_star_system_route():
         return jsonify({'error': 'Failed to generate star system'}), 500
 
 @universe_bp.route('/generate_universe')
+@limiter.limit(RATE_LIMIT_EXPENSIVE)
 @handle_validation_errors
 def generate_universe_route():
     try:

@@ -1,10 +1,19 @@
 """Initialize the backend package."""
 from flask import Flask
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from backend.config import config
 import os
 import logging
 from logging import StreamHandler
 import sys
+
+# Initialize rate limiter (will be attached to app in create_app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # ANSI color codes
 class Colors:
@@ -35,7 +44,10 @@ def create_app(config_name):
     # Load configuration
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
-    
+
+    # Initialize rate limiter
+    limiter.init_app(app)
+
     # Configure custom logging
     handler = ColoredStreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter(

@@ -15,12 +15,17 @@ from backend.validation import (
     validate_planet_parameters, validate_debug_config,
     MAX_COORDINATE, MIN_COORDINATE
 )
+from backend import limiter
 import hashlib
-# import numpy as np  # Temporarily commented out - not used in this file
 from backend.planetGenerator import PlanetGenerator
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
+
+# Rate limit configurations
+RATE_LIMIT_STANDARD = "30 per minute"  # Standard API calls
+RATE_LIMIT_EXPENSIVE = "10 per minute"  # CPU-intensive operations
+RATE_LIMIT_ADMIN = "5 per minute"  # Admin endpoints
 
 @api_bp.errorhandler(404)
 def not_found_error(error):
@@ -152,6 +157,7 @@ def generate_planet_endpoint():
         }), 500
 
 @api_bp.route('/api/chunk-data', methods=['GET'])
+@limiter.limit(RATE_LIMIT_EXPENSIVE)
 @handle_validation_errors
 def get_chunk_data():
     try:
@@ -316,6 +322,7 @@ def get_system_status(system_name):
         }), 500
 
 @api_bp.route('/api/ship/systems/<system_name>/damage', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def apply_system_damage(system_name):
     """Apply damage to a specific ship system."""
@@ -365,6 +372,7 @@ def apply_system_damage(system_name):
         }), 500
 
 @api_bp.route('/api/ship/systems/<system_name>/repair', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def repair_system(system_name):
     """Repair a specific ship system."""
@@ -423,6 +431,7 @@ def repair_system(system_name):
         }), 500
 
 @api_bp.route('/api/ship/energy', methods=['GET', 'POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def manage_ship_energy():
     """Get or update ship energy status."""
@@ -488,6 +497,7 @@ def manage_ship_energy():
         }), 500
 
 @api_bp.route('/api/station/repair/costs', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def get_repair_costs():
     """Get repair cost estimates for ship systems."""
@@ -549,6 +559,7 @@ def get_repair_costs():
         }), 500
 
 @api_bp.route('/api/station/repair/hull', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def repair_hull():
     """Repair ship hull damage."""
@@ -609,6 +620,7 @@ def repair_hull():
         }), 500
 
 @api_bp.route('/api/station/repair/systems', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def repair_systems():
     """Repair selected ship systems."""
@@ -739,6 +751,7 @@ def get_repair_kits():
 # =============================================================================
 
 @api_bp.route('/api/debug-config', methods=['GET'])
+@limiter.limit(RATE_LIMIT_ADMIN)
 @require_admin_key
 def get_debug_config():
     """Get current debug configuration (requires authentication)."""
@@ -770,6 +783,7 @@ def get_debug_config():
         }), 500
 
 @api_bp.route('/api/debug-config', methods=['POST'])
+@limiter.limit(RATE_LIMIT_ADMIN)
 @require_admin_key
 @handle_validation_errors
 def save_debug_config():

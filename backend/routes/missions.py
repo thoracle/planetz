@@ -12,6 +12,7 @@ from backend.mission_system import MissionManager, Mission, MissionState, Object
 from backend.mission_integration import MissionIntegration
 from backend.game_state import GameStateManager
 from backend.auth import require_admin_key
+from backend import limiter
 from backend.validation import (
     ValidationError, handle_validation_errors,
     validate_mission_id, validate_string, validate_int, validate_dict,
@@ -22,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 # Create blueprint for mission routes
 missions_bp = Blueprint('missions', __name__)
+
+# Rate limit configurations
+RATE_LIMIT_STANDARD = "30 per minute"  # Standard API calls
+RATE_LIMIT_ADMIN = "5 per minute"  # Admin endpoints
 
 # Global mission system instances (will be initialized in app factory)
 mission_manager: Optional[MissionManager] = None
@@ -80,6 +85,7 @@ def internal_error(error):
 # API Endpoints as specified in mission spec section 3.3
 
 @missions_bp.route('/api/missions', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_available_missions():
     """
     Get available missions for player at current location
@@ -119,6 +125,7 @@ def get_available_missions():
 
 
 @missions_bp.route('/api/missions/active', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_active_missions():
     """
     Get active/accepted missions for the player
@@ -146,6 +153,7 @@ def get_active_missions():
 
 
 @missions_bp.route('/api/missions/active/clear', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def clear_active_missions():
     """
     Clear all active missions (useful for new game sessions)
@@ -171,6 +179,7 @@ def clear_active_missions():
 
 
 @missions_bp.route('/api/missions/<mission_id>', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def get_mission_details(mission_id: str):
     """
@@ -202,6 +211,7 @@ def get_mission_details(mission_id: str):
 
 
 @missions_bp.route('/api/missions/<mission_id>/accept_legacy', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def accept_mission_legacy(mission_id: str):
     """
     Accept a mission (change state to ACCEPTED) - Legacy endpoint
@@ -242,6 +252,7 @@ def accept_mission_legacy(mission_id: str):
 
 
 @missions_bp.route('/api/missions/<mission_id>/progress', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def update_mission_progress(mission_id: str):
     """
     Update mission progress (achieve objectives or advance state)
@@ -301,6 +312,7 @@ def update_mission_progress(mission_id: str):
 
 
 @missions_bp.route('/api/missions/<mission_id>/botch', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def botch_mission(mission_id: str):
     """
     Botch a mission (mark as failed)
@@ -345,6 +357,7 @@ def botch_mission(mission_id: str):
 
 
 @missions_bp.route('/api/missions/<mission_id>/unbotch', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def unbotch_mission(mission_id: str):
     """
     Remove botched flag from mission (redemption arc)
@@ -380,6 +393,7 @@ def unbotch_mission(mission_id: str):
 
 
 @missions_bp.route('/api/missions/<mission_id>/abandon', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def abandon_mission(mission_id: str):
     """Allow player to abandon accepted mission"""
     if not mission_manager:
@@ -411,6 +425,7 @@ def abandon_mission(mission_id: str):
 
 
 @missions_bp.route('/api/missions/generate', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 @handle_validation_errors
 def generate_mission():
     """
@@ -471,6 +486,7 @@ def generate_mission():
 
 
 @missions_bp.route('/api/missions/templates', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_mission_templates():
     """Get available mission templates"""
     if not mission_manager:
@@ -490,6 +506,7 @@ def get_mission_templates():
 
 
 @missions_bp.route('/api/missions/stats', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_mission_stats():
     """Get mission system statistics"""
     if not mission_manager:
@@ -518,6 +535,7 @@ def get_mission_stats():
 # Game Event Endpoints (for mission progress integration)
 
 @missions_bp.route('/api/missions/events/enemy_destroyed', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def handle_enemy_destroyed():
     """Handle enemy destroyed events for mission progress"""
     if not mission_manager:
@@ -567,6 +585,7 @@ def handle_enemy_destroyed():
 
 
 @missions_bp.route('/api/missions/events/location_reached', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def handle_location_reached():
     """Handle location reached events for mission progress"""
     if not mission_manager:
@@ -614,6 +633,7 @@ def handle_location_reached():
 
 
 @missions_bp.route('/api/missions/events/cargo_delivered', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def handle_cargo_delivered():
     """Handle cargo delivery events for mission progress"""
     if not mission_manager:
@@ -676,6 +696,7 @@ def handle_cargo_delivered():
 
 
 @missions_bp.route('/api/missions/events/cargo_loaded', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def handle_cargo_loaded():
     """Handle cargo loaded events for mission progress"""
     if not mission_manager:
@@ -730,6 +751,7 @@ def handle_cargo_loaded():
 # Admin/Debug Endpoints
 
 @missions_bp.route('/api/missions/admin/cleanup', methods=['POST'])
+@limiter.limit(RATE_LIMIT_ADMIN)
 @require_admin_key
 @handle_validation_errors
 def cleanup_old_missions():
@@ -759,6 +781,7 @@ def cleanup_old_missions():
 
 
 @missions_bp.route('/api/missions/admin/migrate_storage', methods=['POST'])
+@limiter.limit(RATE_LIMIT_ADMIN)
 @require_admin_key
 def migrate_storage():
     """Migrate mission storage to database (admin endpoint, requires authentication)"""
@@ -788,6 +811,7 @@ def migrate_storage():
 # ==========================================================
 
 @missions_bp.route('/api/missions/discovery/update', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def update_mission_discovery():
     """Update mission discovery based on current game state"""
     if not mission_integration:
@@ -808,6 +832,7 @@ def update_mission_discovery():
 
 
 @missions_bp.route('/api/missions/discovery/status', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_mission_discovery_status():
     """Get current mission discovery status"""
     if not mission_integration:
@@ -831,6 +856,7 @@ def get_mission_discovery_status():
 
 
 @missions_bp.route('/api/missions/<mission_id>/discover', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def discover_mission(mission_id):
     """Mark a mission as discovered"""
     if not mission_integration:
@@ -854,6 +880,7 @@ def discover_mission(mission_id):
 
 
 @missions_bp.route('/api/missions/<mission_id>/make_available', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def make_mission_available(mission_id):
     """Make a mission available for acceptance"""
     if not mission_integration:
@@ -873,6 +900,7 @@ def make_mission_available(mission_id):
 
 
 @missions_bp.route('/api/missions/<mission_id>/accept', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def accept_mission(mission_id):
     """Accept a mission"""
     if not mission_integration:
@@ -899,6 +927,7 @@ def accept_mission(mission_id):
 
 
 @missions_bp.route('/api/missions/<mission_id>/complete', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def complete_mission(mission_id):
     """Complete a mission"""
     if not mission_integration:
@@ -929,6 +958,7 @@ def complete_mission(mission_id):
 
 
 @missions_bp.route('/api/missions/state/<mission_id>', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_mission_state(mission_id):
     """Get the current state of a mission from GameStateManager"""
     if not mission_integration:
@@ -955,6 +985,7 @@ def get_mission_state(mission_id):
 
 
 @missions_bp.route('/api/missions/state/<mission_id>', methods=['PUT'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def update_mission_state(mission_id):
     """Update mission state in GameStateManager"""
     if not mission_integration:
@@ -979,6 +1010,7 @@ def update_mission_state(mission_id):
 
 
 @missions_bp.route('/api/missions/templates/generate', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def generate_mission_from_template():
     """Generate a mission from a template with dynamic state"""
     if not mission_integration:
