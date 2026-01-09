@@ -106,20 +106,29 @@ def create_app(config_name):
         )
 
         # Content Security Policy
-        # Allow self for most resources, with specific exceptions for Three.js/WebGL
+        # Allow self and trusted CDNs for Three.js/WebGL game
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Three.js needs eval for shaders
-            "style-src 'self' 'unsafe-inline'",  # Allow inline styles
-            "img-src 'self' data: blob:",  # Allow data URIs and blobs for textures
-            "font-src 'self'",
-            "connect-src 'self'",  # API calls
-            "media-src 'self' blob:",  # Audio/video
-            "object-src 'none'",  # Block plugins
-            "frame-ancestors 'self'",  # Prevent embedding
+            # Scripts: self + CDNs for Three.js, dat-gui, stats.js
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://mrdoob.github.io",
+            # Styles: self + Google Fonts
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            # Images: self + data URIs and blobs for textures
+            "img-src 'self' data: blob:",
+            # Fonts: self + Google Fonts
+            "font-src 'self' https://fonts.gstatic.com",
+            # API calls
+            "connect-src 'self'",
+            # Audio/video
+            "media-src 'self' blob:",
+            # Block plugins
+            "object-src 'none'",
+            # Prevent embedding
+            "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",
-            "worker-src 'self' blob:",  # Web workers
+            # Web workers
+            "worker-src 'self' blob:",
         ]
         response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
 
