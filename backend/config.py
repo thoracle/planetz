@@ -1,11 +1,25 @@
 """Configuration settings for the Flask application."""
 import os
+import secrets
 from pathlib import Path
+
+def _get_secret_key():
+    """Get SECRET_KEY from environment or generate a random one for development."""
+    key = os.getenv('SECRET_KEY')
+    if key:
+        return key
+    # Generate a random key for development (changes each restart)
+    import logging
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY not set - using randomly generated key. "
+        "Set SECRET_KEY environment variable for persistent sessions."
+    )
+    return secrets.token_hex(32)
 
 class Config:
     """Base configuration."""
-    # Flask settings
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
+    # Flask settings - use env var or generate random key
+    SECRET_KEY = _get_secret_key()
     STATIC_FOLDER = str(Path(__file__).parent.parent / 'frontend' / 'static')
     PORT = 5001  # Set default port to 5001
 
