@@ -1,5 +1,6 @@
 """Initialize the backend package."""
 from flask import Flask
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from backend.config import config
@@ -47,6 +48,18 @@ def create_app(config_name):
 
     # Initialize rate limiter
     limiter.init_app(app)
+
+    # Configure CORS
+    # In production, restrict to same origin; in development, allow localhost
+    cors_origins = os.getenv('CORS_ORIGINS', '').split(',') if os.getenv('CORS_ORIGINS') else []
+    if app.debug:
+        # Allow localhost origins in development
+        cors_origins.extend(['http://localhost:5001', 'http://127.0.0.1:5001'])
+
+    CORS(app,
+         origins=cors_origins if cors_origins else None,  # None = same-origin only
+         supports_credentials=True,
+         expose_headers=['Content-Type', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'])
 
     # Configure custom logging
     handler = ColoredStreamHandler(sys.stdout)
