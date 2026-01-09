@@ -10,12 +10,21 @@ from playwright.sync_api import Page, expect
 def test_click_first_tooltip_bug_detection(star_charts_page: Page):
     """Detect and analyze the click-first tooltip bug pattern."""
     page = star_charts_page
-    
+
     print("\n🔧 Starting click-first tooltip bug detection...")
-    
+
     # Wait for Star Charts to be ready
     page.wait_for_timeout(2000)
-    
+
+    # Check if real Star Charts is available (not fallback mock)
+    has_real_star_charts = page.evaluate("""() => {
+        return !!(window.navigationSystemManager?.starChartsUI?.getDiscoveredObjectsForRender &&
+                  window.navigationSystemManager?.starChartsUI?.getTooltipText);
+    }""")
+
+    if not has_real_star_charts:
+        pytest.skip("Real Star Charts not available - this diagnostic test requires full game initialization")
+
     # Inject bug detection script and get results
     results = page.evaluate("""
         (() => {
@@ -140,12 +149,21 @@ def test_click_first_tooltip_bug_detection(star_charts_page: Page):
 def test_simulate_click_fix(star_charts_page: Page):
     """Test if clicking on problematic objects fixes their tooltips."""
     page = star_charts_page
-    
+
     print("\n🔧 Testing click-fix behavior...")
-    
+
+    # Check if real Star Charts is available (not fallback mock)
+    has_real_star_charts = page.evaluate("""() => {
+        return !!(window.navigationSystemManager?.starChartsUI?.getDiscoveredObjectsForRender &&
+                  window.navigationSystemManager?.starChartsUI?.getTooltipText);
+    }""")
+
+    if not has_real_star_charts:
+        pytest.skip("Real Star Charts not available - this diagnostic test requires full game initialization")
+
     # First run the detection to get problematic objects
     page.wait_for_timeout(1000)
-    
+
     # Get objects with click-first bug
     problematic_objects = page.evaluate("""
         (() => {

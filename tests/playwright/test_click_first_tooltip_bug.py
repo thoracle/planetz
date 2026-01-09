@@ -8,6 +8,7 @@ This test will:
 4. Provide detailed analysis of the bug pattern
 """
 
+import json
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -18,11 +19,19 @@ class TestClickFirstTooltipBug:
     def test_identify_click_first_tooltip_bug(self, star_charts_page: Page):
         """Systematically test all objects to identify click-first behavior."""
         page = star_charts_page
-        
+
         print("\n🔧 Starting automated click-first tooltip bug detection...")
 
         # Wait for Star Charts to be fully loaded
         page.wait_for_timeout(2000)
+
+        # Check if real Star Charts is available (not fallback mock)
+        has_real_star_charts = page.evaluate("""() => {
+            return !!(window.navigationSystemManager?.starChartsUI?.getDiscoveredObjectsForRender);
+        }""")
+
+        if not has_real_star_charts:
+            pytest.skip("Real Star Charts not available - this diagnostic test requires full game initialization")
 
         # Inject our bug detection script
         page.evaluate("""
@@ -123,10 +132,10 @@ class TestClickFirstTooltipBug:
             if len(hover_working_objects) > 5:
                 print(f"  ... and {len(hover_working_objects) - 5} more")
         
-        # Store results for further analysis
+        # Store results for further analysis (use JSON for proper serialization)
         page.evaluate(f"""
-            window.tooltipBugResults.clickFirstObjects = {click_first_objects};
-            window.tooltipBugResults.hoverWorkingObjects = {hover_working_objects};
+            window.tooltipBugResults.clickFirstObjects = {json.dumps(click_first_objects)};
+            window.tooltipBugResults.hoverWorkingObjects = {json.dumps(hover_working_objects)};
             console.log('🔍 Bug detection complete - results stored in window.tooltipBugResults');
         """)
         
@@ -293,6 +302,14 @@ class TestClickFirstTooltipBug:
         page = star_charts_page
 
         print("\n🔬 Analyzing click-first bug pattern...")
+
+        # Check if real Star Charts is available (not fallback mock)
+        has_real_star_charts = page.evaluate("""() => {
+            return !!(window.navigationSystemManager?.starChartsUI?.getDiscoveredObjectsForRender);
+        }""")
+
+        if not has_real_star_charts:
+            pytest.skip("Real Star Charts not available - this diagnostic test requires full game initialization")
 
         # Run the main bug detection first
         self.test_identify_click_first_tooltip_bug(page)
