@@ -44,6 +44,7 @@ def health_check():
     return jsonify({'status': 'healthy'})
 
 @api_bp.route('/api/planet-types', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_planet_types():
     """Get available planet types and their parameters."""
     try:
@@ -59,6 +60,7 @@ def get_planet_types():
         }), 500
 
 @api_bp.route('/api/planet-config', methods=['POST'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def update_planet_config():
     """Update planet generation parameters."""
     try:
@@ -111,6 +113,7 @@ def update_planet_config():
         }), 500
 
 @api_bp.route('/api/generate-planet', methods=['POST'])
+@limiter.limit(RATE_LIMIT_EXPENSIVE)
 def generate_planet_endpoint():
     """Generate a new planet with the given parameters."""
     try:
@@ -711,6 +714,7 @@ def repair_systems():
         }), 500
 
 @api_bp.route('/api/station/repair/kits', methods=['GET'])
+@limiter.limit(RATE_LIMIT_STANDARD)
 def get_repair_kits():
     """Get available repair kits and their properties."""
     try:
