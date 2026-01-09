@@ -45,7 +45,7 @@ class MissionTriggerSystem:
                 hook_data = callback(mission_data, context)
                 if hook_data:
                     response_hooks.append(hook_data)
-            except Exception as e:
+            except (TypeError, KeyError, AttributeError, ValueError) as e:
                 logger.error(f"❌ Trigger callback failed for {event_type}: {e}")
         
         if response_hooks:

@@ -57,7 +57,7 @@ class StarChartsAdapter:
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing Star Charts JSON: {e}")
             return False
-        except Exception as e:
+        except (IOError, OSError) as e:
             logger.error(f"Error loading Star Charts data: {e}")
             return False
 
@@ -113,7 +113,7 @@ class StarChartsAdapter:
 
             return None
 
-        except Exception as e:
+        except (TypeError, KeyError) as e:
             logger.error(f"Error finding object {object_id}: {e}")
             return None
 

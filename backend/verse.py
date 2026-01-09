@@ -406,7 +406,7 @@ def generate_star_system(random_seed=None):
             random_seed = sector_to_seed(random_seed)
         elif not isinstance(random_seed, (int, type(None))):
             random_seed = hash(str(random_seed)) & 0xFFFFFFFF
-    except Exception:
+    except (TypeError, ValueError):
         # If any error occurs during seed conversion, use a default seed
         random_seed = None
     
@@ -523,7 +523,7 @@ def generate_planet(random_seed=None):
             if not isinstance(random_seed, (int, type(None))):
                 random_seed = hash(str(random_seed)) & 0xFFFFFFFF
             Lehmer32(random_seed)
-        except Exception:
+        except (TypeError, ValueError):
             # If any error occurs during seed handling, continue with current state
             pass
 

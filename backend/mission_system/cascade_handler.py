@@ -67,8 +67,8 @@ class MissionCascadeHandler:
                 
                 elif effect_type == 'trigger_event':
                     self._trigger_world_event(effect_data['event_type'], effect_data.get('event_data', {}))
-                
-            except Exception as e:
+
+            except (TypeError, KeyError, AttributeError, ValueError) as e:
                 logger.error(f"❌ Failed to execute cascade rule {effect_type}: {e}")
     
     def _botch_related_missions(self, mission_ids: List[str], reason: str):

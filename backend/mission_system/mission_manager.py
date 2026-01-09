@@ -93,7 +93,7 @@ class MissionManager:
                         mission = Mission.load_from_file(filepath)
                         self.missions[mission.id] = mission
                         loaded_count += 1
-                    except Exception as e:
+                    except (IOError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
                         logger.error(f"❌ Failed to load mission from {filename}: {e}")
         
         # Load templates
@@ -113,11 +113,11 @@ class MissionManager:
                         filepath = os.path.join(templates_dir, filename)
                         with open(filepath, 'r') as f:
                             template_data = json.load(f)
-                        
+
                         template_id = filename.replace('_template.json', '')
                         self.templates[template_id] = template_data
                         logger.debug(f"📋 Loaded template: {template_id}")
-                    except Exception as e:
+                    except (IOError, OSError, json.JSONDecodeError) as e:
                         logger.error(f"❌ Failed to load template {filename}: {e}")
     
     def save_mission(self, mission: Mission) -> bool:
@@ -140,8 +140,8 @@ class MissionManager:
             
             logger.debug(f"💾 Mission {mission.id} saved successfully")
             return True
-            
-        except Exception as e:
+
+        except (IOError, OSError, TypeError) as e:
             logger.error(f"❌ Failed to save mission {mission.id}: {e}")
             return False
     
@@ -605,8 +605,8 @@ class MissionManager:
             logger.info(f"🎲 Generated procedural mission: {mission.title}")
             
             return mission
-            
-        except Exception as e:
+
+        except (TypeError, KeyError, ValueError) as e:
             logger.error(f"❌ Failed to generate mission from template {template_id}: {e}")
             return None
     

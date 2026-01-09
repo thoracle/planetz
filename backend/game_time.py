@@ -102,7 +102,7 @@ def format_timestamp(timestamp: str) -> str:
     try:
         dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
         return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return timestamp
 
 
@@ -122,5 +122,5 @@ def get_time_diff(start_time: str, end_time: Optional[str] = None) -> float:
         end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00')) if end_time else datetime.utcnow()
 
         return (end_dt - start_dt).total_seconds()
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return 0.0

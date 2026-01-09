@@ -57,7 +57,7 @@ class ReferenceDataManager:
                 'last_updated': self._get_latest_update_time()
             }
 
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError, TypeError, KeyError) as e:
             logger.error(f"Error loading reference data: {e}")
             # Continue with empty data structures
 
@@ -83,7 +83,7 @@ class ReferenceDataManager:
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing {filename}: {e}")
             return {}
-        except Exception as e:
+        except (IOError, OSError) as e:
             logger.error(f"Error loading {filename}: {e}")
             return {}
 
@@ -98,7 +98,7 @@ class ReferenceDataManager:
                     mtime = os.path.getmtime(file_path)
                     if latest_time is None or mtime > latest_time:
                         latest_time = mtime
-                except Exception:
+                except OSError:
                     continue
 
         if latest_time:

@@ -90,7 +90,7 @@ class VerseAdapter:
 
             return None
 
-        except Exception as e:
+        except (TypeError, KeyError, ValueError, AttributeError) as e:
             logger.error(f"Error getting static data for {object_id}: {e}")
             return None
 
@@ -168,7 +168,7 @@ class VerseAdapter:
                 self._cache_timestamps[sector] = current_time
                 return sector_data
 
-        except Exception as e:
+        except (TypeError, KeyError, ValueError, RuntimeError) as e:
             logger.error(f"Error generating sector {sector}: {e}")
 
         return None
