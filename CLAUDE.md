@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PlanetZ** (aka "Star F*ckers") is a 3D web-based spaceship simulation game featuring intergalactic exploration, trading, and combat. Built with Python/Flask backend and Three.js frontend, it combines classic space simulation elements with modern web technologies and an NFT-inspired card collection system for ship upgrades.
 
-**Version**: 2.1.4-security-complete
+**Version**: 2.1.5-security-final
 **Status**: Production-ready with full security hardening
 **Current Branch**: `main` (production)
 
@@ -229,6 +229,26 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
 - `missions.py` - Mission system API
 
 #### Security Infrastructure
+
+**Environment Configuration (`.env.example`):**
+All sensitive configuration via environment variables:
+```bash
+# Required in production
+SECRET_KEY=your-secret-key-here      # Flask session signing (256-bit)
+ADMIN_API_KEY=your-admin-key-here    # Admin endpoint authentication
+
+# Optional
+CORS_ORIGINS=                         # Comma-separated allowed origins
+ENABLE_HSTS=false                     # Enable HSTS header (HTTPS only)
+UNIVERSE_SEED=20299999                # World generation seed
+```
+Generate secure keys: `python -c "import secrets; print(secrets.token_hex(32))"`
+
+**SECRET_KEY (`backend/config.py`):**
+- Production: Required via `SECRET_KEY` environment variable
+- Development: Auto-generates random 256-bit key if not set
+- Logs warning when using generated key (sessions won't persist across restarts)
+- Never hardcoded - each dev session gets unique key for security
 
 **Authentication (`backend/auth.py`):**
 Admin endpoints require authentication via `@require_admin_key` decorator:
