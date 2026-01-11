@@ -7,6 +7,9 @@
     "test:jest": "jest --config tests/unit/frontend/jest.config.js",
     "test:jest:watch": "jest --config tests/unit/frontend/jest.config.js --watch",
     "test:jest:coverage": "jest --config tests/unit/frontend/jest.config.js --coverage",
+    "test:jest:ship": "jest --config tests/unit/frontend/jest.config.js --testPathPattern=Ship.test.js",
+    "test:jest:ai": "jest --config tests/unit/frontend/jest.config.js --testPathPattern=EnemyAI.test.js",
+    "test:critical-path": "python -m pytest tests/playwright/test_mission_workflow.py -v",
     "test:e2e": "python scripts/run_playwright_tests.py --full",
     "test:e2e:tooltips": "python scripts/run_playwright_tests.py --tooltips",
     "test:e2e:hitboxes": "python scripts/run_playwright_tests.py --hitboxes",
@@ -26,8 +29,10 @@
     "dev": "python main.py",
     "start": "python main.py",
     "lint": "echo 'Linting JavaScript files...' && find frontend/static/js -name '*.js' -exec echo 'Checking {}' \\;",
-    "build": "echo 'Build process - copying assets and validating structure'",
-    "clean": "rm -rf coverage/ .pytest_cache/ tests/playwright/__pycache__/"
+    "build": "node scripts/build.js",
+    "build:prod": "NODE_ENV=production node scripts/build.js",
+    "build:analyze": "node scripts/build.js --analyze",
+    "clean": "rm -rf coverage/ .pytest_cache/ tests/playwright/__pycache__/ dist/"
   },
   "keywords": [
     "game",
@@ -44,6 +49,7 @@
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "babel-jest": "^29.7.0",
+    "esbuild": "^0.20.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "playwright": "^1.40.0",

@@ -1,0 +1,61 @@
+# PlanetZ Game Server Docker Compose Configuration
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-dev-admin-key-change-in-production}
+      - UNIVERSE_SEED=${UNIVERSE_SEED:-42424242}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - ENABLE_HSTS=${ENABLE_HSTS:-false}
+    volumes:
+      # Persist game data
+      - ./data:/app/data
+      - ./missions:/app/missions
+      # Development: mount source for hot reload (optional)
+      # - ./frontend:/app/frontend:ro
+      # - ./backend:/app/backend:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Development server with hot reload
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5001:5001"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-dev-admin-key}
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      - ./frontend:/app/frontend
+      - ./backend:/app/backend
+      - ./data:/app/data
+      - ./missions:/app/missions
+    profiles:
+      - dev
+    command: python run.py
+
+# Volumes for persistent data
+volumes:
+  game_data:
+    driver: local
+  mission_data:
+    driver: local

@@ -121,7 +121,7 @@ The application uses a centralized manager pattern where `app.js` orchestrates:
    - Integrates with all major systems
 
 2. **StarfieldManager** (`frontend/static/js/views/StarfieldManager.js`)
-   - Core game state coordinator (~346KB, largest file)
+   - Core game state coordinator (~1,022 lines, refactored from 7,989)
    - Manages 3D space environment and starfield rendering
    - Handles high-density star rendering with parallax effects
    - Global reference: `window.starfieldManager`

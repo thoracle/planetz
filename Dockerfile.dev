@@ -1,0 +1,32 @@
+# PlanetZ Development Dockerfile
+# For local development with hot reload
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Development tools
+RUN pip install --no-cache-dir watchdog
+
+# Create directories
+RUN mkdir -p data missions/active missions/completed missions/archived
+
+# Environment
+ENV FLASK_ENV=development
+ENV FLASK_DEBUG=1
+ENV PYTHONUNBUFFERED=1
+ENV PORT=5001
+
+EXPOSE 5001
+
+# Development server with auto-reload
+CMD ["python", "run.py"]
