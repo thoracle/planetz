@@ -15,6 +15,10 @@ import './utils/ErrorReporter.js';
 import './utils/ShipLog.js';
 import { debug } from './debug.js';
 
+// Global namespace - initialize early for backward compatibility
+import { PLANETZ, initializeAliases, registerManager, setReady } from './core/GlobalNamespace.js';
+initializeAliases();
+
 // Bootstrap modules
 import {
     DebugManager,
@@ -93,15 +97,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (systems) {
         spatialManager = systems.spatialManager;
         collisionManager = systems.collisionManager;
-        window.spatialManagerReady = true;
-        window.collisionManagerReady = true;
+
+        // Register managers in namespace (with backward-compatible aliases)
+        registerManager('spatial', spatialManager);
+        registerManager('collision', collisionManager);
+        setReady('spatialManager', true);
+        setReady('collisionManager', true);
 
         // Initialize docking system
         initializeDockingSystem(starfieldManager);
     } else {
         debug('P1', 'Failed to initialize Three.js systems');
-        window.spatialManagerReady = false;
-        window.collisionManagerReady = false;
+        setReady('spatialManager', false);
+        setReady('collisionManager', false);
     }
 
     // Initialize waypoints system
