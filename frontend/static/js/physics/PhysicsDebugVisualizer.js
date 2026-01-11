@@ -527,6 +527,93 @@ export class PhysicsDebugVisualizer {
     }
 
     /**
+     * Move all wireframes to camera position for testing
+     */
+    moveWireframesToCamera() {
+        if (!this.pm.debugMode || !this.pm.debugGroup || !window.camera) {
+            debug('AI', '❌ Debug mode not active or no camera available');
+            return;
+        }
+
+        debug('PERFORMANCE', `🔍 Moving all wireframes to camera position for visibility test...`);
+
+        const cameraPos = window.camera.position;
+        const offsetDistance = 5;
+        const cameraDirection = new THREE.Vector3(0, 0, -1);
+        cameraDirection.applyQuaternion(window.camera.quaternion);
+
+        let movedCount = 0;
+        this.pm.debugWireframes.forEach((wireframe, rigidBody) => {
+            const metadata = this.pm.entityMetadata.get(rigidBody);
+            const entityName = metadata?.id || 'unnamed';
+
+            const offset = new THREE.Vector3().copy(cameraDirection).multiplyScalar(offsetDistance + movedCount * 2);
+            wireframe.position.copy(cameraPos).add(offset);
+
+            wireframe.material.color.setHex(0xff0000);
+            wireframe.material.wireframe = false;
+            wireframe.scale.set(0.5, 0.5, 0.5);
+            wireframe.material.needsUpdate = true;
+
+            debug('UTILITY', `🔍 Moved ${entityName} to camera front at distance ${offsetDistance + movedCount * 2}`);
+            movedCount++;
+        });
+
+        debug('PERFORMANCE', `🔍 Moved ${movedCount} wireframes to camera position`);
+    }
+
+    /**
+     * Create a visual indicator for collision detection
+     * @param {THREE.Vector3} projectilePos - Position of the projectile
+     * @param {THREE.Vector3} targetPos - Position of the target
+     * @param {number} collisionThreshold - The collision detection radius
+     */
+    createCollisionVisualization(projectilePos, targetPos, collisionThreshold) {
+        if (!window.starfieldManager?.scene) return;
+
+        const damageZones = [
+            { radius: 0.5, color: 0xff0000, name: 'close hits' },
+            { radius: 2, color: 0xff6600, name: 'medium range' },
+            { radius: 5, color: 0xffff00, name: 'edge hits' }
+        ];
+
+        const spheres = [];
+
+        damageZones.forEach(zone => {
+            const geometry = new THREE.SphereGeometry(zone.radius, 16, 12);
+            const material = new THREE.MeshBasicMaterial({
+                color: zone.color,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            const sphere = new THREE.Mesh(geometry, material);
+            if (projectilePos.isVector3) {
+                sphere.position.copy(projectilePos);
+            } else {
+                sphere.position.set(projectilePos.x, projectilePos.y, projectilePos.z);
+            }
+            debug('UTILITY', `🔍 SPHERE ${zone.name}: Set position to (${sphere.position.x.toFixed(1)}, ${sphere.position.y.toFixed(1)}, ${sphere.position.z.toFixed(1)})`);
+
+            window.starfieldManager.scene.add(sphere);
+            spheres.push({ sphere, geometry, material });
+        });
+
+        setTimeout(() => {
+            if (window.starfieldManager?.scene) {
+                spheres.forEach(({ sphere, geometry, material }) => {
+                    window.starfieldManager.scene.remove(sphere);
+                    geometry.dispose();
+                    material.dispose();
+                });
+            }
+        }, 3000);
+
+        debug('COMBAT', `👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
+    }
+
+    /**
      * Dispose of resources
      */
     dispose() {

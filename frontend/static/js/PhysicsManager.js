@@ -422,24 +422,6 @@ debug('UTILITY', 'Using fallback spatial query for reliable detection');
         const radiusKm = radius / 1000; // Convert meters to kilometers to match world coordinates
         const radiusSquared = radiusKm * radiusKm; // Use km radius for calculations
         
-        // Debug: Log what we're searching for
-        // console.log(`🔍 SPATIAL QUERY: Searching for entities within ${radius}m (${radiusKm.toFixed(3)}km) of position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-        // console.log(`🔍 SPATIAL QUERY: Checking ${this.rigidBodies.size} rigid bodies and ${this.entityMetadata.size} metadata entries`);
-        
-        // Debug: Count beacon entities (commented out for production)
-        // let beaconCount = 0;
-        // for (const [rigidBody, metadata] of this.entityMetadata.entries()) {
-        //     if (metadata.type === 'beacon') {
-        //         beaconCount++;
-        //         // Only log first beacon for debugging
-        //         if (beaconCount === 1) {
-        //             const distance = metadata.threeObject ? metadata.threeObject.position.distanceTo(position) : 'No position';
-        //             console.log(`🔍 BEACON EXAMPLE: ${metadata.id} at distance ${distance}km`);
-        //         }
-        //     }
-        // }
-        // console.log(`🔍 SPATIAL QUERY: Found ${beaconCount} total beacon entities in physics manager`);
-        
         // Check all registered rigid bodies
         let checkedCount = 0;
         let withinRangeCount = 0;
@@ -447,12 +429,7 @@ debug('UTILITY', 'Using fallback spatial query for reliable detection');
             if (threeObject.position) {
                 checkedCount++;
                 const distance = threeObject.position.distanceTo(position); // Distance in km (world units)
-                
-                // Debug: Log first few entities regardless of distance (commented out for production)
-                // if (checkedCount <= 3) {
-                //     console.log(`🔍 DEBUG ENTITY ${checkedCount}: Distance ${distance.toFixed(3)}km, Range limit ${radiusKm.toFixed(3)}km`);
-                // }
-                
+
                 if (distance <= radiusKm) { // Compare km to km
                     withinRangeCount++;
                     const metadata = this.entityMetadata.get(rigidBody);
@@ -465,8 +442,7 @@ debug('UTILITY', `⚠️ SPATIAL QUERY: RigidBody at ${distance.toFixed(3)}km ($
                 }
             }
         }
-        // console.log(`🔍 SPATIAL QUERY: Checked ${checkedCount} entities, ${withinRangeCount} within range`);
-        
+
 debug('UTILITY', `🔍 SPATIAL QUERY: Found ${overlaps.length} entities within ${radius}m radius`);
         
         return overlaps;
@@ -1318,8 +1294,6 @@ debug('UTILITY', `Could not find projectile instance with onCollision method for
                     distance = contactPoint.getDistance();
                 } else {
                     // Fallback: assume moderate penetration for impulse calculation
-                    // Removed collision warning log to prevent console spam
-                    // console.log('⚠️ contactPoint.getDistance not available for impulse calculation, using fallback');
                     distance = -0.1;
                 }
             } catch (error) {
@@ -1510,19 +1484,7 @@ debug('PHYSICS', 'PhysicsManager cleanup complete');
      * @param {THREE.Scene} scene - Three.js scene to add debug wireframes to
      */
     toggleDebugMode(scene) {
-        this.debugMode = !this.debugMode;
-        
-        if (this.debugMode) {
-debug('PHYSICS', 'Physics debug mode ENABLING - creating wireframes...');
-            this.enableDebugVisualization(scene);
-debug('PHYSICS', `🔍 Physics debug mode ENABLED - showing ${this.debugWireframes.size} collision shapes`);
-        } else {
-debug('PHYSICS', 'Physics debug mode DISABLING - removing wireframes...');
-            this.disableDebugVisualization(scene);
-debug('PHYSICS', 'Physics debug mode DISABLED - hiding collision shapes');
-        }
-        
-        return this.debugMode;
+        return this.debugVisualizer.toggleDebugMode(scene);
     }
 
     /**
@@ -1530,36 +1492,7 @@ debug('PHYSICS', 'Physics debug mode DISABLED - hiding collision shapes');
      * @param {THREE.Scene} scene - Three.js scene
      */
     disableDebugVisualization(scene) {
-        if (this.debugGroup && scene) {
-            // Properly dispose of all wireframes
-            for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
-                if (wireframe.geometry) wireframe.geometry.dispose();
-                if (wireframe.material) wireframe.material.dispose();
-            }
-            
-            // Clean up delayed torpedo wireframes
-            if (this.delayedWireframes) {
-                for (const [wireframe, data] of this.delayedWireframes.entries()) {
-                    if (wireframe.geometry) wireframe.geometry.dispose();
-                    if (wireframe.material) wireframe.material.dispose();
-                }
-                this.delayedWireframes.clear();
-debug('PERFORMANCE', '🧹 Cleaned up delayed torpedo wireframes');
-            }
-            
-            // Clean up torpedo logging timestamps
-            if (this._torpedoLogTimestamps) {
-                this._torpedoLogTimestamps.clear();
-debug('UTILITY', '🧹 Cleaned up torpedo logging timestamps');
-            }
-            
-            // Remove all wireframes
-            this.debugWireframes.clear();
-            scene.remove(this.debugGroup);
-            this.debugGroup = null;
-            
-debug('PHYSICS', '🧹 Disabled physics debug visualization and cleaned up all wireframes');
-        }
+        this.debugVisualizer.disableDebugVisualization(scene);
     }
 
     /**
@@ -1567,82 +1500,7 @@ debug('PHYSICS', '🧹 Disabled physics debug visualization and cleaned up all w
      * @param {THREE.Scene} scene - Three.js scene
      */
     enableDebugVisualization(scene) {
-        if (!scene || typeof THREE === 'undefined') {
-debug('AI', 'Scene or THREE.js not available for physics debug');
-            return;
-        }
-
-        // Clear console to remove existing spam
-        console.clear();
-debug('PHYSICS', 'Physics Debug Mode ENABLED - Console cleared');
-
-        // Create debug group if it doesn't exist
-        if (!this.debugGroup) {
-            this.debugGroup = new THREE.Group();
-            this.debugGroup.name = 'PhysicsDebugGroup';
-            this.debugGroup.renderOrder = 999; // Render last to ensure visibility
-            scene.add(this.debugGroup);
-            if (!this._silentMode) {
-debug('PHYSICS', '📦 Created physics debug group');
-            }
-        }
-
-        // Create wireframes for all existing physics bodies
-        let wireframeCount = 0;
-        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-            this.createDebugWireframe(rigidBody, threeObject);
-            wireframeCount++;
-        }
-        
-        // Force an immediate position update for all wireframes
-        if (!this._silentMode && this._debugLoggingEnabled) {
-debug('PERFORMANCE', `🔍 Forcing immediate wireframe position update...`);
-        }
-        this.updateDebugVisualization();
-        
-        if (!this._silentMode) {
-            // Silent wireframe creation
-debug('PHYSICS', `👁️ PHYSICS DEBUG WIREFRAMES NOW VISIBLE: Look for colored wireframe outlines around objects`);
-debug('PERFORMANCE', `   • Enemy ships: MAGENTA wireframes`);
-debug('PERFORMANCE', `   • Celestial bodies (stars): ORANGE wireframes`);
-debug('PERFORMANCE', `   • Celestial bodies (planets): YELLOW wireframes`);
-debug('PERFORMANCE', `   • Torpedo projectiles: BRIGHT MAGENTA/RED-PINK wireframes`);
-debug('PERFORMANCE', `   • Missile projectiles: BRIGHT ORANGE/RED-ORANGE wireframes`);
-debug('PERFORMANCE', `   • Other projectiles: CYAN/GREEN wireframes`);
-debug('PERFORMANCE', `   • Unknown objects: WHITE wireframes`);
-debug('COMBAT', `💡 TIP: Fire torpedoes to see their bright collision shapes in motion!`);
-debug('PERFORMANCE', `💡 TIP: Press Ctrl+Shift+P to enhance wireframe visibility if you can't see them`);
-        }
-        
-        // Expose debug methods globally for console access
-        window.testWireframes = () => this.testWireframeVisibility();
-        window.debugWireframes = () => this.debugWireframeInfo();
-        window.updateWireframes = () => this.updateDebugVisualization();
-        window.moveWireframesToCamera = () => this.moveWireframesToCamera();
-        window.enhanceWireframes = () => this.enhanceWireframeVisibility();
-        window.enableVerboseLogging = () => this.enableVerboseLogging();
-        window.disableVerboseLogging = () => this.disableVerboseLogging();
-        window.disableCollisionDebug = () => this.disableCollisionDebug();
-        window.clearConsole = () => console.clear();
-window.stopProjectileWireframes = () => { this._silentMode = true; debug('UTILITY', '🔇 Silent mode enabled - reduced logging'); };
-        window.checkAllPhysicsShapes = () => this.checkAllPhysicsShapes();
-        
-debug('PHYSICS', `💡 Physics Debug Console Commands:`);
-debug('UTILITY', `   • clearConsole() - Clear the console (recommended first step)`);
-debug('PHYSICS', `   • checkAllPhysicsShapes() - Audit all physics objects and their shape metadata`);
-debug('PERFORMANCE', `   • debugWireframes() - Show wireframe status summary`);
-debug('PERFORMANCE', `   • testWireframes() - Make wireframes extremely obvious`);
-debug('UTILITY', `💡 Collision Mode Toggle Commands:`);
-debug('UTILITY', `   • window.useRealisticCollision = true  - Match collision sizes to visual meshes (default)`);
-debug('COMBAT', `   • window.useRealisticCollision = false - Use small collision sizes (weapon-friendly)`);
-debug('TARGETING', `   • Target dummies: Visual and collision sizes now match (3.0m) for honest hit detection`);
-debug('PERFORMANCE', `   • moveWireframesToCamera() - Move all wireframes in front of camera`);
-debug('PERFORMANCE', `   • enhanceWireframes() - Make wireframes more visible`);
-debug('AI', `   • enableVerboseLogging() - Enable detailed debug logs`);
-debug('AI', `   • disableVerboseLogging() - Disable detailed debug logs`);
-debug('INSPECTION', `   • disableCollisionDebug() - Stop collision debugging spam`);
-debug('PERFORMANCE', `   • stopProjectileWireframes() - Enable silent mode`);
-debug('PERFORMANCE', `   • updateWireframes() - Force update wireframe positions`);
+        this.debugVisualizer.enableDebugVisualization(scene);
     }
 
     /**
@@ -1651,300 +1509,14 @@ debug('PERFORMANCE', `   • updateWireframes() - Force update wireframe positio
      * @param {THREE.Object3D} threeObject - Associated Three.js object
      */
     createDebugWireframe(rigidBody, threeObject) {
-        if (!this.debugMode || !this.debugGroup || !rigidBody || this.debugWireframes.has(rigidBody)) {
-            return;
-        }
-
-        try {
-            const metadata = this.entityMetadata.get(rigidBody);
-            
-            // Skip less important projectiles to eliminate flashing wireframes, but allow torpedoes/missiles
-            const entityType = metadata?.type || 'unknown';
-            const entityId = metadata?.id || '';
-            const objectName = threeObject?.name || '';
-            const userDataType = threeObject?.userData?.type || '';
-            
-            // Filter out small/fast projectiles (lasers, bullets) but keep important ones (torpedoes, missiles)
-            const isFilteredProjectile = 
-                entityId.includes('laser') || entityId.includes('Laser') ||
-                entityId.includes('bullet') || entityId.includes('Bullet') ||
-                objectName.includes('laser') || objectName.includes('bullet') ||
-                (entityType === 'projectile' && (
-                    entityId.includes('laser') || entityId.includes('bullet') ||
-                    entityId.includes('beam') || entityId.includes('ray')
-                ));
-            
-            if (isFilteredProjectile) {
-                // Only log if debug logging is enabled
-                if (this._debugLoggingEnabled && !this._silentMode) {
-debug('PERFORMANCE', `🚫 Skipping wireframe for filtered projectile: ${entityId || objectName || 'unnamed'}`);
-                }
-                return;
-            }
-            
-            // Silent wireframe creation for projectiles
-
-            // Get collision shape and position
-            const collisionShape = rigidBody.getCollisionShape();
-            if (!collisionShape) return;
-
-            const transform = new this.Ammo.btTransform();
-            rigidBody.getWorldTransform(transform);
-            const position = transform.getOrigin();
-            const rotation = transform.getRotation();
-
-            // Create wireframe geometry based on collision shape
-            let geometry;
-            let material;
-            let wireframe;
-
-            // Determine shape type and create appropriate wireframe
-            // console.log(`🔍 WIREFRAME DEBUG: Creating wireframe for ${entityType} "${entityId}"`);
-            
-            // Use stored shape information instead of trying to detect from corrupted collision shapes
-            const storedShapeType = metadata?.shapeType;
-            const storedRadius = metadata?.shapeRadius;
-            
-            // console.log(`   • Stored shape type: ${storedShapeType}`);
-            // console.log(`   • Stored radius: ${storedRadius}`);
-            
-                        if (storedShapeType === 'sphere') {
-                // Sphere shape using stored radius
-                // console.log(`   • Creating SPHERE wireframe`);
-                const radius = storedRadius || 1.0; // Use stored radius or fallback
-                // console.log(`   • Using stored radius: ${radius}m`);
-                geometry = new THREE.SphereGeometry(radius * 1.1, 16, 16);
-                
-                // Enhanced colors for different entity types
-                let wireframeColor;
-                if (entityType === 'projectile') {
-                    // Bright colors for projectiles to make them stand out
-                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : // Bright red-pink for torpedoes
-                                    entityId.includes('missile') ? 0xff4400 : // Bright red-orange for missiles
-                                    0x44ff00; // Bright green for other projectiles
-                } else {
-                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
-                                    entityType === 'star' ? 0xff8800 : 
-                                    entityType === 'moon' ? 0x88ffff : 0x00ff00;
-                }
-                
-                material = new THREE.MeshBasicMaterial({
-                    color: wireframeColor,
-                    wireframe: true,
-                    transparent: true,
-                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
-                    depthTest: false,
-                    depthWrite: false
-                });
-            } else if (storedShapeType === 'box') {
-                // Box shape using stored dimensions
-                // console.log(`   • Creating BOX wireframe`);
-                const width = metadata?.shapeWidth || 2;
-                const height = metadata?.shapeHeight || 2;
-                const depth = metadata?.shapeDepth || 2;
-                // console.log(`   • Using stored dimensions: ${width}x${height}x${depth}`);
-                geometry = new THREE.BoxGeometry(width * 1.1, height * 1.1, depth * 1.1);
-                
-                // Enhanced colors for different entity types
-                let wireframeColor;
-                if (entityType === 'projectile') {
-                    // Bright, distinctive colors for projectiles
-                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : // Bright red-pink for torpedoes
-                                    entityId.includes('missile') ? 0xff4400 : // Bright red-orange for missiles
-                                    0x44ff00; // Bright green for other projectiles
-                } else {
-                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
-                                    entityType === 'star' ? 0xff8800 : 0x00ff00;
-                }
-                
-                material = new THREE.MeshBasicMaterial({
-                    color: wireframeColor,
-                    wireframe: true,
-                    transparent: true,
-                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
-                    depthTest: false,
-                    depthWrite: false
-                });
-            } else if (storedShapeType === 'capsule') {
-                // Capsule shape using stored dimensions
-debug('PERFORMANCE', `   • Creating CAPSULE wireframe (approximated as cylinder)`);
-                const radius = metadata?.shapeRadius || 1;
-                const height = metadata?.shapeHeight || 2;
-debug('UTILITY', `   • Using stored capsule dimensions: radius=${radius}, height=${height}`);
-                geometry = new THREE.CylinderGeometry(radius * 1.1, radius * 1.1, height * 1.1, 16);
-                
-                // Enhanced colors for different entity types
-                let wireframeColor;
-                if (entityType === 'projectile') {
-                    wireframeColor = entityId.includes('torpedo') ? 0xff0044 : 
-                                    entityId.includes('missile') ? 0xff4400 : 0x44ff00;
-                } else {
-                    wireframeColor = entityType === 'planet' ? 0xffff00 : 
-                                    entityType === 'star' ? 0xff8800 : 
-                                    entityType === 'moon' ? 0x88ffff : 0x00ff00;
-                }
-                
-                material = new THREE.MeshBasicMaterial({
-                    color: wireframeColor,
-                    wireframe: true,
-                    transparent: true,
-                    opacity: entityType === 'projectile' ? 1.0 : 0.6,
-                    depthTest: false,
-                    depthWrite: false
-                });
-            } else {
-                // Default to box for unknown shapes
-debug('PERFORMANCE', `   • Creating DEFAULT BOX wireframe (unknown shape type: ${storedShapeType})`);
-                geometry = new THREE.BoxGeometry(2, 2, 2);
-                material = new THREE.MeshBasicMaterial({
-                    color: entityType === 'projectile' ? 0xffffff : 0xffffff, // White for unknown projectiles
-                    wireframe: true,
-                    transparent: true,
-                    opacity: entityType === 'projectile' ? 1.0 : 0.6, // Full opacity for projectiles
-                    depthTest: false,
-                    depthWrite: false
-                });
-            }
-
-            // Create wireframe mesh
-            wireframe = new THREE.Mesh(geometry, material);
-            
-            // Make projectile wireframes MUCH bigger for visibility
-            if (entityType === 'projectile') {
-                wireframe.scale.set(10, 10, 10); // 10x larger for torpedoes!
-                // Silent torpedo wireframe creation
-            }
-            
-            // Force wireframes to always render on top
-            wireframe.renderOrder = 1000;
-            wireframe.material.depthTest = false;
-
-            // Set initial position and rotation from physics body
-            wireframe.position.set(position.x(), position.y(), position.z());
-            wireframe.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
-            
-            // Add debug info as userData
-            wireframe.userData = {
-                type: 'physics_debug',
-                entityType: metadata?.type || 'unknown',
-                entityId: metadata?.id || 'unknown',
-                rigidBody: rigidBody
-            };
-
-            // Add to debug group and store reference
-            this.debugGroup.add(wireframe);
-            this.debugWireframes.set(rigidBody, wireframe);
-
-            const entityName = metadata?.id || threeObject.name || 'unnamed';
-            
-            // Only log if debug logging is enabled or for important entities
-            if (!this._silentMode && (this._debugLoggingEnabled || entityType === 'star' || entityType === 'planet' || entityType === 'projectile')) {
-                let colorName;
-                if (entityType === 'projectile') {
-                    if (entityId.includes('torpedo')) {
-                        colorName = 'BRIGHT MAGENTA/RED-PINK';
-                    } else if (entityId.includes('missile')) {
-                        colorName = 'BRIGHT ORANGE/RED-ORANGE';
-                    } else {
-                        colorName = 'CYAN/GREEN';
-                    }
-                } else {
-                    colorName = entityType === 'enemy_ship' ? 'MAGENTA' : 
-                               entityType === 'planet' ? 'YELLOW' :
-                               entityType === 'star' ? 'ORANGE' : 'CYAN';
-                }
-                
-debug('PERFORMANCE', `🔍 Created ${colorName} wireframe for ${entityName} (${entityType}) at (${position.x().toFixed(2)}, ${position.y().toFixed(2)}, ${position.z().toFixed(2)})`);
-            }
-
-        } catch (error) {
-            if (this._debugLoggingEnabled && !this._silentMode) {
-debug('P1', 'Failed to create debug wireframe:', error);
-            }
-        }
+        this.debugVisualizer.createDebugWireframe(rigidBody, threeObject);
     }
 
     /**
      * Update debug wireframes to match current physics body positions
      */
     updateDebugVisualization() {
-        if (!this.debugMode || !this.debugGroup) {
-            return;
-        }
-
-        let updateCount = 0;
-        const staleWireframes = [];
-        
-        // Update existing wireframes using Three.js object positions (more reliable)
-        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-            const wireframe = this.debugWireframes.get(rigidBody);
-            if (wireframe) {
-                try {
-                    // Use Three.js object position and rotation (this works correctly!)
-                    const position = threeObject.position;
-                    const quaternion = threeObject.quaternion;
-
-                    // Apply position and rotation to wireframe
-                    wireframe.position.set(position.x, position.y, position.z);
-                    wireframe.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-                    
-                    // Debug: Log position updates for torpedoes (throttled to avoid spam)
-                    const metadata = this.entityMetadata.get(rigidBody);
-                    const entityId = metadata?.id || 'unknown';
-                    if (entityId.includes('Torpedo') && !this._silentMode) {
-                        // Initialize torpedo logging timestamps if not exists
-                        if (!this._torpedoLogTimestamps) {
-                            this._torpedoLogTimestamps = new Map();
-                        }
-                        
-                        const now = Date.now();
-                        const lastLogTime = this._torpedoLogTimestamps.get(entityId);
-                        
-                        // Completely silent torpedo wireframe updates
-                    }
-                    
-                    updateCount++;
-                } catch (error) {
-                    // console.log('Failed to update debug wireframe - marking for removal:', error);
-                    staleWireframes.push(rigidBody);
-                }
-            }
-        }
-        
-        // Update delayed torpedo wireframes (for torpedoes that have been cleaned up but wireframes are still visible)
-        if (this.delayedWireframes && this.delayedWireframes.size > 0) {
-            const now = Date.now();
-            for (const [wireframe, data] of this.delayedWireframes.entries()) {
-                try {
-                    // Only lock wireframes at their final position if they have actually detonated
-                    // Otherwise, these wireframes should have been removed when the torpedo was cleaned up
-                    if (data.detonated && data.position) {
-                        wireframe.position.set(data.position.x, data.position.y, data.position.z);
-                    }
-                    
-                    // Clean up wireframes that have been displayed long enough
-                    if (now - data.timestamp > 3000) { // Remove after 3 seconds
-                        this.delayedWireframes.delete(wireframe);
-                        if (wireframe.parent) {
-                            wireframe.parent.remove(wireframe);
-                        }
-                        continue;
-                    }
-                    
-                    updateCount++;
-                } catch (error) {
-debug('P1', 'Failed to update delayed torpedo wireframe:', error);
-                    this.delayedWireframes.delete(wireframe);
-                }
-            }
-        }
-        
-        // Clean up stale wireframes
-        staleWireframes.forEach(rigidBody => {
-            this.removeDebugWireframe(rigidBody);
-        });
-        
-        // Silent position updates - no logging
+        this.debugVisualizer.updateDebugVisualization();
     }
 
     /**
@@ -1953,11 +1525,7 @@ debug('P1', 'Failed to update delayed torpedo wireframe:', error);
      * @returns {boolean} True if box shape
      */
     isBoxShape(collisionShape) {
-        try {
-            return collisionShape.getShapeType() === 0; // BOX_SHAPE_PROXYTYPE
-        } catch (error) {
-            return false;
-        }
+        return this.debugVisualizer.isBoxShape(collisionShape);
     }
 
     /**
@@ -1966,11 +1534,7 @@ debug('P1', 'Failed to update delayed torpedo wireframe:', error);
      * @returns {boolean} True if sphere shape
      */
     isSphereShape(collisionShape) {
-        try {
-            return collisionShape.getShapeType() === 8; // SPHERE_SHAPE_PROXYTYPE
-        } catch (error) {
-            return false;
-        }
+        return this.debugVisualizer.isSphereShape(collisionShape);
     }
 
     /**
@@ -2036,182 +1600,42 @@ debug('PHYSICS', `🔄 Recreated physics body for ${threeObject.name || 'object'
      * Make all debug wireframes more visible (for debugging visibility issues)
      */
     enhanceWireframeVisibility() {
-        if (!this.debugMode || !this.debugGroup) {
-debug('PERFORMANCE', '❌ Debug mode not active - cannot enhance wireframes');
-            return;
-        }
-        
-        let enhancedCount = 0;
-        for (const [rigidBody, wireframe] of this.debugWireframes.entries()) {
-            if (wireframe && wireframe.material) {
-                // Make wireframes very visible
-                wireframe.material.color.setHex(0xff0000); // Bright red
-                wireframe.material.transparent = true;
-                wireframe.material.opacity = 0.8;
-                wireframe.material.depthTest = false;
-                wireframe.material.depthWrite = false;
-                wireframe.renderOrder = 9999;
-                wireframe.scale.set(1.5, 1.5, 1.5); // Make them bigger
-                enhancedCount++;
-            }
-        }
-        
-debug('PERFORMANCE', `🔍 Enhanced visibility for ${enhancedCount} wireframes - they should now be bright red and enlarged`);
-        
-        // Also log the debug group status
-debug('INSPECTION', `🔍 Debug group status:`);
-debug('INSPECTION', `   • Parent scene: ${!!this.debugGroup.parent}`);
-debug('INSPECTION', `   • Children count: ${this.debugGroup.children.length}`);
-debug('INSPECTION', `   • Visible: ${this.debugGroup.visible}`);
-debug('INSPECTION', `   • Position: (${this.debugGroup.position.x}, ${this.debugGroup.position.y}, ${this.debugGroup.position.z})`);
+        this.debugVisualizer.enhanceWireframeVisibility();
     }
 
     /**
      * Make wireframes extremely obvious for debugging (console command)
      */
     testWireframeVisibility() {
-        if (!this.debugMode || !this.debugGroup) {
-debug('INSPECTION', '❌ Debug mode not active');
-            return;
-        }
-
-        // First, force update all wireframe positions
-debug('PERFORMANCE', `🔍 Force updating wireframe positions first...`);
-        this.updateDebugVisualization();
-        
-        let count = 0;
-        // Use the same iteration approach as the working physics inventory
-        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-            const wireframe = this.debugWireframes.get(rigidBody);
-            if (wireframe && wireframe.material) {
-                // Get position from Three.js object (this works!) instead of transform
-                const threePos = threeObject.position;
-                
-                // Set wireframe to match Three.js object position
-                wireframe.position.set(threePos.x, threePos.y, threePos.z);
-                
-                // Make them absolutely impossible to miss
-                wireframe.material.color.setHex(0xff0000); // Bright red
-                wireframe.material.transparent = false;
-                wireframe.material.opacity = 1.0;
-                wireframe.material.wireframe = false; // Solid, not wireframe
-                wireframe.material.depthTest = false;
-                wireframe.material.depthWrite = false;
-                wireframe.renderOrder = 99999;
-                wireframe.scale.set(3, 3, 3); // Make them 3x larger
-                wireframe.material.needsUpdate = true;
-                count++;
-                
-                const metadata = this.entityMetadata.get(rigidBody);
-
-debug('PERFORMANCE', `   • Wireframe position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
-debug('PERFORMANCE', `   • Scale: (${wireframe.scale.x}, ${wireframe.scale.y}, ${wireframe.scale.z})`);
-debug('PERFORMANCE', `   • Visible: ${wireframe.visible}`);
-debug('PERFORMANCE', `   • Parent: ${!!wireframe.parent}`);
-            }
-        }
-        
-debug('PERFORMANCE', `🔍 Made ${count} wireframes into BRIGHT RED SOLID SHAPES that are 3x larger`);
-debug('PHYSICS', `🔍 All wireframes positioned using Three.js object positions (not physics transforms)`);
+        this.debugVisualizer.testWireframeVisibility();
     }
 
     /**
      * Print detailed debug information about wireframes
      */
     debugWireframeInfo() {
-debug('PERFORMANCE', `🔍 === WIREFRAME DEBUG INFO ===`);
-debug('INSPECTION', `🔍 Debug mode: ${this.debugMode}`);
-debug('INSPECTION', `🔍 Debug group exists: ${!!this.debugGroup}`);
-debug('INSPECTION', `🔍 Debug group parent: ${!!this.debugGroup?.parent}`);
-debug('INSPECTION', `🔍 Debug group children: ${this.debugGroup?.children.length || 0}`);
-debug('PERFORMANCE', `🔍 Wireframes in map: ${this.debugWireframes.size}`);
-        
-debug('PHYSICS', `🔍 Physics bodies: ${this.rigidBodies.size}`);
-        
-        if (this.debugGroup && this.debugWireframes.size > 0) {
-            let visibleCount = 0;
-            this.debugWireframes.forEach((wireframe, rigidBody) => {
-                const metadata = this.entityMetadata.get(rigidBody);
-                const entityName = metadata?.id || 'unnamed';
-                const entityType = metadata?.type || 'unknown';
-                
-                if (wireframe.visible) visibleCount++;
-                
-debug('UTILITY', `🔍 ${entityName} (${entityType}):`);
-debug('PERFORMANCE', `   • Visible: ${wireframe.visible}`);
-debug('PERFORMANCE', `   • Position: (${wireframe.position.x.toFixed(2)}, ${wireframe.position.y.toFixed(2)}, ${wireframe.position.z.toFixed(2)})`);
-debug('PERFORMANCE', `   • Color: #${wireframe.material.color.getHexString()}`);
-            });
-            
-debug('PERFORMANCE', `🔍 Summary: ${visibleCount}/${this.debugWireframes.size} wireframes visible`);
-        }
-        
-        if (window.camera) {
-debug('UTILITY', `🔍 Camera position: (${window.camera.position.x.toFixed(2)}, ${window.camera.position.y.toFixed(2)}, ${window.camera.position.z.toFixed(2)})`);
-        }
+        this.debugVisualizer.debugWireframeInfo();
     }
 
     /**
      * Move all wireframes to camera position for testing
      */
     moveWireframesToCamera() {
-        if (!this.debugMode || !this.debugGroup || !window.camera) {
-debug('AI', '❌ Debug mode not active or no camera available');
-            return;
-        }
-        
-debug('PERFORMANCE', `🔍 Moving all wireframes to camera position for visibility test...`);
-        
-        const cameraPos = window.camera.position;
-        const offsetDistance = 5; // Distance in front of camera
-        const cameraDirection = new THREE.Vector3(0, 0, -1);
-        cameraDirection.applyQuaternion(window.camera.quaternion);
-        
-        let movedCount = 0;
-        this.debugWireframes.forEach((wireframe, rigidBody) => {
-            const metadata = this.entityMetadata.get(rigidBody);
-            const entityName = metadata?.id || 'unnamed';
-            
-            // Position wireframe in front of camera in a line
-            const offset = new THREE.Vector3().copy(cameraDirection).multiplyScalar(offsetDistance + movedCount * 2);
-            wireframe.position.copy(cameraPos).add(offset);
-            
-            // Make them very obvious
-            wireframe.material.color.setHex(0xff0000); // Bright red
-            wireframe.material.wireframe = false; // Solid
-            wireframe.scale.set(0.5, 0.5, 0.5); // Smaller for testing
-            wireframe.material.needsUpdate = true;
-            
-debug('UTILITY', `🔍 Moved ${entityName} to camera front at distance ${offsetDistance + movedCount * 2}`);
-            movedCount++;
-        });
-        
-debug('PERFORMANCE', `🔍 Moved ${movedCount} wireframes to camera position - you should see red cubes in front of you!`);
+        this.debugVisualizer.moveWireframesToCamera();
     }
 
     /**
      * Enable verbose debug logging
      */
     enableVerboseLogging() {
-        this._debugLoggingEnabled = true;
-debug('PHYSICS', 'Verbose physics debug logging ENABLED');
+        this.debugVisualizer.enableVerboseLogging();
     }
 
     /**
-     * Disable verbose debug logging  
+     * Disable verbose debug logging
      */
     disableVerboseLogging() {
-        this._debugLoggingEnabled = false;
-debug('PHYSICS', 'Verbose physics debug logging DISABLED');
-    }
-
-    /**
-     * Disable collision debugging to reduce console spam
-     */
-    disableCollisionDebug() {
-        this._silentMode = true;
-        this._debugLoggingEnabled = false;
-debug('INSPECTION', '🔇 Collision debugging disabled');
+        this.debugVisualizer.disableVerboseLogging();
     }
 
     /**
@@ -2221,136 +1645,14 @@ debug('INSPECTION', '🔇 Collision debugging disabled');
      * @param {number} collisionThreshold - The collision detection radius
      */
     createCollisionVisualization(projectilePos, targetPos, collisionThreshold) {
-        if (!window.starfieldManager?.scene) return;
-        
-        // Create damage zone spheres - scaled appropriately for distance
-        const damageZones = [
-            { radius: 0.5, color: 0xff0000, name: 'close hits' },      // 0.5m - Red (direct hit)
-            { radius: 2, color: 0xff6600, name: 'medium range' },      // 2m - Orange (close)  
-            { radius: 5, color: 0xffff00, name: 'edge hits' }          // 5m - Yellow (edge damage)
-        ];
-        
-        const spheres = [];
-        
-        damageZones.forEach(zone => {
-            const geometry = new THREE.SphereGeometry(zone.radius, 16, 12);
-            const material = new THREE.MeshBasicMaterial({ 
-                color: zone.color,
-                wireframe: true, 
-                transparent: true, 
-                opacity: 0.7 
-            });
-            
-            const sphere = new THREE.Mesh(geometry, material);
-            // Ensure proper position setting for THREE.js
-            if (projectilePos.isVector3) {
-                sphere.position.copy(projectilePos);
-            } else {
-                sphere.position.set(projectilePos.x, projectilePos.y, projectilePos.z);
-            }
-debug('UTILITY', `🔍 SPHERE ${zone.name}: Set position to (${sphere.position.x.toFixed(1)}, ${sphere.position.y.toFixed(1)}, ${sphere.position.z.toFixed(1)})`);
-            
-            window.starfieldManager.scene.add(sphere);
-            spheres.push({ sphere, geometry, material });
-        });
-        
-        // Remove all visualization spheres after 3 seconds
-        setTimeout(() => {
-            if (window.starfieldManager?.scene) {
-                spheres.forEach(({ sphere, geometry, material }) => {
-                    window.starfieldManager.scene.remove(sphere);
-                    geometry.dispose();
-                    material.dispose();
-                });
-            }
-        }, 3000);
-        
-debug('COMBAT', `👁️ Created collision visualization showing damage zones at detonation point: ${projectilePos.x.toFixed(1)}, ${projectilePos.y.toFixed(1)}, ${projectilePos.z.toFixed(1)}`);
+        this.debugVisualizer.createCollisionVisualization(projectilePos, targetPos, collisionThreshold);
     }
 
     /**
      * Check all physics objects and their shape metadata for debugging
      */
     checkAllPhysicsShapes() {
-debug('PHYSICS', "=== PHYSICS SHAPE METADATA AUDIT ===");
-debug('UTILITY', `📊 Total rigid bodies: ${this.rigidBodies.size}`);
-debug('UTILITY', `📊 Total entity metadata: ${this.entityMetadata.size}\n`);
-
-        let sphereCount = 0;
-        let boxCount = 0;
-        let capsuleCount = 0;
-        let unknownCount = 0;
-        let missingMetadataCount = 0;
-
-        for (const [threeObject, rigidBody] of this.rigidBodies.entries()) {
-            const metadata = this.entityMetadata.get(rigidBody);
-            
-            if (!metadata) {
-debug('UTILITY', `❌ MISSING METADATA: ${threeObject.name || 'unnamed'}`);
-                missingMetadataCount++;
-                continue;
-            }
-
-            const { type, id, shapeType, shapeRadius, shapeWidth, shapeHeight, shapeDepth } = metadata;
-            
-debug('UTILITY', `🔍 ${type} "${id || 'unnamed'}":`);
-debug('UTILITY', `   • Shape: ${shapeType || 'MISSING'}`);
-            
-            switch (shapeType) {
-                case 'sphere':
-debug('UTILITY', `   • Radius: ${shapeRadius || 'MISSING'}m`);
-                    sphereCount++;
-                    break;
-                case 'box':
-debug('UTILITY', `   • Dimensions: ${shapeWidth || '?'}x${shapeHeight || '?'}x${shapeDepth || '?'}`);
-                    boxCount++;
-                    break;
-                case 'capsule':
-debug('UTILITY', `   • Radius: ${shapeRadius || 'MISSING'}m, Height: ${shapeHeight || 'MISSING'}m`);
-                    capsuleCount++;
-                    break;
-                default:
-debug('UTILITY', `   • ❌ UNKNOWN SHAPE TYPE: ${shapeType}`);
-                    unknownCount++;
-            }
-            
-            // Check for missing required properties
-            const issues = [];
-            if (!shapeType) issues.push('shapeType');
-            if (shapeType === 'sphere' && !shapeRadius) issues.push('shapeRadius');
-            if (shapeType === 'box' && (!shapeWidth || !shapeHeight || !shapeDepth)) {
-                issues.push('box dimensions');
-            }
-            if (shapeType === 'capsule' && (!shapeRadius || !shapeHeight)) {
-                issues.push('capsule dimensions');
-            }
-            
-            if (issues.length > 0) {
-debug('UTILITY', `   • ⚠️  MISSING: ${issues.join(', ')}`);
-            } else {
-debug('UTILITY', `   • ✅ Shape metadata complete`);
-            }
-
-        }
-
-debug('UTILITY', "=== SUMMARY ===");
-debug('UTILITY', `✅ Spheres: ${sphereCount}`);
-debug('UTILITY', `✅ Boxes: ${boxCount}`);
-debug('UTILITY', `✅ Capsules: ${capsuleCount}`);
-debug('UTILITY', `❌ Unknown shapes: ${unknownCount}`);
-debug('UTILITY', `❌ Missing metadata: ${missingMetadataCount}`);
-        
-        const total = sphereCount + boxCount + capsuleCount + unknownCount;
-        const healthyCount = sphereCount + boxCount + capsuleCount;
-        const healthyPercentage = total > 0 ? ((healthyCount / total) * 100).toFixed(1) : '0';
-        
-debug('UTILITY', `\n🎯 Overall Health: ${healthyPercentage}% (${healthyCount}/${total} objects have proper shape metadata)`);
-        
-        if (unknownCount > 0 || missingMetadataCount > 0) {
-debug('UTILITY', `\n⚠️  ISSUES FOUND: ${unknownCount + missingMetadataCount} objects need attention`);
-        } else {
-debug('PHYSICS', `\n🎉 ALL PHYSICS OBJECTS HAVE PROPER SHAPE METADATA!`);
-        }
+        this.debugVisualizer.checkAllPhysicsShapes();
     }
 }
 
