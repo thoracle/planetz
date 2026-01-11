@@ -8,7 +8,27 @@
 import * as THREE from 'three';
 
 /**
+ * @typedef {Object} OrbitalElements
+ * @property {number} semiMajorAxis - Semi-major axis of the orbit
+ * @property {number} eccentricity - Orbital eccentricity (0 = circular, <1 = elliptical)
+ * @property {number} inclination - Orbital inclination in radians
+ * @property {number} longitudeOfAscendingNode - Longitude of ascending node in radians
+ * @property {number} argumentOfPeriapsis - Argument of periapsis in radians
+ * @property {number} meanAnomaly - Mean anomaly in radians
+ * @property {number} mass - Mass of the orbiting body in kg
+ */
+
+/**
+ * @typedef {Object} OrbitalConstants
+ * @property {number} G - Gravitational constant (m^3 kg^-1 s^-2)
+ * @property {number} SOLAR_MASS - Solar mass in kg
+ * @property {number} AU - Astronomical unit in meters
+ * @property {number} SCALE_FACTOR - Scale factor for scene representation
+ */
+
+/**
  * Physical constants for orbital calculations
+ * @type {OrbitalConstants}
  */
 const ORBITAL_CONSTANTS = {
     G: 6.67430e-11,          // Gravitational constant
@@ -21,9 +41,28 @@ const ORBITAL_CONSTANTS = {
  * Calculator for orbital mechanics and spatial grid operations
  */
 export class OrbitCalculator {
+    /** @type {number} Gravitational constant */
+    G;
+    /** @type {number} Solar mass in kg */
+    SOLAR_MASS;
+    /** @type {number} Astronomical unit in meters */
+    AU;
+    /** @type {number} Scale factor for scene representation */
+    SCALE_FACTOR;
+    /** @type {number} Visual scale factor for scene representation */
+    VISUAL_SCALE;
+    /** @type {number} Maximum distance from sun in kilometers */
+    MAX_DISTANCE_KM;
+    /** @type {number} Size of spatial grid cells */
+    gridSize;
+    /** @type {Map<string, Set<string>>} Spatial partitioning grid */
+    spatialGrid;
+    /** @type {Map<string, OrbitalElements>} Orbital elements storage */
+    orbitalElements;
+
     /**
      * Create a new OrbitCalculator
-     * @param {number} gridSize - Size of spatial grid cells (default: 20)
+     * @param {number} [gridSize=20] - Size of spatial grid cells
      */
     constructor(gridSize = 20) {
         // Physical constants
@@ -81,8 +120,8 @@ export class OrbitCalculator {
      * F = G * m1 * m2 / r²
      * @param {string} body1Key - Key of first body in celestialBodies
      * @param {string} body2Key - Key of second body in celestialBodies
-     * @param {Map} celestialBodies - Map of celestial body meshes
-     * @returns {THREE.Vector3} Force vector
+     * @param {Map<string, THREE.Mesh>} celestialBodies - Map of celestial body meshes
+     * @returns {THREE.Vector3} Force vector pointing from body1 to body2
      */
     calculateGravitationalForce(body1Key, body2Key, celestialBodies) {
         const elements1 = this.orbitalElements.get(body1Key);
@@ -108,7 +147,8 @@ export class OrbitCalculator {
     /**
      * Set orbital elements for a celestial body
      * @param {string} key - Body identifier
-     * @param {Object} elements - Orbital elements
+     * @param {OrbitalElements} elements - Orbital elements
+     * @returns {void}
      */
     setOrbitalElements(key, elements) {
         this.orbitalElements.set(key, {
@@ -125,7 +165,7 @@ export class OrbitCalculator {
     /**
      * Get orbital elements for a celestial body
      * @param {string} key - Body identifier
-     * @returns {Object|undefined} Orbital elements or undefined
+     * @returns {OrbitalElements|undefined} Orbital elements or undefined
      */
     getOrbitalElements(key) {
         return this.orbitalElements.get(key);
@@ -133,6 +173,7 @@ export class OrbitCalculator {
 
     /**
      * Clear all orbital elements
+     * @returns {void}
      */
     clearOrbitalElements() {
         this.orbitalElements.clear();
@@ -152,7 +193,8 @@ export class OrbitCalculator {
 
     /**
      * Update spatial partitioning grid from celestial bodies
-     * @param {Map} celestialBodies - Map of celestial body meshes
+     * @param {Map<string, THREE.Mesh>} celestialBodies - Map of celestial body meshes
+     * @returns {void}
      */
     updateSpatialGrid(celestialBodies) {
         this.spatialGrid.clear();
@@ -167,6 +209,7 @@ export class OrbitCalculator {
 
     /**
      * Clear the spatial grid
+     * @returns {void}
      */
     clearSpatialGrid() {
         this.spatialGrid.clear();
@@ -175,9 +218,9 @@ export class OrbitCalculator {
     /**
      * Get nearby bodies for gravitational calculations
      * @param {THREE.Vector3} position - Center position
-     * @param {number} radius - Search radius
-     * @param {Map} celestialBodies - Map of celestial body meshes
-     * @returns {Array<string>} Array of nearby body keys
+     * @param {number} radius - Search radius in scene units
+     * @param {Map<string, THREE.Mesh>} celestialBodies - Map of celestial body meshes
+     * @returns {string[]} Array of nearby body keys
      */
     getNearbyBodies(position, radius, celestialBodies) {
         const nearbyBodies = new Set();

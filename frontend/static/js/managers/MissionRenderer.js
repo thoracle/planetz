@@ -8,7 +8,63 @@
 import { debug } from '../debug.js';
 
 /**
+ * @typedef {Object} ObjectiveIcon
+ * @property {string} symbol - Icon symbol character
+ * @property {string} color - CSS color string
+ */
+
+/**
+ * @typedef {Object} MissionObjective
+ * @property {string} id - Objective ID
+ * @property {string} description - Objective description
+ * @property {string} [status] - Objective status (PENDING, COMPLETED, ACTIVE, FAILED)
+ * @property {string} [state] - Raw state from API
+ * @property {boolean} [is_achieved] - Whether objective is achieved
+ * @property {boolean} [is_optional] - Whether objective is optional
+ * @property {boolean} [isOptional] - Whether objective is optional (normalized)
+ * @property {number|Object} [progress] - Progress value or object
+ * @property {string} [waypointId] - ID of associated waypoint for navigation
+ */
+
+/**
+ * @typedef {Object} NormalizedObjective
+ * @property {string} id - Objective ID
+ * @property {string} description - Objective description
+ * @property {string} status - Normalized status (PENDING, COMPLETED, ACTIVE, FAILED)
+ * @property {boolean} isOptional - Whether objective is optional
+ * @property {string} [state] - Raw state from API
+ * @property {number|Object} [progress] - Progress value or object
+ * @property {string} [waypointId] - ID of associated waypoint
+ */
+
+/**
+ * @typedef {Object} MissionData
+ * @property {string} id - Mission ID
+ * @property {string} title - Mission title
+ * @property {string} client - Client name
+ * @property {string} [location] - Mission location
+ * @property {string} [timeRemaining] - Formatted time remaining
+ * @property {boolean} expanded - Whether panel is expanded
+ * @property {MissionObjective[]} objectives - Mission objectives
+ */
+
+/**
+ * @typedef {Object} MissionRewards
+ * @property {number} [credits] - Credit reward
+ * @property {Object} [factionBonuses] - Faction standing changes
+ * @property {Object} [cards] - Card rewards
+ * @property {number} [cards.count] - Number of cards
+ * @property {string[]} [cards.names] - Card names
+ * @property {string[]} [cards.types] - Card types
+ */
+
+/**
+ * @typedef {import('../ui/MissionStatusHUD.js').MissionStatusHUD} MissionStatusHUD
+ */
+
+/**
  * Icon and color mappings for objective statuses
+ * @type {Object<string, ObjectiveIcon>}
  */
 const OBJECTIVE_ICONS = {
     COMPLETED: { symbol: '✓', color: '#00ff41' },
@@ -21,6 +77,7 @@ const OBJECTIVE_ICONS = {
 
 /**
  * Faction display name mappings
+ * @type {Object<string, string>}
  */
 const FACTION_NAMES = {
     'terran_republic_alliance': 'TRA',
@@ -33,6 +90,7 @@ const FACTION_NAMES = {
 
 /**
  * Card type display name mappings
+ * @type {Object<string, string>}
  */
 const CARD_TYPE_NAMES = {
     'scanner': 'Scanner Module Card',
@@ -49,6 +107,9 @@ const CARD_TYPE_NAMES = {
  * Renderer class for mission UI components
  */
 export class MissionRenderer {
+    /** @type {MissionStatusHUD} Reference to parent HUD */
+    hud;
+
     /**
      * Create a new MissionRenderer
      * @param {MissionStatusHUD} hud - Reference to parent HUD
@@ -59,9 +120,9 @@ export class MissionRenderer {
 
     /**
      * Create individual mission panel
-     * @param {Object} mission - Mission data
+     * @param {MissionData} mission - Mission data
      * @param {number} index - Mission index
-     * @returns {HTMLElement} Panel element
+     * @returns {HTMLDivElement} Panel element
      */
     createMissionPanel(mission, index) {
         const panel = document.createElement('div');
@@ -96,9 +157,9 @@ export class MissionRenderer {
 
     /**
      * Create mission header with title and expand/collapse
-     * @param {Object} mission - Mission data
+     * @param {MissionData} mission - Mission data
      * @param {number} index - Mission index
-     * @returns {HTMLElement} Header element
+     * @returns {HTMLDivElement} Header element
      */
     createMissionHeader(mission, index) {
         const header = document.createElement('div');
@@ -169,8 +230,8 @@ export class MissionRenderer {
 
     /**
      * Create mission details section
-     * @param {Object} mission - Mission data
-     * @returns {HTMLElement} Details element
+     * @param {MissionData} mission - Mission data
+     * @returns {HTMLDivElement} Details element
      */
     createMissionDetails(mission) {
         const details = document.createElement('div');
@@ -223,8 +284,8 @@ export class MissionRenderer {
 
     /**
      * Create individual objective element
-     * @param {Object} objective - Objective data
-     * @returns {HTMLElement} Objective element
+     * @param {MissionObjective} objective - Objective data
+     * @returns {HTMLDivElement} Objective element
      */
     createObjectiveElement(objective) {
         // Normalize objective data from backend format
@@ -299,9 +360,9 @@ export class MissionRenderer {
 
     /**
      * Create rewards section to append under objectives
-     * @param {Object} rewards - Rewards earned
+     * @param {MissionRewards} rewards - Rewards earned
      * @param {string} missionId - Mission ID
-     * @returns {HTMLElement} Rewards section element
+     * @returns {HTMLDivElement} Rewards section element
      */
     createRewardsSection(rewards, missionId) {
         const rewardsSection = document.createElement('div');
@@ -420,9 +481,9 @@ export class MissionRenderer {
 
     /**
      * Create individual reward item element
-     * @param {string} icon - Reward icon
-     * @param {string} text - Reward text
-     * @returns {HTMLElement} Reward item element
+     * @param {string} icon - Reward icon emoji
+     * @param {string} text - Reward text description
+     * @returns {HTMLDivElement} Reward item element
      */
     createRewardItem(icon, text) {
         const item = document.createElement('div');
@@ -449,8 +510,8 @@ export class MissionRenderer {
 
     /**
      * Get objective icon and color based on status
-     * @param {string} status - Objective status
-     * @returns {Object} Icon symbol and color
+     * @param {string} status - Objective status (PENDING, COMPLETED, ACTIVE, FAILED, OPTIONAL, LOCKED)
+     * @returns {ObjectiveIcon} Icon symbol and color
      */
     getObjectiveIcon(status) {
         return OBJECTIVE_ICONS[status] || OBJECTIVE_ICONS.PENDING;
@@ -458,8 +519,8 @@ export class MissionRenderer {
 
     /**
      * Convert backend objective data to frontend format
-     * @param {Object} objective - Raw objective data
-     * @returns {Object} Normalized objective
+     * @param {MissionObjective} objective - Raw objective data from API
+     * @returns {NormalizedObjective} Normalized objective for UI display
      */
     normalizeObjective(objective) {
         const achieved = (objective.is_achieved === true)
@@ -476,8 +537,8 @@ export class MissionRenderer {
 
     /**
      * Get objective status text
-     * @param {Object} objective - Normalized objective
-     * @returns {string} Status text
+     * @param {NormalizedObjective} objective - Normalized objective
+     * @returns {string} Status text (e.g., "[COMPLETE]", "[PENDING]")
      */
     getObjectiveStatus(objective) {
         if (objective.status === 'COMPLETED') return '[COMPLETE]';
@@ -489,7 +550,7 @@ export class MissionRenderer {
 
     /**
      * Get mission progress summary
-     * @param {Object} mission - Mission data
+     * @param {MissionData} mission - Mission data
      * @returns {string} Progress text (e.g., "2/3")
      */
     getMissionProgress(mission) {
@@ -501,7 +562,8 @@ export class MissionRenderer {
 
     /**
      * Show message when no active missions
-     * @param {HTMLElement} contentArea - Content container
+     * @param {HTMLElement} contentArea - Content container element
+     * @returns {void}
      */
     showNoMissionsMessage(contentArea) {
         contentArea.innerHTML = `
@@ -522,8 +584,9 @@ export class MissionRenderer {
 
     /**
      * Show error message
-     * @param {HTMLElement} contentArea - Content container
-     * @param {string} message - Error message
+     * @param {HTMLElement} contentArea - Content container element
+     * @param {string} message - Error message to display
+     * @returns {void}
      */
     showErrorMessage(contentArea, message) {
         contentArea.innerHTML = `

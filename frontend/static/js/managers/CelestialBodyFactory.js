@@ -10,7 +10,79 @@ import { debug } from '../debug.js';
 import { GameObjectFactory } from '../core/GameObjectFactory.js';
 
 /**
+ * @typedef {Object} PlanetData
+ * @property {string} [planet_name] - Name of the planet
+ * @property {string} [planet_type] - Type classification (e.g., 'Class-M')
+ * @property {number} [planet_size] - Size of the planet
+ * @property {number[]} [position] - [x, y, z] position array
+ * @property {string} [faction] - Faction controlling the planet
+ * @property {string} [diplomacy] - Diplomatic status
+ * @property {string} [government] - Government type
+ * @property {string} [economy] - Economy type
+ * @property {string} [technology] - Technology level
+ * @property {number} [population] - Population count
+ * @property {string} [description] - Planet description
+ * @property {MoonData[]} [moons] - Array of moon data
+ */
+
+/**
+ * @typedef {Object} MoonData
+ * @property {string} [moon_name] - Name of the moon
+ * @property {string} [moon_type] - Type classification
+ * @property {number} [moon_size] - Size of the moon
+ * @property {number[]} [position] - [x, y, z] position array
+ * @property {string} [faction] - Faction controlling the moon
+ * @property {string} [diplomacy] - Diplomatic status
+ * @property {string} [government] - Government type
+ * @property {string} [economy] - Economy type
+ * @property {string} [technology] - Technology level
+ */
+
+/**
+ * @typedef {Object} StationData
+ * @property {string} [name] - Station name
+ * @property {string} type - Station type (Shipyard, Defense Platform, etc.)
+ * @property {string} faction - Controlling faction
+ * @property {number[]|THREE.Vector3} position - Station position
+ * @property {number} size - Station size
+ * @property {number|string} color - Station color (hex number or string)
+ * @property {string} [description] - Station description
+ * @property {string} [intel_brief] - Intelligence briefing
+ * @property {string[]} [services] - Available services
+ */
+
+/**
+ * @typedef {Object} BeaconData
+ * @property {string} id - Beacon ID
+ * @property {string} name - Beacon name
+ * @property {number[]} position - [x, y, z] position
+ * @property {number|string} [color] - Beacon color
+ * @property {string} [description] - Beacon description
+ */
+
+/**
+ * @typedef {Object} PositionResult
+ * @property {number} x - X coordinate
+ * @property {number} y - Y coordinate
+ * @property {number} z - Z coordinate
+ * @property {number} orbitRadius - Orbital radius
+ * @property {number} angle - Orbital angle in radians
+ */
+
+/**
+ * @typedef {Object} MoonPositionResult
+ * @property {THREE.Vector3} position - Final world position
+ * @property {number} moonOrbitRadius - Moon orbital radius
+ * @property {number} angle - Orbital angle in radians
+ */
+
+/**
+ * @typedef {import('../SolarSystemManager.js').SolarSystemManager} SolarSystemManager
+ */
+
+/**
  * Color mappings for star types (spectral classification)
+ * @type {Object<string, number>}
  */
 const STAR_COLORS = {
     'Class-O': 0x9BB0FF,  // Blue
@@ -24,6 +96,7 @@ const STAR_COLORS = {
 
 /**
  * Color mappings for planet types
+ * @type {Object<string, number>}
  */
 const PLANET_COLORS = {
     'Class-M': 0x4CAF50,  // Earth-like, green/blue
@@ -40,6 +113,7 @@ const PLANET_COLORS = {
 
 /**
  * Color mappings for moon types
+ * @type {Object<string, number>}
  */
 const MOON_COLORS = {
     'rocky': 0x888888,
@@ -51,6 +125,11 @@ const MOON_COLORS = {
  * Factory class for creating celestial bodies (planets, moons, stations, beacons)
  */
 export class CelestialBodyFactory {
+    /** @type {THREE.Scene} The Three.js scene */
+    scene;
+    /** @type {SolarSystemManager} Reference to parent manager */
+    ssm;
+
     /**
      * Create a new CelestialBodyFactory
      * @param {THREE.Scene} scene - The Three.js scene
@@ -90,7 +169,7 @@ export class CelestialBodyFactory {
 
     /**
      * Create a planet mesh and register it with spatial tracking
-     * @param {Object} planetData - Planet data from universe generation
+     * @param {PlanetData} planetData - Planet data from universe generation
      * @param {number} index - Planet index in the system
      * @param {number} maxPlanets - Total number of planets in the system
      * @returns {Promise<THREE.Mesh|null>} The created planet mesh or null on error
@@ -223,6 +302,9 @@ export class CelestialBodyFactory {
     /**
      * Calculate planet position from data or fallback algorithm
      * @private
+     * @param {PlanetData} planetData - Planet data
+     * @param {number} index - Planet index
+     * @returns {PositionResult} Position calculation result
      */
     _calculatePlanetPosition(planetData, index) {
         let x, y, z, orbitRadius, angle;
@@ -262,7 +344,7 @@ export class CelestialBodyFactory {
 
     /**
      * Create a moon mesh and register it with spatial tracking
-     * @param {Object} moonData - Moon data from universe generation
+     * @param {MoonData} moonData - Moon data from universe generation
      * @param {number} planetIndex - Index of parent planet
      * @param {number} moonIndex - Index of this moon
      * @returns {Promise<THREE.Mesh|null>} The created moon mesh or null on error
@@ -390,6 +472,11 @@ export class CelestialBodyFactory {
     /**
      * Calculate moon position from data or fallback algorithm
      * @private
+     * @param {MoonData} moonData - Moon data
+     * @param {THREE.Mesh} planet - Parent planet mesh
+     * @param {number} planetIndex - Planet index
+     * @param {number} moonIndex - Moon index
+     * @returns {MoonPositionResult|null} Position calculation result or null on error
      */
     _calculateMoonPosition(moonData, planet, planetIndex, moonIndex) {
         let moonOrbitRadius, angle;
@@ -438,7 +525,7 @@ export class CelestialBodyFactory {
 
     /**
      * Create a space station mesh
-     * @param {Object} stationData - Station configuration data
+     * @param {StationData} stationData - Station configuration data
      * @returns {THREE.Mesh|null} The created station mesh or null on error
      */
     createSpaceStation(stationData) {
@@ -626,6 +713,9 @@ export class CelestialBodyFactory {
     /**
      * Create a beacon mesh
      * @private
+     * @param {BeaconData} beaconInfo - Beacon configuration data
+     * @param {number} index - Beacon index
+     * @returns {THREE.Mesh} The created beacon mesh
      */
     _createBeaconMesh(beaconInfo, index) {
         const position = beaconInfo.position;
@@ -667,6 +757,9 @@ export class CelestialBodyFactory {
     /**
      * Register a beacon with spatial tracking and celestial bodies
      * @private
+     * @param {THREE.Mesh} beacon - The beacon mesh
+     * @param {BeaconData} beaconInfo - Beacon configuration data
+     * @returns {void}
      */
     _registerBeacon(beacon, beaconInfo) {
         const scaledX = beacon.position.x;

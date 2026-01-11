@@ -8,9 +8,88 @@
 import { debug } from '../debug.js';
 
 /**
+ * @typedef {Object} MissionObjective
+ * @property {string} id - Objective ID
+ * @property {string} description - Objective description
+ * @property {string} status - Objective status (PENDING, COMPLETE, FAILED)
+ * @property {Object} [progress] - Progress tracking
+ * @property {boolean} isOptional - Whether objective is optional
+ * @property {string} [state] - Raw state from API
+ * @property {boolean} [optional] - Raw optional flag from API
+ * @property {boolean} [is_achieved] - Whether objective is achieved
+ */
+
+/**
+ * @typedef {Object} MissionData
+ * @property {string} id - Mission ID
+ * @property {string} title - Mission title
+ * @property {string} [client] - Client name
+ * @property {string} [issuer] - Issuer name (alternative to client)
+ * @property {string} [location] - Mission location
+ * @property {string} [time_limit] - ISO date string for time limit
+ * @property {string} [status] - Mission status
+ * @property {MissionObjective[]} [objectives] - Mission objectives
+ * @property {string} [accepted_at] - ISO date string when mission was accepted
+ * @property {Object} [rewards] - Mission rewards
+ * @property {number} [rewards.credits] - Credit reward
+ * @property {Object[]} [rewards.cards] - Card rewards
+ * @property {Object} [rewards.faction_standing] - Faction standing changes
+ */
+
+/**
+ * @typedef {Object} ProcessedMission
+ * @property {string} id - Mission ID
+ * @property {string} title - Mission title
+ * @property {string} client - Client name
+ * @property {string} [location] - Mission location
+ * @property {string|null} timeRemaining - Time remaining string or null
+ * @property {boolean} expanded - Whether mission panel is expanded
+ * @property {string} [status] - Mission status
+ * @property {boolean} [hasRewardsSection] - Whether rewards section is visible
+ * @property {ProcessedObjective[]} objectives - Processed objectives
+ * @property {number} [completedAt] - Timestamp when completed
+ * @property {Object} [rewards] - Mission rewards
+ * @property {Object} [completionData] - Completion data
+ */
+
+/**
+ * @typedef {Object} ProcessedObjective
+ * @property {string} id - Objective ID
+ * @property {string} description - Objective description
+ * @property {string} status - Objective status (PENDING, COMPLETE, FAILED)
+ * @property {Object|null} progress - Progress tracking or null
+ * @property {boolean} isOptional - Whether objective is optional
+ */
+
+/**
+ * @typedef {Object} MissionRewards
+ * @property {number} [credits] - Credit reward
+ * @property {Object[]} [cards] - Card rewards
+ * @property {Object} [factionStanding] - Faction standing changes
+ */
+
+/**
+ * @typedef {Object} CompletionData
+ * @property {string} completionTime - Formatted completion time
+ * @property {string|null} timeLimit - Time limit ISO string or null
+ * @property {Object} bonusObjectives - Bonus objective counts
+ * @property {number} bonusObjectives.completed - Completed bonus objectives
+ * @property {number} bonusObjectives.total - Total bonus objectives
+ * @property {MissionRewards} rewards - Mission rewards
+ * @property {Object} statistics - Completion statistics
+ */
+
+/**
+ * @typedef {import('../ui/MissionStatusHUD.js').MissionStatusHUD} MissionStatusHUD
+ */
+
+/**
  * Manager class for mission state and data operations
  */
 export class MissionStateManager {
+    /** @type {MissionStatusHUD} Reference to parent HUD */
+    hud;
+
     /**
      * Create a new MissionStateManager
      * @param {MissionStatusHUD} hud - Reference to parent HUD
@@ -66,7 +145,8 @@ export class MissionStateManager {
     /**
      * Update missions data directly with provided mission objects
      * Avoids race conditions with API calls when we already have fresh data
-     * @param {Array} updatedMissions - Array of mission objects
+     * @param {MissionData[]} updatedMissions - Array of mission objects
+     * @returns {void}
      */
     updateMissionsData(updatedMissions) {
         try {
@@ -84,6 +164,7 @@ export class MissionStateManager {
 
     /**
      * Update mission status (called periodically)
+     * @returns {void}
      */
     updateMissionStatus() {
         if (!this.hud.isVisible) return;
@@ -96,7 +177,8 @@ export class MissionStateManager {
 
     /**
      * Update individual mission panel
-     * @param {Object} mission - Mission data
+     * @param {ProcessedMission} mission - Mission data
+     * @returns {void}
      */
     updateMissionPanel(mission) {
         const panel = this.hud.missionPanels.get(mission.id);
@@ -128,8 +210,8 @@ export class MissionStateManager {
 
     /**
      * Process mission data from API for UI display
-     * @param {Object} mission - Raw mission data
-     * @returns {Object} Processed mission for UI
+     * @param {MissionData} mission - Raw mission data from API
+     * @returns {ProcessedMission} Processed mission for UI
      */
     processMissionForUI(mission) {
         // Preserve expanded state if it exists, otherwise default to false
@@ -172,8 +254,8 @@ export class MissionStateManager {
 
     /**
      * Calculate time remaining for mission
-     * @param {Object} mission - Mission data
-     * @returns {string|null} Time remaining string or null
+     * @param {MissionData} mission - Mission data
+     * @returns {string|null} Time remaining string (HH:MM format) or null
      */
     calculateTimeRemaining(mission) {
         if (!mission.time_limit) return null;
@@ -193,8 +275,9 @@ export class MissionStateManager {
     /**
      * Show mission completion rewards in the mission panel
      * @param {string} missionId - Mission ID
-     * @param {Object} missionData - Mission data
-     * @param {Object} rewards - Rewards earned
+     * @param {MissionData} missionData - Mission data
+     * @param {MissionRewards} rewards - Rewards earned
+     * @returns {Promise<void>}
      */
     async showMissionCompletion(missionId, missionData, rewards) {
         try {
@@ -284,6 +367,7 @@ export class MissionStateManager {
     /**
      * Remove mission from HUD (called by OK button)
      * @param {string} missionId - Mission ID to remove
+     * @returns {void}
      */
     removeMission(missionId) {
         debug('MISSIONS', `Removing completed mission from HUD: ${missionId}`);
@@ -328,6 +412,7 @@ export class MissionStateManager {
     /**
      * Delete mission from all caches (called after user dismisses completion)
      * @param {string} missionId - Mission ID to delete
+     * @returns {void}
      */
     deleteMissionFromCaches(missionId) {
         debug('UI', `Deleting mission from caches: ${missionId}`);
@@ -349,8 +434,8 @@ export class MissionStateManager {
 
     /**
      * Create completion data for mission completion UI
-     * @param {Object} mission - Mission data
-     * @returns {Object} Completion data
+     * @param {MissionData} mission - Mission data
+     * @returns {CompletionData} Completion data for UI display
      */
     createCompletionData(mission) {
         const completedObjectives = mission.objectives?.filter(obj => obj.is_achieved === true).length || 0;
@@ -380,8 +465,8 @@ export class MissionStateManager {
 
     /**
      * Calculate mission completion time
-     * @param {Object} mission - Mission data
-     * @returns {string} Completion time string
+     * @param {MissionData} mission - Mission data with accepted_at timestamp
+     * @returns {string} Formatted completion time string (H:MM:SS or M:SS)
      */
     calculateCompletionTime(mission) {
         if (!mission.accepted_at) return 'Unknown';
