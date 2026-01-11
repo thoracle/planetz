@@ -1,57 +1,60 @@
 import * as THREE from 'three';
-import PlanetGenerator from './planetGenerator.js';
-import { Atmosphere } from './Atmosphere.js';
-import { Cloud } from './Cloud.js';
 import { debug } from './debug.js';
 import { GameObjectFactory } from './core/GameObjectFactory.js';
-import { GameObjectRegistry } from './core/GameObjectRegistry.js';
+import { CelestialBodyFactory } from './managers/CelestialBodyFactory.js';
+import { OrbitCalculator } from './managers/OrbitCalculator.js';
 
 /**
  * SolarSystemManager - Manages celestial body creation and physics
- * 
+ *
+ * Refactored to delegate to:
+ * - CelestialBodyFactory: Planet, moon, station, beacon creation
+ * - OrbitCalculator: Orbital mechanics and spatial grid
+ *
  * COLLISION MODES:
- * • Realistic (default): Collision spheres match visual mesh sizes for accurate physics
- * • Weapon-friendly: Small collision spheres to prevent blocking weapon fire
- * 
+ * - Realistic (default): Collision spheres match visual mesh sizes
+ * - Weapon-friendly: Small collision spheres to prevent blocking weapon fire
+ *
  * Toggle with: window.useRealisticCollision = true/false
- * Note: Changes require regenerating the star system to take effect
  */
 export class SolarSystemManager {
     constructor(scene, camera) {
         this.scene = scene;
         this.camera = camera;
-        
-        // Set up camera position - Start near Hermes Refinery station for testing
-        // Hermes Refinery is at [-75, 0, 75], so start 5km away at [-70, 5, 80]
+
+        // Set up camera position near Hermes Refinery station
         this.camera.position.set(-70, 5, 80);
         this.camera.lookAt(-75, 0, 75);
-        
+
         this.starSystem = null;
         this.celestialBodies = new Map();
         this.planetGenerators = new Map();
         this.orbitalSpeeds = new Map();
         this.rotationSpeeds = new Map();
         this.currentEditBody = null;
-        this.currentSector = 'A0'; // Track current sector
-        
-        // Constants for orbital calculations
-        this.G = 6.67430e-11;
-        this.SOLAR_MASS = 1.989e30;
-        this.AU = 149.6e9;
-        this.SCALE_FACTOR = 1e-9;
-        
-        // Visual scale factor for scene representation - increased for ultra-compact system
-        this.VISUAL_SCALE = 100.0;
-        
-        // Maximum distance from sun in kilometers
-        this.MAX_DISTANCE_KM = 1.6e6; // 1.6 million kilometers - reduced from 3.2 million
-        
-        // Orbital elements storage
-        this.orbitalElements = new Map();
-        
-        // Spatial partitioning
-        this.gridSize = 20;
-        this.spatialGrid = new Map();
+        this.currentSector = 'A0';
+
+        // Initialize extracted modules
+        this.orbitCalculator = new OrbitCalculator(20);
+        this.celestialBodyFactory = new CelestialBodyFactory(scene, this);
+
+        // Expose constants from OrbitCalculator for backward compatibility
+        this.G = this.orbitCalculator.G;
+        this.SOLAR_MASS = this.orbitCalculator.SOLAR_MASS;
+        this.AU = this.orbitCalculator.AU;
+        this.SCALE_FACTOR = this.orbitCalculator.SCALE_FACTOR;
+        this.VISUAL_SCALE = this.orbitCalculator.VISUAL_SCALE;
+        this.MAX_DISTANCE_KM = this.orbitCalculator.MAX_DISTANCE_KM;
+        this.gridSize = this.orbitCalculator.gridSize;
+    }
+
+    // Delegate orbital element access to OrbitCalculator
+    get orbitalElements() {
+        return this.orbitCalculator.orbitalElements;
+    }
+
+    get spatialGrid() {
+        return this.orbitCalculator.spatialGrid;
     }
 
     getDebugInfo() {
@@ -71,17 +74,13 @@ export class SolarSystemManager {
             let neutralShips = 0;
             let unknownShips = 0;
 
-            // Count ships from targetObjects (this already includes dummy ships via addNonPhysicsTargets)
             if (starfieldManager.targetComputerManager && starfieldManager.targetComputerManager.targetObjects) {
                 const targetObjects = starfieldManager.targetComputerManager.targetObjects;
-                
+
                 targetObjects.forEach(targetData => {
-                    // Check if this is a ship (has isShip flag or is enemy_ship type)
                     if (targetData.isShip || targetData.type === 'enemy_ship' || targetData.type === 'ship') {
                         totalShips++;
-                        
-                        // Determine faction based on type and diplomacy
-                        // Check if this is a target dummy first (should be neutral training targets)
+
                         if (targetData.ship && targetData.ship.isTargetDummy) {
                             neutralShips++;
                         } else if (targetData.type === 'enemy_ship' || (targetData.ship && targetData.ship.diplomacy === 'enemy')) {
@@ -97,7 +96,6 @@ export class SolarSystemManager {
                 });
             }
 
-            // Add ship counts to debug info
             info['Total Ships'] = totalShips;
             info['Enemy'] = enemyShips;
             info['Friendly'] = friendlyShips;
@@ -111,23 +109,18 @@ export class SolarSystemManager {
     update(deltaTime) {
         // Update spatial partitioning
         this.updateSpatialGrid();
-
-        // Planets and moons are now stationary
-        // Previous orbital mechanics code removed to disable movement
     }
 
     async generateStarSystem(sector) {
-debug('UTILITY', 'Starting star system generation for sector:', sector);
-        
-        // Update current sector immediately
+        debug('UTILITY', 'Starting star system generation for sector:', sector);
+
         this.currentSector = sector;
-        
+
         try {
-            // Clear existing system first
-debug('UTILITY', 'Clearing existing system');
+            debug('UTILITY', 'Clearing existing system');
             this.clearSystem();
-            
-            // First try to get the system from universe data
+
+            // Get system from universe data or API
             if (this.universe) {
                 const systemData = this.universe.find(system => system.sector === sector);
                 if (systemData) {
@@ -139,7 +132,6 @@ debug('UTILITY', 'Clearing existing system');
                     this.starSystem = systemData;
                 } else {
                     debug('STAR_CHARTS', 'System not found in universe data, falling back to API');
-                    // Fall back to API if not found in universe
                     const response = await fetch(`/api/generate_star_system?seed=${sector}`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -148,32 +140,29 @@ debug('UTILITY', 'Clearing existing system');
                 }
             } else {
                 debug('P1', 'No universe data available, using API');
-                // Use API if no universe data
                 const response = await fetch(`/api/generate_star_system?seed=${sector}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 this.starSystem = await response.json();
             }
-            
+
             debug('STAR_CHARTS', 'Star system data:', {
                 starName: this.starSystem?.star_name,
                 starType: this.starSystem?.star_type,
                 starSize: this.starSystem?.star_size,
                 planetCount: this.starSystem?.planets?.length
             });
-            
-            // Generate new system
-debug('UTILITY', 'Generating new system for sector:', sector);
+
+            debug('UTILITY', 'Generating new system for sector:', sector);
             const success = await this.createStarSystem();
-            
+
             if (!success) {
                 debug('P1', 'Failed to generate new star system');
                 return false;
             }
-            
-debug('UTILITY', 'Successfully generated new star system for sector:', sector);
-            // Notify listeners that the star system is ready
+
+            debug('UTILITY', 'Successfully generated new star system for sector:', sector);
             try {
                 const evt = new CustomEvent('starSystemReady', { detail: { sector, starName: this.starSystem?.star_name } });
                 window.dispatchEvent(evt);
@@ -188,7 +177,7 @@ debug('UTILITY', 'Successfully generated new star system for sector:', sector);
     }
 
     async createStarSystem() {
-debug('UTILITY', '=== Starting Star System Creation ===');
+        debug('UTILITY', '=== Starting Star System Creation ===');
         if (!this.starSystem) {
             debug('P1', 'No star system data available for creation');
             throw new Error('No star system data available');
@@ -200,18 +189,12 @@ debug('UTILITY', '=== Starting Star System Creation ===');
             size: this.starSystem.star_size,
             planetCount: this.starSystem.planets?.length
         });
-        
-        // Store the star system data before clearing
+
         const starSystemData = this.starSystem;
-debug('UTILITY', 'Stored star system data for restoration');
-        
-        // Clear existing meshes and collections
-debug('UTILITY', 'Clearing existing system...');
+        debug('UTILITY', 'Clearing existing system...');
         this.clearSystem();
-        
-        // Restore the star system data
         this.starSystem = starSystemData;
-debug('UTILITY', 'Restored star system data');
+        debug('UTILITY', 'Restored star system data');
 
         try {
             // Create star
@@ -221,9 +204,9 @@ debug('UTILITY', 'Restored star system data');
                 type: this.starSystem.star_type,
                 name: this.starSystem.star_name
             });
-            
+
             const starGeometry = new THREE.SphereGeometry(starSize, 32, 32);
-            const starColor = this.getStarColor(this.starSystem.star_type);
+            const starColor = this.celestialBodyFactory.getStarColor(this.starSystem.star_type);
             const starMaterial = new THREE.MeshPhongMaterial({
                 color: starColor,
                 emissive: starColor,
@@ -233,27 +216,24 @@ debug('UTILITY', 'Restored star system data');
             const star = new THREE.Mesh(starGeometry, starMaterial);
             this.scene.add(star);
             this.celestialBodies.set('star', star);
-debug('UTILITY', 'Star created and added to scene');
+            debug('UTILITY', 'Star created and added to scene');
 
-            // PHASE 2: Create GameObject via factory for single source of truth
+            // Create GameObject via factory
             const starName = this.starSystem.star_name || 'Unknown Star';
             let gameObject = null;
             try {
                 gameObject = GameObjectFactory.createStar({
                     name: starName,
-                    position: { x: 0, y: 0, z: 0 }, // Stars are always at origin
+                    position: { x: 0, y: 0, z: 0 },
                     classification: this.starSystem.star_type || 'Unknown',
                     threeObject: star
                 });
-                debug('UTILITY', `🌟 Created GameObject for star: ${gameObject.id}`);
+                debug('UTILITY', `Created GameObject for star: ${gameObject.id}`);
             } catch (factoryError) {
                 debug('P1', `Failed to create GameObject for star ${starName}: ${factoryError.message}`);
             }
 
-            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
             star.name = starName;
-
-            // Add metadata to star object (backward compatibility)
             star.userData = {
                 name: starName,
                 type: 'star',
@@ -263,58 +243,53 @@ debug('UTILITY', 'Star created and added to scene');
                 gameObjectId: gameObject?.id
             };
 
-            // Add physics body for the star
+            // Add physics body for star
             if (window.spatialManager && window.spatialManagerReady) {
-                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
-                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
+                const useRealistic = window.useRealisticCollision !== false;
                 const collisionRadius = useRealistic ? starSize : Math.min(starSize, 0.5);
 
                 window.spatialManager.addObject(star, {
                     type: 'star',
                     name: starName,
-                    faction: 'Neutral', // Stars are neutral
+                    faction: 'Neutral',
                     diplomacy: 'neutral',
-                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
+                    radius: collisionRadius,
                     entityType: 'star',
                     entityId: gameObject?.id || starName,
-                    health: 50000, // Stars are essentially indestructible
-                    gameObjectId: gameObject?.id // Link to GameObject
+                    health: 50000,
+                    gameObjectId: gameObject?.id
                 });
-
-debug('UTILITY', `🌟 Star added to spatial tracking: ${starName}, radius=${collisionRadius}m`);
+                debug('UTILITY', `Star added to spatial tracking: ${starName}, radius=${collisionRadius}m`);
             } else {
-                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for star');
+                debug('P1', 'SpatialManager not ready - skipping spatial tracking for star');
             }
 
-            // Add star light with increased intensity and range
+            // Add lighting
             const starLight = new THREE.PointLight(starColor, 2, 1000);
             starLight.position.copy(star.position);
             this.scene.add(starLight);
-debug('UTILITY', 'Star light added');
+            debug('UTILITY', 'Star light added');
 
-            // Add ambient light for base illumination
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
             this.scene.add(ambientLight);
-debug('UTILITY', 'Ambient light added');
+            debug('UTILITY', 'Ambient light added');
 
-            // Add hemisphere light to simulate scattered light
             const hemisphereLight = new THREE.HemisphereLight(starColor, 0x404040, 0.8);
             hemisphereLight.position.copy(star.position);
             this.scene.add(hemisphereLight);
-debug('UTILITY', 'Hemisphere light added');
+            debug('UTILITY', 'Hemisphere light added');
 
-            // Create planets
+            // Create planets via factory
             if (!this.starSystem.planets || !Array.isArray(this.starSystem.planets)) {
                 debug('P1', 'No planets data available or invalid planets array');
-                return true; // Still return true as we created the star
+                return true;
             }
 
             debug('STAR_CHARTS', 'Starting planet creation:', {
                 totalPlanets: this.starSystem.planets.length,
                 maxPlanets: Math.min(10, this.starSystem.planets.length)
             });
-            
-            // Limit the number of planets to 10
+
             const maxPlanets = Math.min(10, this.starSystem.planets.length);
             for (let i = 0; i < maxPlanets; i++) {
                 const planetData = this.starSystem.planets[i];
@@ -328,385 +303,98 @@ debug('UTILITY', 'Hemisphere light added');
                     size: planetData.planet_size,
                     moonCount: planetData.moons?.length
                 });
-                await this.createPlanet(planetData, i, maxPlanets);
+                await this.celestialBodyFactory.createPlanet(planetData, i, maxPlanets);
             }
-            
+
             debug('STAR_CHARTS', 'Planet creation completed:', {
                 totalBodies: this.celestialBodies.size,
                 planetCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('planet_')).length,
                 moonCount: Array.from(this.celestialBodies.keys()).filter(k => k.startsWith('moon_')).length
             });
-            
-            // Add Sol-specific infrastructure if this is the Sol system
+
+            // Add Sol-specific infrastructure
             if (this.currentSector === 'A0' || this.starSystem?.star_name?.toLowerCase() === 'sol') {
-debug('UTILITY', '🌟 Creating Sol System infrastructure...');
+                debug('UTILITY', 'Creating Sol System infrastructure...');
                 await this.createSolSystemInfrastructure();
-debug('UTILITY', '🌟 Sol System infrastructure complete');
+                debug('UTILITY', 'Sol System infrastructure complete');
             }
-            
-debug('UTILITY', '=== Star System Creation Complete ===');
-            return true; // Return true on successful completion
+
+            debug('UTILITY', '=== Star System Creation Complete ===');
+            return true;
         } catch (error) {
             debug('P1', `=== Star System Creation Failed === ${error.message}`);
-            this.clearSystem(); // Clean up on error
-            throw error; // Re-throw the error to be caught by generateStarSystem
+            this.clearSystem();
+            throw error;
         }
     }
 
+    // Delegate planet creation to factory
     async createPlanet(planetData, index, maxPlanets) {
-        // PHASE 0 ASSERTION: Validate required planet data
-        if (!planetData || typeof planetData !== 'object') {
-            debug('P1', `ASSERTION FAILED: createPlanet called with invalid planetData at index ${index}. Fix data source.`);
-            return;
-        }
-
-        // PHASE 0 ASSERTION: Log planets missing essential identifiers
-        if (!planetData.planet_name) {
-            debug('P1', `ASSERTION WARNING: Planet at index ${index} missing planet_name. Using fallback name.`);
-        }
-
-        try {
-            // Create planet mesh
-            const planetSize = Math.max(0.1, planetData.planet_size || 1);
-            const planetGeometry = new THREE.SphereGeometry(planetSize, 32, 32);
-            const planetMaterial = new THREE.MeshPhongMaterial({
-                color: this.getPlanetColor(planetData.planet_type),
-                shininess: 0.5,
-                flatShading: true
-            });
-            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
-            
-            // CRITICAL FIX: Use backend positioning data instead of hardcoded distances
-            // This ensures planets are placed at the correct distances for discovery (30-105km for B1)
-            let x, y, z, orbitRadius, angle;
-            
-            if (planetData.position && Array.isArray(planetData.position) && planetData.position.length >= 3) {
-                // Use positioning data from backend positioning enhancement
-                [x, y, z] = planetData.position;
-                // Calculate orbitRadius from position for orbital elements
-                orbitRadius = Math.sqrt(x * x + y * y + z * z);
-                // Calculate angle from position for orbital elements
-                angle = Math.atan2(z, x);
-                debug('STAR_CHARTS', `Using backend position for planet ${index}:`, { x, y, z, orbitRadius, angle, name: planetData.planet_name });
-            } else {
-                // Fallback to legacy positioning for systems without positioning data
-                const isStarterSystem = this.starSystem?.star_name === 'Sol';
-                
-                let minRadius, maxRadius;
-                if (isStarterSystem) {
-                    // Much closer orbits for starter system - easier to navigate
-                    minRadius = 15;  // Very close to star
-                    maxRadius = 35;  // Still close but room for multiple bodies
-                } else {
-                    // Use smaller distances for better discovery gameplay
-                    minRadius = 30;   // Reduced from 1000 for better discovery
-                    maxRadius = 150;  // Reduced from 5000 for better discovery
-                }
-                
-                const totalPlanets = Math.max(1, this.starSystem.planets.length);
-                
-                // Use linear spacing for better gameplay (matches backend enhancement)
-                orbitRadius = minRadius + (index * (maxRadius - minRadius) / Math.max(1, totalPlanets - 1));
-                
-                // Ensure angle is a valid number
-                angle = (Math.random() * Math.PI * 2) || 0;
-                
-                // Set position
-                x = orbitRadius * Math.cos(angle);
-                y = 0;
-                z = orbitRadius * Math.sin(angle);
-                
-                debug('STAR_CHARTS', `Using fallback position for planet ${index}:`, { x, y, z, orbitRadius, angle, name: planetData.planet_name });
-            }
-            
-            // Validate position before setting
-            if (isNaN(x) || isNaN(y) || isNaN(z)) {
-                debug('P1', `Invalid position calculated for planet ${index}: x=${x}, y=${y}, z=${z}, orbitRadius=${orbitRadius}`);
-                planet.position.set(0, 0, 0);
-            } else {
-                planet.position.set(x, y, z);
-            }
-            
-            this.scene.add(planet);
-            this.celestialBodies.set(`planet_${index}`, planet);
-
-            // PHASE 2: Create GameObject via factory for single source of truth
-            const planetName = planetData.planet_name || `Planet ${index}`;
-            let gameObject = null;
-            try {
-                gameObject = GameObjectFactory.createPlanet({
-                    name: planetName,
-                    position: { x, y, z },
-                    classification: planetData.planet_type || 'Unknown',
-                    faction: planetData.faction || 'Neutral',
-                    discovered: false,
-                    threeObject: planet,
-                    // Additional metadata
-                    government: planetData.government,
-                    economy: planetData.economy,
-                    technology: planetData.technology,
-                    population: planetData.population,
-                    description: planetData.description
-                });
-
-                // Link Three.js mesh to GameObject
-                planet.userData.gameObject = gameObject;
-                planet.userData.gameObjectId = gameObject.id;
-                debug('UTILITY', `🪐 Created GameObject for planet: ${gameObject.id}`);
-            } catch (factoryError) {
-                debug('P1', `Failed to create GameObject for planet ${planetName}: ${factoryError.message}`);
-            }
-
-            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
-            planet.name = planetName;
-            planet.diplomacy = planetData.diplomacy || 'neutral';
-            planet.faction = planetData.faction || planetData.diplomacy || 'Neutral';
-
-            // Add physics body for the planet
-            if (window.spatialManager && window.spatialManagerReady) {
-                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
-                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
-                const collisionRadius = useRealistic ? planetSize : Math.min(planetSize, 0.5);
-
-                window.spatialManager.addObject(planet, {
-                    type: 'planet',
-                    name: planetName,
-                    radius: collisionRadius, // Match visual mesh size for realistic collision detection
-                    entityType: 'planet',
-                    entityId: gameObject?.id || planetName,
-                    health: 20000, // Planets are very durable
-                    diplomacy: planetData.diplomacy || 'neutral',
-                    faction: planetData.faction || planetData.diplomacy || 'Neutral',
-                    government: planetData.government,
-                    economy: planetData.economy,
-                    technology: planetData.technology,
-                    gameObjectId: gameObject?.id // Link to GameObject
-                });
-
-debug('PHYSICS', `🌍 Planet collision: Visual=${planetSize}m, Physics=${collisionRadius}m (realistic=${useRealistic})`);
-
-debug('UTILITY', `🪐 Planet added to spatial tracking: ${planetName}, radius=${collisionRadius}m`);
-            } else {
-                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for planets');
-            }
-
-            // Add orbital elements with mass and proper initialization
-            this.setOrbitalElements(`planet_${index}`, {
-                semiMajorAxis: orbitRadius,
-                eccentricity: 0.1,
-                inclination: Math.random() * 0.1,
-                longitudeOfAscendingNode: Math.random() * Math.PI * 2,
-                argumentOfPeriapsis: Math.random() * Math.PI * 2,
-                meanAnomaly: angle,
-                mass: planetSize * 1e24 // Mass proportional to size
-            });
-
-            // Create moons (limit to 5 moons per planet)
-            if (planetData.moons && Array.isArray(planetData.moons)) {
-                const maxMoons = Math.min(5, planetData.moons.length);
-                for (let moonIndex = 0; moonIndex < maxMoons; moonIndex++) {
-                    const moonData = planetData.moons[moonIndex];
-                    if (!moonData) {
-                        debug('P1', `Invalid moon data for planet ${index}, moon ${moonIndex}`);
-                        continue;
-                    }
-                    await this.createMoon(moonData, index, moonIndex);
-                }
-            }
-        } catch (error) {
-            debug('P1', `Error creating planet ${index}: ${error}`);
-        }
+        return this.celestialBodyFactory.createPlanet(planetData, index, maxPlanets);
     }
 
+    // Delegate moon creation to factory
     async createMoon(moonData, planetIndex, moonIndex) {
-        // PHASE 0 ASSERTION: Validate required moon data
-        if (!moonData || typeof moonData !== 'object') {
-            debug('P1', `ASSERTION FAILED: createMoon called with invalid moonData for planet ${planetIndex}, moon ${moonIndex}. Fix data source.`);
-            return;
-        }
-
-        // PHASE 0 ASSERTION: Log moons missing essential identifiers
-        if (!moonData.moon_name) {
-            debug('P1', `ASSERTION WARNING: Moon at planet ${planetIndex}, index ${moonIndex} missing moon_name. Using fallback name.`);
-        }
-
-        try {
-            const moonSize = Math.max(0.1, moonData.moon_size || 0.3);
-            const moonGeometry = new THREE.SphereGeometry(moonSize, 32, 32);
-            const moonMaterial = new THREE.MeshPhongMaterial({
-                color: this.getPlanetColor(moonData.moon_type),
-                shininess: 0.3,
-                flatShading: true
-            });
-            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            
-            // Get parent planet position
-            const planet = this.celestialBodies.get(`planet_${planetIndex}`);
-            if (!planet) {
-                debug('P1', `Parent planet not found for moon ${moonIndex}`);
-                return;
-            }
-            
-            // CRITICAL FIX: Use backend positioning data for moons as well
-            let moonOrbitRadius, angle;
-            
-            if (moonData.position && Array.isArray(moonData.position) && moonData.position.length >= 3) {
-                // Use absolute positioning data from backend positioning enhancement
-                const [x, y, z] = moonData.position;
-                moon.position.set(x, y, z);
-                
-                // Calculate moonOrbitRadius and angle from position for orbital elements
-                const relativeX = x - planet.position.x;
-                const relativeZ = z - planet.position.z;
-                moonOrbitRadius = Math.sqrt(relativeX * relativeX + relativeZ * relativeZ);
-                angle = Math.atan2(relativeZ, relativeX);
-                
-                debug('STAR_CHARTS', `Using backend position for moon ${moonIndex}:`, { x, y, z, moonOrbitRadius, angle, name: moonData.moon_name });
-            } else {
-                // Fallback to legacy relative positioning
-                const isStarterSystem = this.starSystem?.star_name === 'Sol';
-                
-                // Calculate initial position relative to planet - increased distances to avoid launch interference
-                const baseMoonOrbitRadius = isStarterSystem ? 8.0 : 12.0; // Much further from planets
-                moonOrbitRadius = Math.max(6, (moonIndex + 1) * baseMoonOrbitRadius);
-                angle = (Math.random() * Math.PI * 2) || 0;
-                const verticalVariation = Math.sin(angle * 0.5) * moonOrbitRadius * 0.2;
-                
-                // Calculate moon position components
-                const x = moonOrbitRadius * Math.cos(angle);
-                const y = verticalVariation;
-                const z = moonOrbitRadius * Math.sin(angle);
-                
-                // Create position vector and validate
-                const moonPosition = new THREE.Vector3(x, y, z);
-                if (moonPosition.x === 0 && moonPosition.y === 0 && moonPosition.z === 0) {
-                    debug('P1', `Zero position calculated for moon ${moonIndex} of planet ${planetIndex}`);
-                    return;
-                }
-                
-                // Add moon position to planet position
-                moon.position.copy(planet.position).add(moonPosition);
-                debug('STAR_CHARTS', `Using fallback position for moon ${moonIndex}:`, { 
-                    x: moon.position.x, y: moon.position.y, z: moon.position.z, moonOrbitRadius, angle, name: moonData.moon_name 
-                });
-            }
-            
-            // Validate final position
-            if (isNaN(moon.position.x) || isNaN(moon.position.y) || isNaN(moon.position.z)) {
-                debug('P1', `Invalid position calculated for moon ${moonIndex} of planet ${planetIndex}: [${moon.position.toArray().join(', ')}]`);
-                return;
-            }
-            
-            this.scene.add(moon);
-            this.celestialBodies.set(`moon_${planetIndex}_${moonIndex}`, moon);
-
-            // PHASE 2: Create GameObject via factory for single source of truth
-            const moonName = moonData.moon_name || `Moon ${moonIndex} of Planet ${planetIndex}`;
-            const parentPlanetObj = planet.userData?.gameObject;
-            const parentPlanetName = parentPlanetObj?.name || planet.name || `Planet ${planetIndex}`;
-            let gameObject = null;
-            try {
-                gameObject = GameObjectFactory.createMoon({
-                    name: moonName,
-                    position: { x: moon.position.x, y: moon.position.y, z: moon.position.z },
-                    classification: moonData.moon_type || 'Unknown',
-                    faction: moonData.faction || 'Neutral',
-                    discovered: false,
-                    threeObject: moon,
-                    parentPlanet: parentPlanetName,
-                    // Additional metadata
-                    government: moonData.government,
-                    economy: moonData.economy
-                });
-
-                // Link Three.js mesh to GameObject
-                moon.userData.gameObject = gameObject;
-                moon.userData.gameObjectId = gameObject.id;
-                debug('UTILITY', `🌙 Created GameObject for moon: ${gameObject.id}`);
-            } catch (factoryError) {
-                debug('P1', `Failed to create GameObject for moon ${moonName}: ${factoryError.message}`);
-            }
-
-            // BACKWARD COMPATIBILITY: Set legacy properties on mesh
-            moon.name = moonName;
-            moon.diplomacy = moonData.diplomacy || 'neutral';
-            moon.faction = moonData.faction || moonData.diplomacy || 'Neutral';
-
-            // Add physics body for the moon
-            if (window.spatialManager && window.spatialManagerReady) {
-                // Use realistic collision size matching visual mesh (can be toggled with window.useRealisticCollision = false)
-                const useRealistic = window.useRealisticCollision !== false; // Default to realistic
-                const collisionRadius = useRealistic ? moonSize : Math.min(moonSize, 0.1);
-
-                window.spatialManager.addObject(moon, {
-                    type: 'moon',
-                    name: moonName,
-                    radius: collisionRadius,
-                    canCollide: true,
-                    isTargetable: true,
-                    layer: 'planets',
-                    diplomacy: moonData.diplomacy || 'neutral',
-                    faction: moonData.faction || moonData.diplomacy || 'Neutral',
-                    government: moonData.government,
-                    economy: moonData.economy,
-                    technology: moonData.technology,
-                    gameObjectId: gameObject?.id // Link to GameObject
-                });
-
-debug('UTILITY', `🌙 Moon added to spatial tracking: ${moonName}, radius=${collisionRadius}m`);
-            } else {
-                debug('P1', '⚠️ SpatialManager not ready - skipping spatial tracking for moons');
-            }
-            
-            // Add orbital elements with mass and proper initialization
-            this.setOrbitalElements(`moon_${planetIndex}_${moonIndex}`, {
-                semiMajorAxis: moonOrbitRadius,
-                eccentricity: 0.05,
-                inclination: Math.random() * 0.05,
-                longitudeOfAscendingNode: Math.random() * Math.PI * 2,
-                argumentOfPeriapsis: Math.random() * Math.PI * 2,
-                meanAnomaly: angle,
-                mass: moonSize * 1e22 // Mass proportional to size, but less than planets
-            });
-        } catch (error) {
-            debug('P1', `Error creating moon ${moonIndex} for planet ${planetIndex}: ${error.message}`);
-        }
+        return this.celestialBodyFactory.createMoon(moonData, planetIndex, moonIndex);
     }
 
+    // Delegate orbital calculations to OrbitCalculator
     calculateOrbitalPeriod(semiMajorAxis) {
-        // Kepler's Third Law: T² = (4π²/GM) * a³
-        return Math.sqrt((4 * Math.PI * Math.PI) / (this.G * this.SOLAR_MASS) * Math.pow(semiMajorAxis, 3));
+        return this.orbitCalculator.calculateOrbitalPeriod(semiMajorAxis);
     }
 
     calculateOrbitalVelocity(elements) {
-        return Math.sqrt((this.G * this.SOLAR_MASS) / elements.semiMajorAxis);
+        return this.orbitCalculator.calculateOrbitalVelocity(elements);
     }
 
     calculateMeanMotion(elements) {
-        return Math.sqrt((this.G * this.SOLAR_MASS) / Math.pow(elements.semiMajorAxis, 3));
+        return this.orbitCalculator.calculateMeanMotion(elements);
+    }
+
+    calculateGravitationalForce(body1, body2) {
+        return this.orbitCalculator.calculateGravitationalForce(body1, body2, this.celestialBodies);
+    }
+
+    setOrbitalElements(key, elements) {
+        this.orbitCalculator.setOrbitalElements(key, elements);
+    }
+
+    getGridKey(position) {
+        return this.orbitCalculator.getGridKey(position);
+    }
+
+    updateSpatialGrid() {
+        this.orbitCalculator.updateSpatialGrid(this.celestialBodies);
+    }
+
+    getNearbyBodies(position, radius) {
+        return this.orbitCalculator.getNearbyBodies(position, radius, this.celestialBodies);
+    }
+
+    getOrbitPosition(auDistance, angleDegrees) {
+        return this.orbitCalculator.getOrbitPosition(auDistance, angleDegrees);
+    }
+
+    getEuropaMoonOrbitPosition() {
+        return this.orbitCalculator.getEuropaMoonOrbitPosition();
     }
 
     clearSystem() {
-debug('UTILITY', 'Clearing star system');
-        
-        // Remove all celestial bodies from the scene
+        debug('UTILITY', 'Clearing star system');
+
         for (const [id, body] of this.celestialBodies) {
             if (body) {
-                // Remove from scene
                 this.scene.remove(body);
-                
-                // Remove from spatial tracking if it exists
+
                 if (window.spatialManager) {
                     window.spatialManager.removeObject(body);
-debug('UTILITY', `🧹 Object removed from spatial tracking: ${id}`);
+                    debug('UTILITY', `Object removed from spatial tracking: ${id}`);
                 }
-                
-                // Dispose of geometry
+
                 if (body.geometry) {
                     body.geometry.dispose();
                 }
-                
-                // Dispose of materials
+
                 if (body.material) {
                     if (Array.isArray(body.material)) {
                         body.material.forEach(material => {
@@ -718,147 +406,39 @@ debug('UTILITY', `🧹 Object removed from spatial tracking: ${id}`);
                         body.material.dispose();
                     }
                 }
-                
-                // Remove any custom properties
+
                 if (body.userData) {
                     body.userData = {};
                 }
             }
         }
-        
-        // Clear all collections
+
         this.celestialBodies.clear();
         this.planetGenerators.clear();
         this.orbitalSpeeds.clear();
         this.rotationSpeeds.clear();
-        this.orbitalElements.clear();
-        this.spatialGrid.clear();
-        
-        // Reset star system data
+        this.orbitCalculator.clearOrbitalElements();
+        this.orbitCalculator.clearSpatialGrid();
         this.starSystem = null;
-        
-        // Force garbage collection of any remaining references
+
         if (window.gc) {
             window.gc();
         }
-        
-debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
+
+        debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
     }
 
+    // Delegate color functions to factory
     getStarColor(starType) {
-        switch (starType) {
-            case 'Class-O': return 0x9BB0FF;  // Blue
-            case 'Class-B': return 0xADB6FF;  // Blue-white
-            case 'Class-A': return 0xCAD7FF;  // White
-            case 'Class-F': return 0xF8F7FF;  // Yellow-white
-            case 'Class-G': return 0xFFF4EA;  // Yellow (like our Sun)
-            case 'Class-K': return 0xFFD2A1;  // Orange
-            case 'Class-M': return 0xFFCC6F;  // Red
-            default: return 0xFFFFFF;         // Default white
-        }
+        return this.celestialBodyFactory.getStarColor(starType);
     }
 
     getPlanetColor(planetType) {
-        switch (planetType) {
-            case 'Class-M': return 0x4CAF50;  // Earth-like, green/blue
-            case 'Class-K': return 0xFF9800;  // Orange/brown rocky
-            case 'Class-L': return 0x795548;  // Brown dwarf
-            case 'Class-T': return 0x607D8B;  // Cool methane dwarf
-            case 'Class-Y': return 0x9E9E9E;  // Ultra-cool brown dwarf
-            case 'Class-D': return 0xBDBDBD;  // Small, rocky
-            case 'Class-H': return 0xFFEB3B;  // Hot super-Earth
-            case 'Class-J': return 0xFFC107;  // Gas giant
-            case 'Class-N': return 0x00BCD4;  // Ice giant
-            case 'rocky': return 0x8B4513;    // Basic rocky
-            default: return 0xCCCCCC;         // Default grey
-        }
+        return this.celestialBodyFactory.getPlanetColor(planetType);
     }
 
     getMoonColor(moonType) {
-        const colors = {
-            'rocky': 0x888888,
-            'ice': 0xddddff,
-            'desert': 0xd2b48c
-        };
-        return colors[moonType] || 0x888888;
-    }
-
-    // Add orbital elements for a celestial body
-    setOrbitalElements(key, elements) {
-        this.orbitalElements.set(key, {
-            semiMajorAxis: elements.semiMajorAxis,
-            eccentricity: elements.eccentricity,
-            inclination: elements.inclination,
-            longitudeOfAscendingNode: elements.longitudeOfAscendingNode,
-            argumentOfPeriapsis: elements.argumentOfPeriapsis,
-            meanAnomaly: elements.meanAnomaly,
-            mass: elements.mass
-        });
-    }
-
-    // Calculate gravitational force between two bodies
-    calculateGravitationalForce(body1, body2) {
-        const elements1 = this.orbitalElements.get(body1);
-        const elements2 = this.orbitalElements.get(body2);
-        if (!elements1 || !elements2) return new THREE.Vector3();
-
-        const pos1 = this.celestialBodies.get(body1).position;
-        const pos2 = this.celestialBodies.get(body2).position;
-        
-        const r = pos2.clone().sub(pos1);
-        const distance = r.length();
-        
-        if (distance < 0.1) return new THREE.Vector3(); // Prevent division by zero
-        
-        const forceMagnitude = (this.G * elements1.mass * elements2.mass) / (distance * distance);
-        return r.normalize().multiplyScalar(forceMagnitude);
-    }
-
-    // Get grid cell key for a position
-    getGridKey(position) {
-        const x = Math.floor(position.x / this.gridSize);
-        const y = Math.floor(position.y / this.gridSize);
-        const z = Math.floor(position.z / this.gridSize);
-        return `${x},${y},${z}`;
-    }
-
-    // Update spatial partitioning
-    updateSpatialGrid() {
-        this.spatialGrid.clear();
-        this.celestialBodies.forEach((body, key) => {
-            const gridKey = this.getGridKey(body.position);
-            if (!this.spatialGrid.has(gridKey)) {
-                this.spatialGrid.set(gridKey, new Set());
-            }
-            this.spatialGrid.get(gridKey).add(key);
-        });
-    }
-
-    // Get nearby bodies for gravitational calculations
-    getNearbyBodies(position, radius) {
-        const nearbyBodies = new Set();
-        const cellRadius = Math.ceil(radius / this.gridSize);
-        const centerCell = this.getGridKey(position);
-        const [centerX, centerY, centerZ] = centerCell.split(',').map(Number);
-
-        // Check surrounding cells
-        for (let x = -cellRadius; x <= cellRadius; x++) {
-            for (let y = -cellRadius; y <= cellRadius; y++) {
-                for (let z = -cellRadius; z <= cellRadius; z++) {
-                    const cellKey = `${centerX + x},${centerY + y},${centerZ + z}`;
-                    const cellBodies = this.spatialGrid.get(cellKey);
-                    if (cellBodies) {
-                        cellBodies.forEach(bodyKey => {
-                            const body = this.celestialBodies.get(bodyKey);
-                            if (body && body.position.distanceTo(position) <= radius) {
-                                nearbyBodies.add(bodyKey);
-                            }
-                        });
-                    }
-                }
-            }
-        }
-        return Array.from(nearbyBodies);
+        return this.celestialBodyFactory.getMoonColor(moonType);
     }
 
     getCelestialBodies() {
@@ -874,14 +454,12 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
     }
 
     getCelestialBodyInfo(body) {
-        // PHASE 5: Check for GameObject first (single source of truth)
         const gameObject = body?.userData?.gameObject;
 
-        // First try to get metadata from spatial manager (includes faction info)
+        // First try spatial manager
         if (window.spatialManager && body) {
             const metadata = window.spatialManager.getMetadata(body);
             if (metadata) {
-                // PHASE 5: Use GameObject.diplomacy when available
                 const diplomacy = gameObject?.diplomacy || metadata.diplomacy;
                 const faction = gameObject?.faction || metadata.faction || 'Unknown';
 
@@ -894,25 +472,21 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
                     description: metadata.description || 'No description available.',
                     intel_brief: metadata.intel_brief || faction !== 'Unknown' ? `${metadata.type || 'Object'} operated by ${faction}` : 'No intelligence data available.',
                     canDock: !!metadata.canDock,
-                    gameObject: gameObject, // PHASE 5: Include gameObject reference
+                    gameObject: gameObject,
                     ...metadata
                 };
             }
         }
-        
-        // Find the key for this body - first try by reference
+
         let key = Array.from(this.celestialBodies.entries())
             .find(([_, value]) => value === body)?.[0];
-        
-        // If not found by reference, try by UUID as fallback
+
         if (!key && body && body.uuid) {
             key = Array.from(this.celestialBodies.entries())
                 .find(([_, value]) => value.uuid === body.uuid)?.[0];
         }
-        
-        // Defensive: if body carries station flags in userData, force station info
+
         if (!key && body && body.userData && (body.userData.type === 'station' || body.userData.isSpaceStation)) {
-            // PHASE 5: Use GameObject for faction/diplomacy when available
             const faction = gameObject?.faction || body.userData.faction || 'Unknown';
             const diplomacy = gameObject?.diplomacy || body.userData.diplomacy;
             return {
@@ -940,10 +514,8 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
             };
         }
 
-        // Handle space stations
         if (key.startsWith('station_')) {
             if (body && body.userData) {
-                // PHASE 5: Use GameObject for faction/diplomacy when available
                 const faction = gameObject?.faction || body.userData.faction || 'Unknown';
                 const diplomacy = gameObject?.diplomacy || body.userData.diplomacy;
                 return {
@@ -967,12 +539,12 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
 
         const [type, planetIndex, moonIndex] = key.split('_');
         const planet = this.starSystem.planets[parseInt(planetIndex)];
-        
+
         if (!planet) {
             debug('P1', `No planet data found for index ${planetIndex}`);
             return null;
         }
-        
+
         if (type === 'planet') {
             return {
                 name: planet.planet_name || `Planet ${planetIndex}`,
@@ -1009,404 +581,87 @@ debug('PERFORMANCE', 'Star system cleared and memory cleaned up');
         return null;
     }
 
-    // Add method to set current sector
     setCurrentSector(sector) {
         this.currentSector = sector;
     }
 
-    // Add method to get current sector
     getCurrentSector() {
         return this.currentSector;
     }
 
     /**
-     * Create Sol System specific infrastructure including space stations and faction presence
-     * Based on docs/sol_system_layout.md
+     * Create Sol System specific infrastructure
      */
     async createSolSystemInfrastructure() {
-debug('UTILITY', 'Creating Sol System space stations and infrastructure...');
+        debug('UTILITY', 'Creating Sol System space stations and infrastructure...');
 
         try {
-            // Load infrastructure data from JSON file
             const response = await fetch('/static/data/starter_system_infrastructure.json');
             if (!response.ok) {
                 throw new Error(`Failed to load infrastructure data: ${response.status}`);
             }
             const infrastructureData = await response.json();
             const solStations = infrastructureData.stations;
-debug('UTILITY', `📋 Loaded ${solStations.length} stations from JSON data`);
+            debug('UTILITY', `Loaded ${solStations.length} stations from JSON data`);
 
-            // Create space station objects
             for (const stationData of solStations) {
                 try {
-                    const station = this.createSpaceStation(stationData);
+                    const station = this.celestialBodyFactory.createSpaceStation(stationData);
                     if (station) {
                         this.scene.add(station);
                         this.celestialBodies.set(`station_${stationData.name.toLowerCase().replace(/\s+/g, '_')}`, station);
-debug('UTILITY', `✅ Created station: ${stationData.name} (${stationData.faction})`);
+                        debug('UTILITY', `Created station: ${stationData.name} (${stationData.faction})`);
                     }
                 } catch (error) {
-                    debug('P1', `❌ Failed to create station ${stationData.name}: ${error.message}`);
+                    debug('P1', `Failed to create station ${stationData.name}: ${error.message}`);
                 }
             }
 
-debug('UTILITY', `🛰️ Created ${solStations.length} space stations in Sol system`);
+            debug('UTILITY', `Created ${solStations.length} space stations in Sol system`);
         } catch (error) {
-            debug('P1', `❌ Failed to load Sol system infrastructure: ${error.message}`);
+            debug('P1', `Failed to load Sol system infrastructure: ${error.message}`);
         }
 
-        // Create Navigation Beacon ring around Terra Prime on the galactic plane
+        // Create Navigation Beacons
         try {
-            await this.createNavigationBeaconsAroundTerraPrime();
+            await this.celestialBodyFactory.createNavigationBeacons();
         } catch (e) {
-            debug('P1', `⚠️ Failed to create navigation beacons: ${e?.message || e}`);
-        }
-    }
-
-    /**
-     * Create a ring of Navigation Beacons 200km from Sol (the star) with even spacing
-     * Small neutral pyramids with low hull that can be destroyed in 1–2 shots
-     */
-    async createNavigationBeaconsAroundTerraPrime() {
-        if (!this.starSystem) {
-            debug('P1', 'No star system available for beacon placement');
-            return;
-        }
-
-        try {
-            // Load beacon data from JSON file
-            const response = await fetch('/static/data/starter_system_infrastructure.json');
-            if (!response.ok) {
-                throw new Error(`Failed to load beacon data: ${response.status}`);
-            }
-            const infrastructureData = await response.json();
-            const beaconData = infrastructureData.beacons;
-debug('UTILITY', `📋 Loaded ${beaconData.length} beacons from JSON data`);
-
-            const THREE = window.THREE || (typeof THREE !== 'undefined' ? THREE : null);
-            if (!THREE) return;
-
-            // Ensure StarfieldManager has a tracking array
-            if (!this.starfieldManager) this.starfieldManager = window.starfieldManager;
-            if (this.starfieldManager && !Array.isArray(this.starfieldManager.navigationBeacons)) {
-                this.starfieldManager.navigationBeacons = [];
-            }
-
-            // Create beacons from JSON data
-            for (let i = 0; i < beaconData.length; i++) {
-                const beaconInfo = beaconData[i];
-                const position = beaconInfo.position;
-
-                // Small pyramid (4-sided cone) geometry
-                const height = 0.8;
-                const baseRadius = 0.5;
-                const geometry = new THREE.ConeGeometry(baseRadius, height, 4);
-
-                // Handle color conversion from hex string to number
-                let color;
-                if (typeof beaconInfo.color === 'string') {
-                    color = parseInt(beaconInfo.color.replace('#', ''), 16);
-                } else {
-                    color = 0xffff00; // Default yellow
-                }
-
-                const material = new THREE.MeshPhongMaterial({
-                    color: color,
-                    emissive: 0x222200,
-                    shininess: 10
-                });
-
-                const beacon = new THREE.Mesh(geometry, material);
-                // Infrastructure positions are designed for gameplay distances
-                const INFRASTRUCTURE_SCALE = 1.0; // Direct coordinates for gameplay
-                beacon.position.set(
-                    position[0] * INFRASTRUCTURE_SCALE,
-                    position[1] * INFRASTRUCTURE_SCALE,
-                    position[2] * INFRASTRUCTURE_SCALE
-                );
-
-                // Calculate rotation based on infrastructure position
-                const scaledX = position[0] * INFRASTRUCTURE_SCALE;
-                const scaledZ = position[2] * INFRASTRUCTURE_SCALE;
-                const angle = Math.atan2(scaledZ, scaledX);
-                beacon.rotation.y = angle;
-
-debug('UTILITY', `📡 Beacon ${i + 1} created at position (${scaledX.toFixed(1)}, ${(position[1] * INFRASTRUCTURE_SCALE).toFixed(1)}, ${scaledZ.toFixed(1)})`);
-
-                // PHASE 2: Create GameObject via factory for single source of truth
-                const beaconName = beaconInfo.name || `Navigation Beacon ${i + 1}`;
-                let gameObject = null;
-                try {
-                    gameObject = GameObjectFactory.createBeacon({
-                        name: beaconName,
-                        position: { x: scaledX, y: position[1] * INFRASTRUCTURE_SCALE, z: scaledZ },
-                        beaconId: beaconInfo.id,
-                        discovered: false,
-                        threeObject: beacon,
-                        description: beaconInfo.description
-                    });
-                    debug('UTILITY', `📡 Created GameObject for beacon: ${gameObject.id}`);
-                } catch (factoryError) {
-                    debug('P1', `Failed to create GameObject for beacon ${beaconName}: ${factoryError.message}`);
-                }
-
-                // BACKWARD COMPATIBILITY: Set legacy properties on mesh
-                beacon.name = beaconName;
-
-                beacon.userData = {
-                    name: beaconName,
-                    type: 'beacon',
-                    faction: 'Neutral',
-                    isBeacon: true,
-                    description: beaconInfo.description,
-                    id: beaconInfo.id,
-                    gameObject: gameObject,
-                    gameObjectId: gameObject?.id
-                };
-
-                this.scene.add(beacon);
-
-                // Register as first-class object in celestialBodies for unified lookups
-                try {
-                    if (!this.celestialBodies) this.celestialBodies = new Map();
-                    const normalizedId = typeof (beaconInfo.id || '') === 'string' ? (beaconInfo.id || '').replace(/^a0_/i, 'A0_') : (beaconInfo.id || '');
-                    const nameSlug = (beaconName || '').toLowerCase().replace(/\s+/g, '_');
-                    // Multiple keys to improve retrieval paths
-                    if (normalizedId) this.celestialBodies.set(normalizedId, beacon);
-                    if (normalizedId) this.celestialBodies.set(`beacon_${normalizedId}`, beacon);
-                    if (nameSlug) this.celestialBodies.set(`beacon_${nameSlug}`, beacon);
-                    // Also use gameObject ID if available
-                    if (gameObject?.id) this.celestialBodies.set(gameObject.id, beacon);
-                } catch (e) {
-                    debug('P1', `⚠️ Failed to register beacon in celestialBodies: ${e?.message || e}`);
-                }
-
-                // Add to spatial tracking for collision detection
-                if (window.spatialManager && window.spatialManagerReady) {
-                    window.spatialManager.addObject(beacon, {
-                        type: 'beacon',
-                        name: beaconName,
-                        radius: 0.6, // Small collision radius
-                        canCollide: true,
-                        isTargetable: true,
-                        layer: 'stations',
-                        entityType: 'beacon',
-                        entityId: gameObject?.id || beaconInfo.id,
-                        health: 150, // 1–2 laser hits from starter weapons
-                        gameObjectId: gameObject?.id // Link to GameObject
-                    });
-
-                    // Also add to collision manager's station layer
-                    if (window.collisionManager) {
-                        window.collisionManager.addObjectToLayer(beacon, 'stations');
-                    }
-
-debug('INFRASTRUCTURE', `📡 Navigation beacon ${beaconName} added to spatial tracking`);
-                }
-
-                // Track in StarfieldManager so we can clean up on destroy
-                if (this.starfieldManager) {
-                    this.starfieldManager.navigationBeacons.push(beacon);
-                }
-            }
-
-debug('NAVIGATION', `📡 Created ${beaconData.length} Navigation Beacons from JSON data`);
-        } catch (error) {
-            debug('P1', `❌ Failed to create navigation beacons from JSON: ${error.message}`);
+            debug('P1', `Failed to create navigation beacons: ${e?.message || e}`);
         }
     }
 
     /**
      * Get discovery radius based on player's target CPU card
-     * @returns {number} Discovery radius in kilometers
      */
     getDiscoveryRadius() {
         try {
-            // Try to get the player's ship and target CPU system
             if (this.starfieldManager && this.starfieldManager.ship) {
                 const ship = this.starfieldManager.ship;
                 const targetComputer = ship.systems?.get('target_computer');
 
                 if (targetComputer && targetComputer.range) {
-                    // Use the equipped target CPU's range
-debug('TARGETING', `🎯 Using equipped target CPU range: ${targetComputer.range}km for discovery radius`);
+                    debug('TARGETING', `Using equipped target CPU range: ${targetComputer.range}km for discovery radius`);
                     return targetComputer.range;
                 }
             }
 
-            // Fallback to level 1 target CPU range if no target CPU equipped
-debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for discovery radius`);
-            return 50; // Level 1 target CPU range
+            debug('TARGETING', `No target CPU equipped, using level 1 range: 50km for discovery radius`);
+            return 50;
         } catch (error) {
-            debug('P1', `⚠️ Failed to get target CPU range, using default 50km: ${error.message}`);
+            debug('P1', `Failed to get target CPU range, using default 50km: ${error.message}`);
             return 50;
         }
     }
 
-    /**
-     * Create a space station mesh
-     */
+    // Delegate station creation to factory
     createSpaceStation(stationData) {
-        // PHASE 0 ASSERTION: Validate required station data
-        if (!stationData || typeof stationData !== 'object') {
-            debug('P1', 'ASSERTION FAILED: createSpaceStation called with invalid stationData. Fix data source.');
-            return null;
-        }
-
-        // PHASE 0 ASSERTION: Log stations missing essential identifiers
-        if (!stationData.name) {
-            debug('P1', 'ASSERTION WARNING: Station missing name. Using fallback name.');
-        }
-        if (!stationData.faction) {
-            debug('P1', `ASSERTION WARNING: Station "${stationData.name || 'Unknown'}" missing faction. This will cause diplomacy issues.`);
-        }
-        if (!stationData.position) {
-            debug('P1', `ASSERTION FAILED: Station "${stationData.name || 'Unknown'}" missing position. Cannot create station.`);
-            return null;
-        }
-
-        // Handle position conversion from JSON array to THREE.Vector3
-        let position;
-        if (Array.isArray(stationData.position)) {
-            if (stationData.position.length === 3) {
-                // JSON format: [x, y, z] - direct 3D coordinates
-                // Infrastructure positions are designed for gameplay distances, not astronomical
-                // Use a smaller scale factor appropriate for station placement (not celestial bodies)
-                const INFRASTRUCTURE_SCALE = 1.0; // Direct coordinates for gameplay
-                position = new THREE.Vector3(
-                    stationData.position[0] * INFRASTRUCTURE_SCALE,
-                    stationData.position[1] * INFRASTRUCTURE_SCALE,
-                    stationData.position[2] * INFRASTRUCTURE_SCALE
-                );
-            } else if (stationData.position.length === 2) {
-                // Legacy format: [distance, angle] - convert to 3D position
-                position = this.getOrbitPosition(stationData.position[0], stationData.position[1]);
-            } else {
-                debug('P1', `Invalid position format for station ${stationData.name}: [${stationData.position.join(', ')}]`);
-                position = new THREE.Vector3(0, 0, 0);
-            }
-        } else {
-            // Legacy format: already a THREE.Vector3
-            position = stationData.position;
-        }
-
-        // Handle color conversion from hex string to number
-        let color;
-        if (typeof stationData.color === 'string') {
-            // JSON format: "#00ff44" -> 0x00ff44
-            color = parseInt(stationData.color.replace('#', ''), 16);
-        } else {
-            // Legacy format: already a number
-            color = stationData.color;
-        }
-
-        // Create station geometry (simple geometric shape for now)
-        let stationGeometry;
-
-        switch (stationData.type) {
-            case 'Shipyard':
-                // Larger, more complex structure for shipyards
-                stationGeometry = new THREE.CylinderGeometry(stationData.size * 0.5, stationData.size * 0.8, stationData.size * 2, 8);
-                break;
-            case 'Defense Platform':
-                // Octagonal shape for defense platforms
-                stationGeometry = new THREE.CylinderGeometry(stationData.size * 0.8, stationData.size * 0.8, stationData.size * 0.5, 8);
-                break;
-            case 'Research Lab':
-                // Spherical with protruding modules
-                stationGeometry = new THREE.SphereGeometry(stationData.size * 0.6, 16, 16);
-                break;
-            case 'Mining Station':
-                // Industrial cubic structure
-                stationGeometry = new THREE.BoxGeometry(stationData.size, stationData.size * 0.6, stationData.size * 1.2);
-                break;
-            default:
-                // Default torus shape for other station types
-                stationGeometry = new THREE.TorusGeometry(stationData.size, stationData.size * 0.3, 8, 16);
-        }
-
-        // Create station material with faction colors
-        const stationMaterial = new THREE.MeshPhongMaterial({
-            color: color,
-            shininess: 30,
-            transparent: true,
-            opacity: 0.9
-        });
-
-        const station = new THREE.Mesh(stationGeometry, stationMaterial);
-        station.position.copy(position);
-        
-        // Add some random rotation to make stations look more dynamic
-        station.rotation.x = Math.random() * Math.PI * 2;
-        station.rotation.y = Math.random() * Math.PI * 2;
-        station.rotation.z = Math.random() * Math.PI * 2;
-
-        // PHASE 2: Create GameObject via factory for single source of truth
-        const stationName = stationData.name || 'Unknown Station';
-        let gameObject = null;
-        try {
-            gameObject = GameObjectFactory.createStation({
-                name: stationName,
-                position: { x: position.x, y: position.y, z: position.z },
-                faction: stationData.faction,
-                stationType: stationData.type || 'Space Station',
-                discovered: false,
-                threeObject: station,
-                services: stationData.services || [],
-                description: stationData.description,
-                canDock: true
-            });
-            debug('UTILITY', `🛰️ Created GameObject for station: ${gameObject.id}`);
-        } catch (factoryError) {
-            debug('P1', `Failed to create GameObject for station ${stationName}: ${factoryError.message}`);
-        }
-
-        // BACKWARD COMPATIBILITY: Set legacy properties on mesh
-        station.name = stationName;
-
-        // Store station metadata for interactions (backward compatibility)
-        station.userData = {
-            name: stationName,
-            faction: stationData.faction,
-            type: stationData.type,
-            description: stationData.description,
-            services: stationData.services || [],
-            intel_brief: stationData.intel_brief || stationData.description,
-            discoveryRadius: this.getDiscoveryRadius(), // Dynamic based on target CPU
-            isSpaceStation: true,
-            canDock: true, // Space stations should be dockable
-            gameObject: gameObject,
-            gameObjectId: gameObject?.id
-        };
-
-        // Add station to spatial manager with metadata
-        if (window.spatialManager) {
-            window.spatialManager.addObject(station, {
-                type: 'station',
-                name: stationName,
-                faction: stationData.faction,
-                diplomacy: this.getFactionDiplomacy(stationData.faction),
-                radius: stationData.size,
-                canCollide: true,
-                isTargetable: true,
-                layer: 'stations',
-                entityType: 'station',
-                entityId: gameObject?.id || `station_${stationName.toLowerCase().replace(/\s+/g, '_')}`,
-                gameObjectId: gameObject?.id // Link to GameObject
-            });
-        }
-
-        // Add docking collision box for physics-based docking
-        this.addDockingCollisionBox(station, stationData);
-
-        return station;
+        return this.celestialBodyFactory.createSpaceStation(stationData);
     }
 
     /**
      * Get diplomacy status for a faction
      */
     getFactionDiplomacy(faction) {
-        // Map faction names to diplomacy status
         const factionDiplomacy = {
             'Terran Republic Alliance': 'friendly',
             'Free Trader Consortium': 'neutral',
@@ -1415,7 +670,7 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
             'Scientists Consortium': 'friendly',
             'Miners Union': 'neutral'
         };
-        
+
         return factionDiplomacy[faction] || 'neutral';
     }
 
@@ -1423,10 +678,8 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
      * Add docking collision box to a space station
      */
     addDockingCollisionBox(station, stationData) {
-        // Only add docking collision if spatial manager is available
         if (!window.spatialManager || !window.spatialManagerReady) {
-            debug('P1', '🚀 Spatial manager not ready - docking collision box will be added later');
-            // Store the data for later addition
+            debug('P1', 'Spatial manager not ready - docking collision box will be added later');
             station.userData.pendingDockingCollision = {
                 stationData: stationData,
                 position: station.position.clone()
@@ -1434,40 +687,34 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
             return;
         }
 
-        // Create a larger invisible collision box around the station for docking detection
-        // Size it based on station type and size for appropriate docking range
-        let dockingBoxSize = stationData.size * 3; // Default 3x station size
-        
+        let dockingBoxSize = stationData.size * 3;
+
         switch (stationData.type) {
             case 'Shipyard':
-                dockingBoxSize = stationData.size * 4; // Larger docking area for shipyards
+                dockingBoxSize = stationData.size * 4;
                 break;
             case 'Defense Platform':
-                dockingBoxSize = stationData.size * 2.5; // Smaller docking area for military precision
+                dockingBoxSize = stationData.size * 2.5;
                 break;
             default:
-                dockingBoxSize = stationData.size * 3; // Standard docking area
+                dockingBoxSize = stationData.size * 3;
         }
 
-        // Create invisible collision box geometry
         const dockingBoxGeometry = new THREE.BoxGeometry(
-            dockingBoxSize * 2, 
-            dockingBoxSize * 1.5, 
+            dockingBoxSize * 2,
+            dockingBoxSize * 1.5,
             dockingBoxSize * 2
         );
-        
-        // Create invisible material
+
         const dockingBoxMaterial = new THREE.MeshBasicMaterial({
-            visible: false, // Invisible collision box
+            visible: false,
             transparent: true,
             opacity: 0
         });
 
-        // Create the docking collision box mesh
         const dockingBox = new THREE.Mesh(dockingBoxGeometry, dockingBoxMaterial);
         dockingBox.position.copy(station.position);
-        
-        // Add metadata to identify this as a docking collision box
+
         dockingBox.userData = {
             isDockingCollisionBox: true,
             parentStation: station,
@@ -1477,12 +724,9 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
             dockingRange: dockingBoxSize
         };
 
-        // Add to scene
         this.scene.add(dockingBox);
 
-        // Add spatial tracking for docking detection
         try {
-            // Add docking zone to spatial manager
             window.spatialManager.addObject(dockingBox, {
                 type: 'docking_zone',
                 name: `${stationData.name} Docking Zone`,
@@ -1496,62 +740,15 @@ debug('TARGETING', `🎯 No target CPU equipped, using level 1 range: 50km for d
                 stationName: stationData.name
             });
 
-            // Also add to collision manager's docking layer
             if (window.collisionManager) {
                 window.collisionManager.addObjectToLayer(dockingBox, 'docking');
             }
 
-            // Store reference for cleanup
             station.userData.dockingCollisionBox = dockingBox;
-            
-debug('UTILITY', `🚀 Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
+
+            debug('UTILITY', `Created docking collision zone for ${stationData.name} (${dockingBoxSize.toFixed(1)}m range)`);
         } catch (error) {
-            debug('P1', `❌ Failed to create docking zone for ${stationData.name}: ${error.message}`);
+            debug('P1', `Failed to create docking zone for ${stationData.name}: ${error.message}`);
         }
     }
-
-    /**
-     * Get position in orbit around the star
-     */
-    getOrbitPosition(auDistance, angleDegrees) {
-        const angle = (angleDegrees * Math.PI) / 180;
-        const distance = auDistance * this.VISUAL_SCALE;
-        
-        return new THREE.Vector3(
-            Math.cos(angle) * distance,
-            (Math.random() - 0.5) * 2, // Small random Y variation
-            Math.sin(angle) * distance
-        );
-    }
-
-    /**
-     * Get position near Europa moon around Terra Prime
-     */
-    getEuropaMoonOrbitPosition() {
-        // Terra Prime is at ~1 AU (100 units from star)
-        const terraPrimeDistance = 1.0 * this.VISUAL_SCALE;
-        const terraPrimeAngle = 0; // Terra Prime is at 0 degrees
-        
-        // Europa moon orbits Terra Prime at ~16 units distance (moonIndex 1 * 8.0 * 2)
-        const europaMoonDistance = 16.0;
-        const europaMoonAngle = Math.PI * 0.5; // 90 degrees from Terra Prime
-        
-        // Calculate Terra Prime position
-        const terraPrimeX = Math.cos(terraPrimeAngle) * terraPrimeDistance;
-        const terraPrimeZ = Math.sin(terraPrimeAngle) * terraPrimeDistance;
-        
-        // Calculate Europa moon position relative to Terra Prime
-        const europaMoonX = terraPrimeX + Math.cos(europaMoonAngle) * europaMoonDistance;
-        const europaMoonZ = terraPrimeZ + Math.sin(europaMoonAngle) * europaMoonDistance;
-        
-        // Position station slightly offset from Europa moon (2 units away)
-        const stationOffset = 2.0;
-        const stationAngle = Math.PI * 0.25; // 45 degrees offset
-        
-        return new THREE.Vector3(
-            europaMoonX + Math.cos(stationAngle) * stationOffset,
-            (Math.random() - 0.5) * 2, // Small random Y variation
-            europaMoonZ + Math.sin(stationAngle) * stationOffset
-        );
-    }
-} 
+}
