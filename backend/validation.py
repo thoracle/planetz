@@ -29,6 +29,13 @@ SYSTEM_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\s-]{1,50}$')
 TEMPLATE_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,50}$')
 SHIP_TYPE_PATTERN = re.compile(r'^[a-zA-Z_]{1,30}$')
 FACTION_PATTERN = re.compile(r'^[a-zA-Z_]{1,30}$')
+PLANET_TYPE_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,30}$')
+SECTOR_ID_PATTERN = re.compile(r'^[A-Z][0-9]{1,2}$')
+
+# Valid enum values
+VALID_ENERGY_ACTIONS = ['consume', 'regenerate', 'status']
+VALID_REPAIR_TYPES = ['standard', 'emergency', 'field']
+VALID_DAMAGE_TYPES = ['collision', 'weapon', 'environment', 'system_failure']
 
 
 class ValidationError(Exception):
@@ -310,3 +317,143 @@ def validate_debug_config(config: Dict) -> Dict:
             raise ValidationError(f"Channel '{channel_name}' must be a boolean", channel_name)
 
     return config
+
+
+# Planet type validation
+def validate_planet_type(planet_type: str, valid_types: List[str] = None) -> str:
+    """Validate a planet type string.
+
+    Args:
+        planet_type: The planet type to validate
+        valid_types: Optional list of valid planet types to check against
+
+    Returns:
+        The validated planet type string
+    """
+    validated = validate_string(planet_type, 'planetType', max_length=30, pattern=PLANET_TYPE_PATTERN)
+
+    if valid_types and validated not in valid_types:
+        raise ValidationError(
+            f"Invalid planet type. Must be one of: {', '.join(valid_types)}",
+            'planetType'
+        )
+
+    return validated
+
+
+def validate_energy_action(action: str) -> str:
+    """Validate an energy action."""
+    return validate_enum(action, 'action', VALID_ENERGY_ACTIONS)
+
+
+def validate_repair_type(repair_type: str) -> str:
+    """Validate a repair type."""
+    return validate_enum(repair_type, 'repairType', VALID_REPAIR_TYPES, required=False) or 'standard'
+
+
+def validate_damage_type(damage_type: str) -> str:
+    """Validate a damage type."""
+    return validate_enum(damage_type, 'damageType', VALID_DAMAGE_TYPES, required=False) or 'collision'
+
+
+def validate_sector_id(sector_id: str) -> str:
+    """Validate a sector ID (e.g., 'A0', 'B5', 'Z99')."""
+    return validate_string(sector_id, 'sectorId', max_length=3, pattern=SECTOR_ID_PATTERN)
+
+
+def validate_hull_value(hull: Any) -> float:
+    """Validate a hull health value (0.0 to 1.0)."""
+    return validate_float(hull, 'hull', min_val=0.0, max_val=1.0)
+
+
+def validate_ship_status_data(data: Dict) -> Dict:
+    """Validate ship status data structure.
+
+    Args:
+        data: Dictionary containing ship status fields
+
+    Returns:
+        Validated ship status dictionary
+    """
+    if not isinstance(data, dict):
+        raise ValidationError("Ship data must be an object", "data")
+
+    validated = {}
+
+    # Required fields
+    validated['shipType'] = validate_ship_type(data.get('shipType'))
+    validated['hull'] = validate_hull_value(data.get('hull'))
+    validated['energy'] = validate_float(
+        data.get('energy'), 'energy', min_val=0, max_val=MAX_ENERGY_AMOUNT
+    )
+    validated['systems'] = validate_dict(data.get('systems'), 'systems')
+
+    # Optional fields
+    if 'timestamp' in data:
+        validated['timestamp'] = data.get('timestamp')  # Allow any format
+    if 'location' in data:
+        validated['location'] = validate_dict(data.get('location'), 'location', required=False)
+
+    return validated
+
+
+def validate_planet_config_data(data: Dict, valid_planet_types: List[str]) -> Dict:
+    """Validate planet configuration data.
+
+    Args:
+        data: Dictionary containing planet config fields
+        valid_planet_types: List of valid planet type names
+
+    Returns:
+        Validated planet config dictionary
+    """
+    if not isinstance(data, dict):
+        raise ValidationError("Planet config must be an object", "data")
+
+    validated = {}
+
+    # Validate planet type
+    validated['planetType'] = validate_planet_type(
+        data.get('planetType'),
+        valid_types=valid_planet_types
+    )
+
+    # Validate parameters
+    params = data.get('parameters')
+    if not params:
+        raise ValidationError("parameters is required", "parameters")
+
+    validated['parameters'] = validate_planet_parameters(params)
+
+    return validated
+
+
+def validate_json_body(allow_empty: bool = False) -> Dict:
+    """Validate that the request has a valid JSON body.
+
+    Args:
+        allow_empty: If True, allow None/empty body
+
+    Returns:
+        The parsed JSON data
+
+    Raises:
+        ValidationError: If body is missing or invalid JSON
+    """
+    from flask import request
+    import json
+
+    try:
+        data = request.get_json(force=True, silent=True)
+    except json.JSONDecodeError:
+        raise ValidationError("Invalid JSON in request body", "body")
+
+    if data is None:
+        if allow_empty:
+            return {}
+        raise ValidationError("Request body is required", "body")
+
+    if not isinstance(data, dict):
+        raise ValidationError("Request body must be a JSON object", "body")
+
+    return data

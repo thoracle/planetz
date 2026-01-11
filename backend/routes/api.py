@@ -15,7 +15,9 @@ from backend.utils import (
 from backend.auth import require_admin_key
 from backend.validation import (
     ValidationError, handle_validation_errors,
-    validate_string, validate_int, validate_float, validate_bool,
+    validate_string, validate_int, validate_float, validate_bool, validate_enum,
+    validate_planet_type, validate_planet_config_data, validate_planet_parameters,
+    validate_ship_status_data, validate_energy_action, validate_json_body,
     validate_list, validate_dict, validate_enum,
     validate_coordinates, validate_seed, validate_damage_amount,
     validate_repair_amount, validate_energy_amount, validate_credits,
@@ -65,50 +67,27 @@ def get_planet_types():
 
 @api_bp.route('/api/planet-config', methods=['POST'])
 @limiter.limit(RATE_LIMIT_STANDARD)
+@handle_validation_errors
 def update_planet_config():
     """Update planet generation parameters."""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No data provided'
-            }), 400
+        # Validate JSON body
+        data = validate_json_body()
 
-        # Validate required fields
-        required_fields = ['planetType', 'parameters']
-        if not all(field in data for field in required_fields):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields'
-            }), 400
-
-        # Validate planet type
-        if data['planetType'] not in PLANET_CLASSES:
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid planet type'
-            }), 400
-
-        # Validate parameters
-        required_params = ['noiseScale', 'octaves', 'persistence', 'lacunarity', 'terrainHeight']
-        if not all(param in data['parameters'] for param in required_params):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required parameters'
-            }), 400
+        # Validate planet config data using centralized validator
+        valid_types = list(PLANET_CLASSES.keys())
+        validated = validate_planet_config_data(data, valid_types)
 
         # Here you would typically update the planet configuration
         # For now, we'll just return success
         return jsonify({
             'status': 'success',
             'message': 'Planet configuration updated',
-            'data': {
-                'planetType': data['planetType'],
-                'parameters': data['parameters']
-            }
+            'data': validated
         })
 
+    except ValidationError:
+        raise
     except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error updating planet config: {str(e)}")
         return jsonify({
@@ -118,31 +97,24 @@ def update_planet_config():
 
 @api_bp.route('/api/generate-planet', methods=['POST'])
 @limiter.limit(RATE_LIMIT_EXPENSIVE)
+@handle_validation_errors
 def generate_planet_endpoint():
     """Generate a new planet with the given parameters."""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No data provided'
-            }), 400
+        # Validate JSON body
+        data = validate_json_body()
 
-        # Validate required fields
-        required_fields = ['planetType', 'parameters']
-        if not all(field in data for field in required_fields):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields'
-            }), 400
+        # Validate planet config data using centralized validator
+        valid_types = list(PLANET_CLASSES.keys())
+        validated = validate_planet_config_data(data, valid_types)
 
-        # Generate a seed from the parameters
-        param_str = str(data['parameters'])
+        # Generate a seed from the validated parameters
+        param_str = str(validated['parameters'])
         seed = int(hashlib.sha256(param_str.encode()).hexdigest(), 16) % (2**32)
 
         # Generate the planet
         planet = generate_planet(random_seed=seed)
-        
+
         # Calculate checksum for verification
         checksum = calculate_checksum([planet])
 
@@ -156,6 +128,8 @@ def generate_planet_endpoint():
             }
         })
 
+    except ValidationError:
+        raise
     except (TypeError, ValueError, KeyError, RuntimeError) as e:
         logger.error(f"Error generating planet: {str(e)}")
         return jsonify({
@@ -266,38 +240,22 @@ def get_ship_config_endpoint(ship_type):
         }), 500
 
 @api_bp.route('/api/ship/status', methods=['POST'])
+@handle_validation_errors
 def get_ship_status():
     """Get current ship and all system status."""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No ship data provided'
-            }), 400
-        
-        # Validate ship data structure
-        required_fields = ['shipType', 'hull', 'energy', 'systems']
-        if not all(field in data for field in required_fields):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required ship data fields'
-            }), 400
-        
-        # Process and return ship status
-        ship_status = {
-            'shipType': data['shipType'],
-            'hull': data['hull'],
-            'energy': data['energy'],
-            'systems': data['systems'],
-            'timestamp': data.get('timestamp'),
-            'location': data.get('location')
-        }
-        
+        # Validate JSON body
+        data = validate_json_body()
+
+        # Validate ship status data using centralized validator
+        validated = validate_ship_status_data(data)
+
         return jsonify({
             'status': 'success',
-            'data': ship_status
+            'data': validated
         })
+    except ValidationError:
+        raise
     except (TypeError, KeyError, AttributeError) as e:
         logger.error(f"Error processing ship status: {str(e)}")
         return jsonify({

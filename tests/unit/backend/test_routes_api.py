@@ -48,12 +48,12 @@ class TestPlanetConfigEndpoint:
         assert response.status_code == 400
 
     def test_update_planet_config_missing_fields(self, client):
-        """Test update planet config with missing fields returns 400."""
+        """Test update planet config with missing parameters returns 400."""
         response = client.post('/api/planet-config',
                                data=json.dumps({'planetType': 'Class-M'}),
                                content_type='application/json')
         assert response.status_code == 400
-        assert 'Missing required fields' in response.get_json()['message']
+        assert 'parameters is required' in response.get_json()['message']
 
     def test_update_planet_config_invalid_type(self, client):
         """Test update planet config with invalid type returns 400."""
@@ -75,7 +75,8 @@ class TestPlanetConfigEndpoint:
                                }),
                                content_type='application/json')
         assert response.status_code == 400
-        assert 'Missing required parameters' in response.get_json()['message']
+        # Validator returns specific missing field name (e.g., 'octaves is required')
+        assert 'is required' in response.get_json()['message']
 
     def test_update_planet_config_success(self, client):
         """Test update planet config with valid data succeeds."""
@@ -120,7 +121,10 @@ class TestGeneratePlanetEndpoint:
                                    'planetType': 'Class-M',
                                    'parameters': {
                                        'noiseScale': 1.0,
-                                       'octaves': 4
+                                       'octaves': 4,
+                                       'persistence': 0.5,
+                                       'lacunarity': 2.0,
+                                       'terrainHeight': 10.0
                                    }
                                }),
                                content_type='application/json')
@@ -229,7 +233,7 @@ class TestShipStatusEndpoint:
         response = client.post('/api/ship/status',
                                data=json.dumps({
                                    'shipType': 'light_fighter',
-                                   'hull': 100,
+                                   'hull': 1.0,  # Hull is 0.0-1.0 (100% health)
                                    'energy': 5000,
                                    'systems': {}
                                }),
@@ -615,7 +619,13 @@ class TestMockedGeneratePlanetEndpoint:
             response = client.post('/api/generate-planet',
                                    data=json.dumps({
                                        'planetType': 'Class-M',
-                                       'parameters': {'noiseScale': 1.0}
+                                       'parameters': {
+                                           'noiseScale': 1.0,
+                                           'octaves': 4,
+                                           'persistence': 0.5,
+                                           'lacunarity': 2.0,
+                                           'terrainHeight': 10.0
+                                       }
                                    }),
                                    content_type='application/json')
             assert response.status_code == 500
@@ -629,7 +639,13 @@ class TestMockedGeneratePlanetEndpoint:
             response = client.post('/api/generate-planet',
                                    data=json.dumps({
                                        'planetType': 'Class-M',
-                                       'parameters': {'noiseScale': 1.0}
+                                       'parameters': {
+                                           'noiseScale': 1.0,
+                                           'octaves': 4,
+                                           'persistence': 0.5,
+                                           'lacunarity': 2.0,
+                                           'terrainHeight': 10.0
+                                       }
                                    }),
                                    content_type='application/json')
             assert response.status_code == 500
@@ -706,7 +722,7 @@ class TestMockedShipStatusEndpoint:
         response = client.post('/api/ship/status',
                                data=json.dumps({
                                    'shipType': 'light_fighter',
-                                   'hull': 100,
+                                   'hull': 1.0,  # Hull is 0.0-1.0 (100% health)
                                    'energy': 5000,
                                    'systems': {
                                        'impulse_engines': {'health': 0.8, 'active': True},
@@ -1227,7 +1243,7 @@ class TestValidationEdgeCases:
         response = client.post('/api/ship/status',
                                data=json.dumps({
                                    'shipType': 'light_fighter',
-                                   'hull': 100,
+                                   'hull': 1.0,  # Hull is 0.0-1.0 (100% health)
                                    'energy': 5000,
                                    'systems': {},
                                    'timestamp': '2024-01-01T00:00:00',
