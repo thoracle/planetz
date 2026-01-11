@@ -5,6 +5,13 @@ import logging
 from backend.PlanetTypes import PLANET_CLASSES
 from backend.verse import generate_planet, calculate_checksum
 from backend.ShipConfigs import SHIP_CONFIGS, REPAIR_PRICING, CRITICAL_SYSTEMS, get_ship_config, get_available_ship_types, validate_ship_config
+from backend.utils import (
+    calculate_system_repair_cost,
+    calculate_hull_repair_cost,
+    calculate_repair_time,
+    calculate_full_repair_cost,
+    is_critical_system
+)
 from backend.auth import require_admin_key
 from backend.validation import (
     ValidationError, handle_validation_errors,
@@ -17,16 +24,12 @@ from backend.validation import (
     MAX_COORDINATE, MIN_COORDINATE
 )
 from backend import limiter
+from backend.constants import RATE_LIMIT_STANDARD, RATE_LIMIT_EXPENSIVE, RATE_LIMIT_ADMIN
 import hashlib
 from backend.planetGenerator import PlanetGenerator
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
-
-# Rate limit configurations
-RATE_LIMIT_STANDARD = "30 per minute"  # Standard API calls
-RATE_LIMIT_EXPENSIVE = "10 per minute"  # CPU-intensive operations
-RATE_LIMIT_ADMIN = "5 per minute"  # Admin endpoints
 
 @api_bp.errorhandler(404)
 def not_found_error(error):
@@ -238,9 +241,12 @@ def get_ship_types():
         }), 500
 
 @api_bp.route('/api/ship/configs/<ship_type>', methods=['GET'])
+@handle_validation_errors
 def get_ship_config_endpoint(ship_type):
     """Get configuration for a specific ship type."""
     try:
+        # Validate the ship_type URL parameter
+        ship_type = validate_ship_type(ship_type)
         config = get_ship_config(ship_type)
         if not config:
             return jsonify({
@@ -300,9 +306,12 @@ def get_ship_status():
         }), 500
 
 @api_bp.route('/api/ship/systems/<system_name>', methods=['GET'])
+@handle_validation_errors
 def get_system_status(system_name):
     """Get status for a specific ship system."""
     try:
+        # Validate the system_name URL parameter
+        system_name = validate_system_name(system_name)
         # In a real implementation, this would query the ship's current state
         # For now, return a mock response based on system name
         system_status = {
@@ -401,13 +410,13 @@ def repair_system(system_name):
             required=False
         ) or 'standard'
 
-        # Calculate repair cost
-        base_cost = REPAIR_PRICING['baseCosts']['system'] * repair_amount
-        is_critical = validated_system in CRITICAL_SYSTEMS
-        critical_multiplier = REPAIR_PRICING['baseCosts']['critical'] if is_critical else 1.0
-        emergency_multiplier = REPAIR_PRICING['baseCosts']['emergency'] if repair_type == 'emergency' else 1.0
-
-        total_cost = int(base_cost * critical_multiplier * emergency_multiplier)
+        # Calculate repair cost using centralized calculator
+        is_emergency = repair_type == 'emergency'
+        total_cost = calculate_system_repair_cost(
+            damage=repair_amount,
+            system_name=validated_system,
+            is_emergency=is_emergency
+        )
 
         # In a real implementation, this would repair the ship system
         # For now, return a mock response
@@ -516,33 +525,24 @@ def get_repair_costs():
         hull_damage = validate_float(data.get('hullDamage', 0), 'hullDamage', min_val=0, max_val=1.0, required=False) or 0
         faction = validate_faction(data.get('faction', 'neutral'))
 
-        # Calculate repair costs
-        costs = {}
-
-        # Hull repair cost
-        if hull_damage > 0:
-            hull_cost = REPAIR_PRICING['baseCosts']['hull'] * hull_damage
-            ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
-            faction_multiplier = REPAIR_PRICING['factionDiscounts'].get(faction, 1.0)
-            costs['hull'] = int(hull_cost * ship_multiplier * faction_multiplier)
-
-        # System repair costs
+        # Filter to valid system names only
+        validated_systems = {}
         for system_name, system_data in systems.items():
-            # Validate system name
             try:
                 validate_system_name(system_name)
+                validated_systems[system_name] = system_data
             except ValidationError:
                 continue  # Skip invalid system names
 
-            if isinstance(system_data, dict) and system_data.get('health', 1.0) < 1.0:
-                damage = 1.0 - system_data.get('health', 1.0)
-                base_cost = REPAIR_PRICING['baseCosts']['system'] * damage
-                is_critical = system_name in CRITICAL_SYSTEMS
-                critical_multiplier = REPAIR_PRICING['baseCosts']['critical'] if is_critical else 1.0
-                ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
-                faction_multiplier = REPAIR_PRICING['factionDiscounts'].get(faction, 1.0)
-
-                costs[system_name] = int(base_cost * critical_multiplier * ship_multiplier * faction_multiplier)
+        # Calculate repair costs using centralized calculator
+        costs = calculate_full_repair_cost(
+            hull_damage=hull_damage,
+            systems=validated_systems,
+            ship_type=ship_type,
+            faction=faction
+        )
+        # Remove 'total' from costs dict as we add it separately in response
+        total = costs.pop('total', 0)
 
         return jsonify({
             'status': 'success',
@@ -550,7 +550,7 @@ def get_repair_costs():
                 'costs': costs,
                 'faction': faction,
                 'shipType': ship_type,
-                'totalCost': sum(costs.values())
+                'totalCost': total
             }
         })
     except ValidationError:
@@ -581,11 +581,12 @@ def repair_hull():
         if hull_damage <= 0:
             raise ValidationError('No hull damage to repair', 'hullDamage')
 
-        # Calculate cost
-        base_cost = REPAIR_PRICING['baseCosts']['hull'] * hull_damage
-        ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
-        emergency_multiplier = REPAIR_PRICING['baseCosts']['emergency'] if emergency else 1.0
-        total_cost = int(base_cost * ship_multiplier * emergency_multiplier)
+        # Calculate cost using centralized calculator
+        total_cost = calculate_hull_repair_cost(
+            hull_damage=hull_damage,
+            ship_type=ship_type,
+            is_emergency=emergency
+        )
 
         if credits < total_cost:
             return jsonify({
@@ -595,10 +596,12 @@ def repair_hull():
                 'available': credits
             }), 400
 
-        # Calculate repair time
-        repair_time = REPAIR_PRICING['repairTimes']['hull'] * hull_damage
-        if emergency:
-            repair_time = int(repair_time * REPAIR_PRICING['repairTimes']['emergency'])
+        # Calculate repair time using centralized calculator
+        repair_time = calculate_repair_time(
+            damage=hull_damage,
+            repair_type='hull',
+            is_emergency=emergency
+        )
 
         result = {
             'repairType': 'hull',
@@ -648,40 +651,43 @@ def repair_systems():
         if not selected_systems:
             raise ValidationError('No systems selected for repair', 'selectedSystems')
         
-        # Calculate total cost and time
+        # Calculate total cost and time using centralized calculators
         total_cost = 0
         total_time = 0
         repair_results = []
-        
+
         for system_name in selected_systems:
             system_data = systems_data.get(system_name, {})
             health = system_data.get('health', 1.0)
-            
+
             if health < 1.0:
                 damage = 1.0 - health
-                base_cost = REPAIR_PRICING['baseCosts']['system'] * damage
-                is_critical = system_name in CRITICAL_SYSTEMS
-                critical_multiplier = REPAIR_PRICING['baseCosts']['critical'] if is_critical else 1.0
-                ship_multiplier = REPAIR_PRICING['shipClassMultipliers'].get(ship_type, 1.0)
-                emergency_multiplier = REPAIR_PRICING['baseCosts']['emergency'] if emergency else 1.0
-                
-                system_cost = int(base_cost * critical_multiplier * ship_multiplier * emergency_multiplier)
-                
-                # Calculate repair time
-                base_time = REPAIR_PRICING['repairTimes']['system'] * damage
-                time_multiplier = 1.5 if is_critical else 1.0
-                emergency_time_multiplier = REPAIR_PRICING['repairTimes']['emergency'] if emergency else 1.0
-                system_time = int(base_time * time_multiplier * emergency_time_multiplier)
-                
+                critical = is_critical_system(system_name)
+
+                # Use centralized calculators
+                system_cost = calculate_system_repair_cost(
+                    damage=damage,
+                    system_name=system_name,
+                    ship_type=ship_type,
+                    is_emergency=emergency
+                )
+
+                system_time = calculate_repair_time(
+                    damage=damage,
+                    repair_type='system',
+                    is_critical=critical,
+                    is_emergency=emergency
+                )
+
                 total_cost += system_cost
                 total_time += system_time
-                
+
                 repair_results.append({
                     'systemName': system_name,
                     'damage': damage,
                     'cost': system_cost,
                     'repairTime': system_time,
-                    'isCritical': is_critical
+                    'isCritical': critical
                 })
         
         if credits < total_cost:

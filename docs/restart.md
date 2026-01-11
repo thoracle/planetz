@@ -18,7 +18,7 @@
 **Codebase Stats:**
 - JavaScript Files: ~7,700 | Python Files: ~3,300
 - Architecture: Fully modular ES6+ with Three.js native physics
-- Branch: `achievements` | Status: Active development
+- Branch: `main` | Status: Production
 
 ## 🚨 Critical Do's and Don'ts
 
@@ -81,6 +81,9 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 
 <!-- DYNAMIC_GIT_START -->
 **Last 10 Commits:**
+- `82fba2b` refactor: Extract app.js bootstrap and PhysicsManager debug visualization
+- `afaa470` refactor: Extract CardInventoryUI into focused manager modules
+- `49c44a4` docs: Update restart.md with security hardening v2.1.5
 - `4284aa2` test: Fix strict mode violations in tooltip tests
 - `da1bbbe` test: Fix test_canvas_context_available fallback container check
 - `d9c986f` test: Fix 11 failing Playwright tests with proper skip conditions
@@ -88,14 +91,27 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 - `ca9443d` docs: Add .env.example with all environment variables
 - `b1fd0ae` fix: Remove hardcoded SECRET_KEY, generate random key for development
 - `4b5ff1b` docs: Update CLAUDE.md with security hardening changes
-- `1340a07` fix: Update CSP to allow required CDN resources
-- `b1be0bf` feat: Add security headers to all HTTP responses
-- `52a6590` fix: Replace remaining broad exceptions in backend files
 <!-- DYNAMIC_GIT_END -->
 
 ## 🎉 Latest Issues Solved
 
-### **Security Hardening v2.1.5** ✅ **JUST COMPLETED** *(Jan 10, 2026)*
+### **Phase 2 Refactoring - God Class Extraction** ✅ **JUST COMPLETED** *(Jan 10, 2026)*
+- **CardInventoryUI.js**: 1,469 → 771 lines (-47.5%)
+  - Extracted `CUIShopModeManager.js` (299 lines) - shop/inventory container management
+  - Extracted `CUIUICreator.js` (284 lines) - UI element creation
+  - Extracted `CUICardUpgradeManager.js` (204 lines) - card upgrade logic
+  - Extracted `CUICardSlotManager.js` (203 lines) - card installation/removal
+  - Previously extracted: `CUIShipConfigManager.js`, `CUIStyleManager.js`, `CUITestDataLoader.js`
+- **app.js**: 2,507 → 212 lines (-91.5%)
+  - Bootstrap logic extracted to focused modules
+  - Now serves as thin orchestration layer
+- **PhysicsManager.js**: 2,319 → 1,658 lines (-28.5%)
+  - Debug visualization moved to `PhysicsDebugVisualizer.js`
+- **Pattern**: Delegation via thin wrapper methods calling manager classes
+- **Testing**: 1,281 backend tests passed, 9 ship logic tests passed
+- **Commits**: `afaa470`, `82fba2b` pushed to main
+
+### **Security Hardening v2.1.5** ✅ **COMPLETED** *(Jan 10, 2026)*
 - **Release**: `v2.1.5-security-final` tag created and pushed
 - **Security Headers**: Added comprehensive HTTP security headers via Flask middleware
   - Content-Security-Policy (CSP) with CDN allowances for Three.js, Google Fonts
@@ -200,11 +216,13 @@ Debug settings persist in: `frontend/static/js/debug_config.json`
 ## 🚧 Current Development Priorities
 
 1. **Security Hardening** ✅ **COMPLETED** - v2.1.5-security-final released
-2. **Achievement System Polish** - Trophy notifications, faction-based ranks
-3. **Mission System Enhancement** - New mission types, complexity scaling
-4. **UI/UX Polish** - Visual feedback improvements, accessibility
-5. **Performance Optimization** - Three.js rendering, memory management
-6. **Content Expansion** - New ships, stations, gameplay elements
+2. **Phase 2 Refactoring** ✅ **MOSTLY COMPLETE** - God class extraction done
+   - CardInventoryUI, app.js, PhysicsManager extracted
+   - Remaining: Phase 2.4 (minor UI components) - optional
+3. **Phase 3 Refactoring** 🔄 **UP NEXT** - Frontend infrastructure improvements
+4. **Achievement System Polish** - Trophy notifications, faction-based ranks
+5. **Mission System Enhancement** - New mission types, complexity scaling
+6. **Performance Optimization** - Three.js rendering, memory management
 
 ## ✅ Recent Major Fixes (January 2026)
 
