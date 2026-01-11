@@ -1,13 +1,17 @@
 import { debug } from '../debug.js';
+import { MissionAPIService } from '../services/MissionAPIService.js';
+import { MissionRenderer } from '../managers/MissionRenderer.js';
+import { MissionStateManager } from '../managers/MissionStateManager.js';
 
 /**
  * MissionStatusHUD - In-game mission tracking interface
  * Positioned in upper-right corner, toggled with M key
  * Shows active missions and objectives with real-time updates
+ *
+ * Refactored to delegate to:
+ * - MissionRenderer: UI panel and component rendering
+ * - MissionStateManager: Mission state and data processing
  */
-
-import { MissionAPIService } from '../services/MissionAPIService.js';
-
 export class MissionStatusHUD {
     constructor(starfieldManager, missionManager) {
         this.starfieldManager = starfieldManager;
@@ -15,20 +19,20 @@ export class MissionStatusHUD {
         this.isVisible = false;
         this.activeMissions = [];
         this.updateInterval = null;
-        
+
         // Use global Mission API Service (shared with waypoint system)
         this.missionAPI = window.missionAPI || new MissionAPIService();
-        
+
         // UI components
         this.hudContainer = null;
         this.missionPanels = new Map();
         this.lastUpdateTime = 0;
-        
+
         // Track expanded state of missions to preserve user preferences
-        this.expandedStates = new Map(); // mission_id -> boolean
-        
+        this.expandedStates = new Map();
+
         // Track missions showing completion to prevent refresh interference
-        this.missionsShowingCompletion = new Set(); // mission_id set
+        this.missionsShowingCompletion = new Set();
 
         // Update frequency (2Hz = every 500ms)
         this.updateFrequency = 500;
@@ -53,18 +57,22 @@ export class MissionStatusHUD {
         // Store reference to close button for cleanup
         this.closeButton = null;
 
+        // Initialize extracted modules
+        this.renderer = new MissionRenderer(this);
+        this.stateManager = new MissionStateManager(this);
+
         this.initialize();
     }
-    
+
     initialize() {
         this.createHUDContainer();
         this.setupEventListeners();
-debug('UI', 'MissionStatusHUD: Initialized');
-        
+        debug('UI', 'MissionStatusHUD: Initialized');
+
         // Make globally accessible for testing
         window.missionStatusHUD = this;
     }
-    
+
     /**
      * Create the main HUD container with positioning and styling
      */
@@ -83,7 +91,7 @@ debug('UI', 'MissionStatusHUD: Initialized');
             font-family: 'VT323', monospace;
             color: #00ff41;
             padding: 15px;
-            box-shadow: 
+            box-shadow:
                 0 0 20px rgba(0, 255, 65, 0.3),
                 inset 0 0 20px rgba(0, 255, 65, 0.1);
             z-index: 1001;
@@ -92,14 +100,14 @@ debug('UI', 'MissionStatusHUD: Initialized');
             backdrop-filter: blur(2px);
             overflow-y: auto;
         `;
-        
+
         this.createHeader();
         this.createContent();
-        
+
         document.body.appendChild(this.hudContainer);
-debug('AI', 'MissionStatusHUD: Container created');
+        debug('AI', 'MissionStatusHUD: Container created');
     }
-    
+
     /**
      * Create header with title and close button
      */
@@ -114,7 +122,7 @@ debug('AI', 'MissionStatusHUD: Container created');
             padding-bottom: 10px;
             border-bottom: 1px solid #00ff41;
         `;
-        
+
         // Title
         const title = document.createElement('div');
         title.style.cssText = `
@@ -126,8 +134,8 @@ debug('AI', 'MissionStatusHUD: Container created');
             gap: 8px;
         `;
         title.innerHTML = '◉ MISSION STATUS';
-        
-        // Close button (store reference for cleanup)
+
+        // Close button
         this.closeButton = document.createElement('div');
         this.closeButton.style.cssText = `
             color: #ffffff;
@@ -162,7 +170,7 @@ debug('AI', 'MissionStatusHUD: Container created');
         this.headerArea.appendChild(this.closeButton);
         this.hudContainer.appendChild(this.headerArea);
     }
-    
+
     /**
      * Create content area for mission panels
      */
@@ -173,33 +181,13 @@ debug('AI', 'MissionStatusHUD: Container created');
             max-height: 320px;
             overflow-y: auto;
         `;
-        
+
         // Initially show no missions message
-        this.showNoMissionsMessage();
-        
+        this.renderer.showNoMissionsMessage(this.contentArea);
+
         this.hudContainer.appendChild(this.contentArea);
     }
-    
-    /**
-     * Show message when no active missions
-     */
-    showNoMissionsMessage() {
-        this.contentArea.innerHTML = `
-            <div style="
-                text-align: center;
-                color: #888888;
-                font-size: 16px;
-                padding: 20px;
-                font-style: italic;
-            ">
-                No active missions<br>
-                <span style="font-size: 14px; margin-top: 10px; display: block;">
-                    Visit a station's Mission Board to accept missions
-                </span>
-            </div>
-        `;
-    }
-    
+
     /**
      * Show the HUD
      */
@@ -207,8 +195,8 @@ debug('AI', 'MissionStatusHUD: Container created');
         if (!this.isVisible) {
             this.isVisible = true;
             this.hudContainer.style.display = 'block';
-debug('UI', 'MissionStatusHUD: Shown');
-            
+            debug('UI', 'MissionStatusHUD: Shown');
+
             // Start periodic updates
             this.startUpdates();
             // Initial load of missions
@@ -216,7 +204,7 @@ debug('UI', 'MissionStatusHUD: Shown');
         }
         return true;
     }
-    
+
     /**
      * Hide the HUD
      */
@@ -224,36 +212,33 @@ debug('UI', 'MissionStatusHUD: Shown');
         if (this.isVisible) {
             this.isVisible = false;
             this.hudContainer.style.display = 'none';
-debug('UI', 'MissionStatusHUD: Hidden');
-            
+            debug('UI', 'MissionStatusHUD: Hidden');
+
             // Stop updates
             this.stopUpdates();
         }
         return true;
     }
-    
+
     /**
      * Toggle HUD visibility
      */
     toggle() {
         this.isVisible = !this.isVisible;
         this.hudContainer.style.display = this.isVisible ? 'block' : 'none';
-        
-debug('UI', `🎯 MissionStatusHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
-        
+
+        debug('UI', `MissionStatusHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`);
+
         if (this.isVisible) {
-            // Start periodic updates
             this.startUpdates();
-            // Initial load of missions
             this.refreshMissions();
         } else {
-            // Stop updates
             this.stopUpdates();
         }
-        
+
         return true;
     }
-    
+
     /**
      * Start periodic mission updates
      */
@@ -261,14 +246,14 @@ debug('UI', `🎯 MissionStatusHUD: ${this.isVisible ? 'Enabled' : 'Disabled'}`)
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
-        
+
         this.updateInterval = setInterval(() => {
-            this.updateMissionStatus();
+            this.stateManager.updateMissionStatus();
         }, this.updateFrequency);
-        
-debug('UI', 'MissionStatusHUD: Started periodic updates');
+
+        debug('UI', 'MissionStatusHUD: Started periodic updates');
     }
-    
+
     /**
      * Stop periodic updates
      */
@@ -283,9 +268,6 @@ debug('UI', 'MissionStatusHUD: Started periodic updates');
 
     /**
      * Create a tracked timeout that can be cleaned up on destroy
-     * @param {Function} callback - Callback to execute
-     * @param {number} delay - Delay in milliseconds
-     * @returns {number} - Timeout ID
      */
     _createTrackedTimeout(callback, delay) {
         const timeoutId = setTimeout(() => {
@@ -305,1065 +287,97 @@ debug('UI', 'MissionStatusHUD: Started periodic updates');
         });
         this.activeTimeouts.clear();
     }
-    
-    /**
-     * Refresh missions from mission API
-     */
+
+    // Delegate to MissionStateManager
     async refreshMissions() {
-        // Skip refresh if any missions are showing completion rewards
-        if (this.missionsShowingCompletion && this.missionsShowingCompletion.size > 0) {
-            debug('MISSIONS', `⏸️ MissionStatusHUD: Refresh blocked - ${this.missionsShowingCompletion.size} missions showing completion rewards`);
-            return;
-        }
-
-        debug('MISSIONS', '🔄 MissionStatusHUD: Refresh proceeding - no missions showing completion rewards');
-        
-        try {
-            // Get active missions from API
-            const apiMissions = await this.missionAPI.getActiveMissions();
-            
-            // Preserve completed missions that are showing completion screens
-            // Look for missions that have rewards sections (indicating completion)
-            const completedMissionsShowingRewards = this.activeMissions.filter(mission => {
-                const panel = this.missionPanels.get(mission.id);
-                const hasRewardsSection = panel && panel.querySelector('.mission-rewards-section');
-                const isMarkedCompleted = mission.status === 'completed';
-                const hasFlaggedRewardsSection = mission.hasRewardsSection === true;
-                const isInCompletionSet = this.missionsShowingCompletion.has(mission.id);
-                
-                // Preserve if marked as completed OR has rewards section OR flagged as having rewards OR in completion set
-                return (isMarkedCompleted || hasRewardsSection || hasFlaggedRewardsSection || isInCompletionSet) && this.missionPanels.has(mission.id);
-            });
-            
-            // Process API missions for UI display
-            const processedApiMissions = apiMissions;
-            
-            // Combine API missions with completed missions showing rewards
-            this.activeMissions = [...processedApiMissions, ...completedMissionsShowingRewards];
-            
-            this.renderMissions();
-            debug('MISSIONS', `🎯 MissionStatusHUD: Refreshed ${this.activeMissions.length} active missions (${processedApiMissions.length} active + ${completedMissionsShowingRewards.length} completed)`);
-        } catch (error) {
-            debug('MISSIONS', `❌ MissionStatusHUD: Error refreshing missions: ${error.message}`);
-            this.showErrorMessage('Failed to load missions');
-            
-            // Fallback to mock data for testing
-debug('UI', 'MissionStatusHUD: Using mock data as fallback');
-            this.activeMissions = this.getMockMissions();
-            this.renderMissions();
-        }
+        return this.stateManager.refreshMissions();
     }
-    
-    /**
-     * Update missions data directly with provided mission objects
-     * This avoids race conditions with API calls when we already have fresh data
-     */
+
     updateMissionsData(updatedMissions) {
-        try {
-            // Process and display the updated missions directly
-            
-            // Process missions for UI display
-            this.activeMissions = updatedMissions.map(mission => this.processMissionForUI(mission));
-            
-            this.renderMissions();
-            debug('MISSIONS', `🎯 MissionStatusHUD: Updated with ${this.activeMissions.length} missions directly`);
-        } catch (error) {
-            debug('MISSIONS', `❌ MissionStatusHUD: Error updating missions data: ${error.message}`);
-            // Fallback to refresh if direct update fails
-            this.refreshMissions();
-        }
+        return this.stateManager.updateMissionsData(updatedMissions);
     }
 
-    /**
-     * Update mission status (called periodically)
-     */
-    updateMissionStatus() {
-        if (!this.isVisible) return;
-        
-        // Update mission progress, timers, distances, etc.
-        this.activeMissions.forEach(mission => {
-            this.updateMissionPanel(mission);
-        });
+    async showMissionCompletion(missionId, missionData, rewards) {
+        return this.stateManager.showMissionCompletion(missionId, missionData, rewards);
     }
-    
+
+    removeMission(missionId) {
+        return this.stateManager.removeMission(missionId);
+    }
+
     /**
      * Render all active missions
      */
     renderMissions() {
-        
         // Preserve existing panels that have rewards sections (completed missions)
         const panelsToPreserve = new Map();
         this.missionPanels.forEach((panel, missionId) => {
             const hasRewardsSection = panel.querySelector('.mission-rewards-section');
             const isInCompletionSet = this.missionsShowingCompletion.has(missionId);
-            
+
             if (hasRewardsSection || isInCompletionSet) {
                 panelsToPreserve.set(missionId, panel);
-                debug('UI', `🎯 Preserving panel with rewards section: ${missionId}`);
+                debug('UI', `Preserving panel with rewards section: ${missionId}`);
             }
         });
-        
+
         // Clear content but preserve panels with rewards
         this.contentArea.innerHTML = '';
         this.missionPanels.clear();
-        
+
         if (this.activeMissions.length === 0) {
-            this.showNoMissionsMessage();
+            this.renderer.showNoMissionsMessage(this.contentArea);
             return;
         }
-        
+
         this.activeMissions.forEach((mission, index) => {
             let panel;
-            
+
             // Use preserved panel if it exists, otherwise create new one
             if (panelsToPreserve.has(mission.id)) {
                 panel = panelsToPreserve.get(mission.id);
-                debug('UI', `🎯 Reusing preserved panel for mission: ${mission.id}`);
+                debug('UI', `Reusing preserved panel for mission: ${mission.id}`);
             } else {
-                panel = this.createMissionPanel(mission, index);
+                panel = this.renderer.createMissionPanel(mission, index);
             }
-            
+
             this.contentArea.appendChild(panel);
             this.missionPanels.set(mission.id, panel);
         });
     }
-    
-    /**
-     * Create individual mission panel
-     */
-    createMissionPanel(mission, index) {
-        const panel = document.createElement('div');
-        panel.className = 'mission-panel';
-        panel.style.cssText = `
-            background: rgba(0, 40, 0, 0.3);
-            border: 1px solid #00ff41;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 10px;
-            transition: all 0.3s ease;
-        `;
-        
-        // Panel header with mission title and expand/collapse
-        const header = this.createMissionHeader(mission, index);
-        panel.appendChild(header);
-        
-        // Mission details (collapsible)
-        const details = this.createMissionDetails(mission);
-        panel.appendChild(details);
-        
-        // Add hover effects
-        panel.addEventListener('mouseenter', () => {
-            panel.style.background = 'rgba(0, 60, 0, 0.4)';
-        });
-        panel.addEventListener('mouseleave', () => {
-            panel.style.background = 'rgba(0, 40, 0, 0.3)';
-        });
-        
-        return panel;
-    }
-    
-    /**
-     * Create mission header with title and expand/collapse
-     */
-    createMissionHeader(mission, index) {
-        const header = document.createElement('div');
-        header.className = 'mission-header-panel';
-        header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            margin-bottom: 10px;
-        `;
-        
-        // Expand/collapse icon and title
-        const titleSection = document.createElement('div');
-        titleSection.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        `;
-        
-        const expandIcon = document.createElement('span');
-        expandIcon.textContent = mission.expanded ? '▼' : '▲';
-        expandIcon.style.cssText = `
-            color: #00ff41;
-            font-size: 12px;
-            transition: transform 0.2s ease;
-        `;
-        
-        const title = document.createElement('span');
-        title.style.cssText = `
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: bold;
-        `;
-        title.textContent = mission.title;
-        
-        titleSection.appendChild(expandIcon);
-        titleSection.appendChild(title);
-        
-        // Mission progress indicator
-        const progress = document.createElement('div');
-        progress.style.cssText = `
-            color: #ffff44;
-            font-size: 14px;
-        `;
-        progress.textContent = this.getMissionProgress(mission);
-        
-        header.appendChild(titleSection);
-        header.appendChild(progress);
-        
-        // Toggle expand/collapse on click
-        header.addEventListener('click', () => {
-            mission.expanded = !mission.expanded;
-            
-            // Save the expanded state to preserve user preference
-            this.expandedStates.set(mission.id, mission.expanded);
-            
-            expandIcon.textContent = mission.expanded ? '▼' : '▲';
-            const details = header.nextElementSibling;
-            details.style.display = mission.expanded ? 'block' : 'none';
-            
-            debug('UI', `🎯 Mission ${mission.id} ${mission.expanded ? 'expanded' : 'collapsed'} by user`);
-        });
-        
-        return header;
-    }
-    
-    /**
-     * Create mission details section
-     */
-    createMissionDetails(mission) {
-        const details = document.createElement('div');
-        details.className = 'mission-details';
-        details.style.cssText = `
-            display: ${mission.expanded ? 'block' : 'none'};
-            padding-left: 20px;
-        `;
-        
-        // Mission info
-        const info = document.createElement('div');
-        info.style.cssText = `
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: #cccccc;
-        `;
-        info.innerHTML = `
-            Client: ${mission.client}<br>
-            ${mission.location ? `Location: ${mission.location}<br>` : ''}
-            ${mission.timeRemaining ? `Time Remaining: ${mission.timeRemaining}` : ''}
-        `;
-        details.appendChild(info);
-        
-        // Objectives
-        const objectivesTitle = document.createElement('div');
-        objectivesTitle.style.cssText = `
-            color: #00ff41;
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        `;
-        objectivesTitle.textContent = 'OBJECTIVES:';
-        details.appendChild(objectivesTitle);
-        
-        // Objective list
-        const objectiveList = document.createElement('div');
-        objectiveList.style.cssText = `
-            margin-left: 10px;
-        `;
-        
-        mission.objectives.forEach(objective => {
-            const objElement = this.createObjectiveElement(objective);
-            objectiveList.appendChild(objElement);
-        });
-        
-        details.appendChild(objectiveList);
-        
-        return details;
-    }
-    
-    /**
-     * Create individual objective element
-     */
-    createObjectiveElement(objective) {
-        // Normalize objective data from backend format
-        const normalizedObjective = this.normalizeObjective(objective);
-        
-        
-        const objElement = document.createElement('div');
-        objElement.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-            font-size: 14px;
-        `;
-        
-        // Icon and description
-        const description = document.createElement('div');
-        description.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex: 1;
-        `;
-        
-        const icon = this.getObjectiveIcon(normalizedObjective.status);
-        const iconSpan = document.createElement('span');
-        iconSpan.textContent = icon.symbol;
-        iconSpan.style.color = icon.color;
-        
-        // Check if this is a waypoint objective AND it's active
-        const isActive = normalizedObjective.state === 'active' || normalizedObjective.status === 'ACTIVE';
-        if (normalizedObjective.waypointId && isActive) {
-            // Create clickable waypoint link for ACTIVE waypoints only
-            const waypointLink = document.createElement('a');
-            waypointLink.textContent = normalizedObjective.description;
-            waypointLink.style.cssText = `
-                color: #00ff88;
-                text-decoration: underline;
-                cursor: pointer;
-            `;
-            
-            waypointLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.targetWaypoint(normalizedObjective.waypointId);
-            });
-            
-            description.appendChild(iconSpan);
-            description.appendChild(waypointLink);
-        } else {
-            // Regular non-waypoint objective or inactive waypoint
-            const descText = document.createElement('span');
-            descText.textContent = normalizedObjective.description;
-            descText.style.color = normalizedObjective.isOptional ? '#ffff44' : '#ffffff';
-            
-            description.appendChild(iconSpan);
-            description.appendChild(descText);
-        }
-        
-        // Status
-        const status = document.createElement('div');
-        status.style.cssText = `
-            color: ${icon.color};
-            font-size: 13px;
-            text-transform: uppercase;
-        `;
-        status.textContent = this.getObjectiveStatus(normalizedObjective);
-        
-        objElement.appendChild(description);
-        objElement.appendChild(status);
-        
-        return objElement;
-    }
-    
-    /**
-     * Target a waypoint from Mission HUD objective click (legacy version)
-     */
-    targetWaypointLegacy(waypointId) {
-        debug('MISSIONS', `🎯 MISSION HUD: Targeting waypoint: ${waypointId}`);
 
-        // Get the waypoint from WaypointManager
-        if (window.waypointManager && window.waypointManager.activeWaypoints.has(waypointId)) {
-            const waypoint = window.waypointManager.activeWaypoints.get(waypointId);
-
-            // Set CPU target to this waypoint
-            if (window.starfieldManager?.targetComputerManager) {
-                window.starfieldManager.targetComputerManager.setWaypointTarget(waypoint);
-                debug('MISSIONS', '✅ MISSION HUD: Waypoint targeted successfully');
-            } else {
-                debug('MISSIONS', '❌ MISSION HUD: Target Computer Manager not available');
-            }
-        } else {
-            debug('MISSIONS', `❌ MISSION HUD: Waypoint not found: ${waypointId}`);
-        }
-    }
-
-    /**
-     * Get objective icon and color based on status
-     */
-    getObjectiveIcon(status) {
-        const icons = {
-            COMPLETED: { symbol: '✓', color: '#00ff41' },
-            ACTIVE: { symbol: '●', color: '#ffff44' },
-            PENDING: { symbol: '○', color: '#888888' },
-            FAILED: { symbol: '✗', color: '#ff4444' },
-            OPTIONAL: { symbol: '◇', color: '#ffff44' },
-            LOCKED: { symbol: '🔒', color: '#666666' }
-        };
-        
-        return icons[status] || icons.PENDING;
-    }
-    
-    /**
-     * Convert backend objective data to frontend format
-     */
-    normalizeObjective(objective) {
-        // Convert backend format to frontend format with robust coercion
-        const achieved = (objective.is_achieved === true)
-            || (objective.status === 'COMPLETED')
-            || (typeof objective.progress === 'number' && objective.progress >= 1);
-        const status = achieved ? 'COMPLETED' : (objective.status || 'PENDING');
-        
-        // Silence noisy logging in production. If needed, add gated debug here.
-        
-        return {
-            ...objective,
-            status: status,
-            isOptional: objective.is_optional || false
-        };
-    }
-    
     /**
      * Target a waypoint by ID
      */
     targetWaypoint(waypointId) {
-        debug('MISSIONS', `🎯 MISSION HUD: Targeting waypoint: ${waypointId}`);
+        debug('MISSIONS', `MISSION HUD: Targeting waypoint: ${waypointId}`);
 
-        // Use targetWaypointViaCycle with waypoint ID directly (like other parts of the codebase)
         if (!window.targetComputerManager) {
-            debug('MISSIONS', '❌ MISSION HUD: targetComputerManager not available');
+            debug('MISSIONS', 'MISSION HUD: targetComputerManager not available');
             return false;
         }
 
         if (!window.targetComputerManager.targetWaypointViaCycle) {
-            debug('MISSIONS', '❌ MISSION HUD: targetWaypointViaCycle method not available');
+            debug('MISSIONS', 'MISSION HUD: targetWaypointViaCycle method not available');
             return false;
         }
 
-        // Target the waypoint by ID - targetWaypointViaCycle handles finding the waypoint
         const success = window.targetComputerManager.targetWaypointViaCycle(waypointId);
 
         if (success) {
-            debug('MISSIONS', `✅ MISSION HUD: Waypoint targeted successfully: ${waypointId}`);
+            debug('MISSIONS', `MISSION HUD: Waypoint targeted successfully: ${waypointId}`);
         } else {
-            debug('MISSIONS', `❌ MISSION HUD: Failed to target waypoint: ${waypointId}`);
+            debug('MISSIONS', `MISSION HUD: Failed to target waypoint: ${waypointId}`);
         }
 
         return success;
     }
 
     /**
-     * Get objective status text
-     */
-    getObjectiveStatus(objective) {
-        if (objective.status === 'COMPLETED') return '[COMPLETE]';
-        if (objective.status === 'ACTIVE' && objective.progress) return `[${objective.progress}]`;
-        if (objective.status === 'FAILED') return '[FAILED]';
-        if (objective.isOptional) return '[BONUS]';
-        return '[PENDING]';
-    }
-    
-    /**
-     * Get mission progress summary
-     */
-    getMissionProgress(mission) {
-        const normalizedObjectives = mission.objectives.map(obj => this.normalizeObjective(obj));
-        const completed = normalizedObjectives.filter(obj => obj.status === 'COMPLETED').length;
-        const total = normalizedObjectives.filter(obj => !obj.isOptional).length;
-        return `${completed}/${total}`;
-    }
-    
-    /**
-     * Update individual mission panel
-     */
-    updateMissionPanel(mission) {
-        const panel = this.missionPanels.get(mission.id);
-        if (!panel) return;
-        
-        // Update time remaining if applicable
-        if (mission.timeRemaining) {
-            // Simulate countdown (in real implementation, this would come from mission manager)
-            const parts = mission.timeRemaining.split(':');
-            let minutes = parseInt(parts[0]);
-            let seconds = parseInt(parts[1]);
-            
-            seconds--;
-            if (seconds < 0) {
-                seconds = 59;
-                minutes--;
-            }
-            
-            if (minutes >= 0) {
-                mission.timeRemaining = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-        
-        // Re-render the panel with updated data
-        const newPanel = this.createMissionPanel(mission, Array.from(this.missionPanels.keys()).indexOf(mission.id));
-        panel.replaceWith(newPanel);
-        this.missionPanels.set(mission.id, newPanel);
-    }
-    
-    /**
-     * Show mission completion rewards in the mission panel
-     * @param {string} missionId - Mission ID
-     * @param {Object} missionData - Mission data
-     * @param {Object} rewards - Rewards earned
-     */
-    async showMissionCompletion(missionId, missionData, rewards) {
-        try {
-            debug('MISSIONS', `🎉 MISSION COMPLETION: showMissionCompletion called for: ${missionId}`);
-
-            // CRITICAL FIX: Force Mission HUD to be visible for rewards
-            debug('MISSIONS', `📺 MISSION COMPLETION: HUD visible=${this.isVisible}`);
-
-            if (!this.isVisible) {
-                debug('MISSIONS', '📺 MISSION COMPLETION: Auto-opening HUD for rewards display');
-                this.show();
-            } else {
-                // Force display even if already "visible" - call show() anyway
-                this.show();
-            }
-
-            // Small delay to ensure HUD is fully rendered
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            const panel = this.missionPanels.get(missionId);
-            if (!panel) {
-                debug('MISSIONS', `❌ MISSION COMPLETION: Panel not found for mission: ${missionId}`);
-                return;
-            }
-
-            debug('MISSIONS', `✅ MISSION COMPLETION: Panel found for: ${missionId}`);
-
-            // Block refreshes and mark the mission as completed
-            this.missionsShowingCompletion.add(missionId);
-            debug('MISSIONS', `🔒 MISSION COMPLETION: Added to completion tracking, size: ${this.missionsShowingCompletion.size}`);
-
-            const mission = this.activeMissions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'completed';
-                mission.completedAt = Date.now();
-                mission.rewards = rewards;
-                mission.completionData = missionData;
-                mission.hasRewardsSection = true; // Flag for preservation
-                debug('MISSIONS', `✅ Marked mission as completed in HUD: ${missionId}`);
-            } else {
-                debug('MISSIONS', '❌ MISSION COMPLETION: Mission not found in activeMissions array');
-            }
-
-            // Find the mission details section (where objectives are)
-            const detailsSection = panel.querySelector('.mission-details');
-            if (!detailsSection) {
-                debug('MISSIONS', `⚠️ Mission details section not found in panel: ${missionId}`);
-                return;
-            }
-
-            // Check if rewards section already exists (avoid duplicates)
-            const existingRewardsSection = detailsSection.querySelector('.mission-rewards-section');
-            if (existingRewardsSection) {
-                debug('MISSIONS', `⚠️ Rewards section already exists for mission: ${missionId}`);
-                return;
-            }
-
-            // Create and add rewards section
-            debug('MISSIONS', '🔧 MISSION COMPLETION: Creating rewards section');
-            const rewardsSection = this.createRewardsSection(rewards, missionId);
-            detailsSection.appendChild(rewardsSection);
-
-            // Update panel styling for completion
-            panel.style.background = 'rgba(0, 60, 0, 0.4)';
-            panel.style.border = '2px solid #00ff41';
-            panel.style.boxShadow = '0 0 10px rgba(0, 255, 65, 0.3)';
-
-            // Make rewards section visible with highlighting
-            rewardsSection.style.background = 'rgba(0, 100, 0, 0.5)';
-            rewardsSection.style.border = '2px solid #00ff41';
-            rewardsSection.style.padding = '15px';
-            rewardsSection.style.margin = '10px 0';
-
-            debug('MISSIONS', `✅ Added rewards section to mission panel: ${missionId}`);
-
-            // Verify the rewards section is still there after a short delay (tracked for cleanup)
-            this._createTrackedTimeout(() => {
-                const stillExists = detailsSection.querySelector('.mission-rewards-section');
-                if (!stillExists) {
-                    debug('MISSIONS', `❌ MISSION COMPLETION: Rewards section was removed for ${missionId}`);
-                }
-            }, 1000);
-
-        } catch (error) {
-            debug('MISSIONS', `❌ MISSION COMPLETION: Error in showMissionCompletion: ${error.message}`);
-        }
-    }
-
-    /**
-     * Create rewards section to append under objectives
-     * @param {Object} rewards - Rewards earned
-     * @param {string} missionId - Mission ID
-     * @returns {HTMLElement} - Rewards section element
-     */
-    createRewardsSection(rewards, missionId) {
-        const rewardsSection = document.createElement('div');
-        rewardsSection.className = 'mission-rewards-section';
-        rewardsSection.style.cssText = `
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #00ff41;
-        `;
-
-        // Check if there are any rewards to display
-        const hasCredits = rewards.credits && rewards.credits > 0;
-        const hasFactionRep = rewards.factionBonuses && Object.keys(rewards.factionBonuses).length > 0;
-        const hasCards = rewards.cards && rewards.cards.count > 0;
-        const hasRewards = hasCredits || hasFactionRep || hasCards;
-
-        if (hasRewards) {
-            // Rewards header
-            const rewardsHeader = document.createElement('div');
-            rewardsHeader.style.cssText = `
-                color: #00ff41;
-                font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 10px;
-                text-shadow: 0 0 5px #00ff41;
-            `;
-            rewardsHeader.textContent = 'REWARDS:';
-            rewardsSection.appendChild(rewardsHeader);
-
-            // Rewards list
-            const rewardsList = document.createElement('div');
-            rewardsList.className = 'rewards-list';
-            rewardsList.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-                margin-bottom: 15px;
-            `;
-
-            // Add individual rewards
-            if (hasCredits) {
-                rewardsList.appendChild(this.createRewardItem('💰', `${rewards.credits.toLocaleString()} Credits`));
-            }
-
-            if (hasFactionRep) {
-                Object.entries(rewards.factionBonuses).forEach(([faction, amount]) => {
-                    const factionName = this.getFactionDisplayName(faction);
-                    rewardsList.appendChild(this.createRewardItem('🎖️', `+${amount} ${factionName} Rep`));
-                });
-            }
-
-            if (hasCards) {
-                // Show individual card names if available, otherwise show count
-                if (rewards.cards.names && rewards.cards.names.length > 0) {
-                    rewards.cards.names.forEach(cardName => {
-                        rewardsList.appendChild(this.createRewardItem('🃏', cardName));
-                    });
-                } else if (rewards.cards.types && rewards.cards.types.length > 0) {
-                    // Fallback: show card types if names not available
-                    rewards.cards.types.forEach(cardType => {
-                        const formattedType = this.formatCardTypeName(cardType);
-                        rewardsList.appendChild(this.createRewardItem('🃏', formattedType));
-                    });
-                } else {
-                    // Final fallback: show count
-                    const cardText = `${rewards.cards.count} NFT Card${rewards.cards.count > 1 ? 's' : ''}`;
-                    rewardsList.appendChild(this.createRewardItem('🃏', cardText));
-                }
-            }
-
-            rewardsSection.appendChild(rewardsList);
-        }
-
-        // OK button (always shown for completed missions)
-        const okButton = document.createElement('button');
-        okButton.className = 'mission-ok-button';
-        okButton.textContent = 'OK';
-        okButton.style.cssText = `
-            background: linear-gradient(135deg, #00ff41, #00cc33);
-            border: none;
-            color: #000000;
-            padding: 8px 20px;
-            font-family: 'VT323', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            width: 100%;
-            margin-top: 10px;
-        `;
-
-        // Add hover effect
-        okButton.addEventListener('mouseenter', () => {
-            okButton.style.background = 'linear-gradient(135deg, #00cc33, #009922)';
-            okButton.style.color = '#ffffff';
-            okButton.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.6)';
-        });
-
-        okButton.addEventListener('mouseleave', () => {
-            okButton.style.background = 'linear-gradient(135deg, #00ff41, #00cc33)';
-            okButton.style.color = '#000000';
-            okButton.style.boxShadow = 'none';
-        });
-
-        // Add click handler
-        okButton.addEventListener('click', () => {
-            this.removeMission(missionId);
-        });
-
-        rewardsSection.appendChild(okButton);
-
-        return rewardsSection;
-    }
-
-    /**
-     * Create individual reward item element
-     * @param {string} icon - Reward icon
-     * @param {string} text - Reward text
-     * @returns {HTMLElement} - Reward item element
-     */
-    createRewardItem(icon, text) {
-        const item = document.createElement('div');
-        item.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #ffffff;
-            font-size: 12px;
-        `;
-
-        const iconSpan = document.createElement('span');
-        iconSpan.style.fontSize = '14px';
-        iconSpan.textContent = icon;
-
-        const textSpan = document.createElement('span');
-        textSpan.textContent = text;
-
-        item.appendChild(iconSpan);
-        item.appendChild(textSpan);
-
-        return item;
-    }
-
-
-
-    /**
-     * Remove mission from HUD (called by OK button)
-     * @param {string} missionId - Mission ID to remove
-     */
-    removeMission(missionId) {
-        debug('MISSIONS', `🗑️ Removing completed mission from HUD: ${missionId}`);
-
-        // Remove from completion tracking to allow refreshes again
-        this.missionsShowingCompletion.delete(missionId);
-        debug('MISSIONS', '🔓 MISSION REMOVAL: Removed mission from completion tracking, allowing refreshes');
-        
-        const panel = this.missionPanels.get(missionId);
-        if (panel) {
-            // Fade out animation
-            panel.style.transition = 'all 0.3s ease';
-            panel.style.opacity = '0';
-            panel.style.transform = 'translateX(100%)';
-
-            // Remove after animation (tracked for cleanup)
-            this._createTrackedTimeout(() => {
-                if (panel.parentNode) {
-                    panel.parentNode.removeChild(panel);
-                }
-                this.missionPanels.delete(missionId);
-
-                // Clean up expanded state tracking
-                this.expandedStates.delete(missionId);
-
-                // Remove from active missions list
-                this.activeMissions = this.activeMissions.filter(m => m.id !== missionId);
-
-                // Now actually delete the mission from caches (user has dismissed it)
-                this.deleteMissionFromCaches(missionId);
-
-                // Show no missions message if empty
-                if (this.activeMissions.length === 0) {
-                    this.showNoMissionsMessage();
-                }
-
-                debug('MISSIONS', '🔄 MISSION REMOVAL: Mission fully removed, refreshes can resume');
-            }, 300);
-        }
-    }
-
-    /**
-     * Delete mission from all caches (called after user dismisses completion)
-     * @param {string} missionId - Mission ID to delete
-     */
-    deleteMissionFromCaches(missionId) {
-        debug('UI', `🗑️ Deleting mission from caches: ${missionId}`);
-        
-        // Remove from MissionAPI cache
-        if (window.missionAPI && window.missionAPI.activeMissions) {
-            const removed = window.missionAPI.activeMissions.delete(missionId);
-            debug('UI', `🗑️ Removed from MissionAPI cache: ${removed ? 'SUCCESS' : 'NOT FOUND'}`);
-        }
-        
-        // Remove from MissionEventHandler cache
-        if (window.missionEventHandler && window.missionEventHandler.activeMissions) {
-            const localRemoved = window.missionEventHandler.activeMissions.delete(missionId);
-            debug('UI', `🗑️ Removed from local cache: ${localRemoved ? 'SUCCESS' : 'NOT FOUND'}`);
-        }
-        
-        debug('UI', `✅ Mission ${missionId} fully deleted from all caches`);
-    }
-
-    /**
-     * Get display name for faction
-     * @param {string} factionId - Faction identifier
-     * @returns {string} - Display name
-     */
-    getFactionDisplayName(factionId) {
-        const factionNames = {
-            'terran_republic_alliance': 'TRA',
-            'explorers_guild': 'Explorers Guild',
-            'traders_guild': 'Traders Guild',
-            'friendly': 'Allied Forces',
-            'neutral': 'Independent',
-            'enemy': 'Hostile Forces'
-        };
-        
-        return factionNames[factionId] || factionId || 'Unknown';
-    }
-
-    /**
-     * Format card type name for display
-     * @param {string} cardType - Card type identifier
-     * @returns {string} - Formatted display name
-     */
-    formatCardTypeName(cardType) {
-        const cardTypeNames = {
-            'scanner': 'Scanner Module Card',
-            'long_range_sensor': 'Long Range Sensor Card',
-            'shield_generator': 'Shield Generator Card',
-            'weapon_system': 'Weapon System Card',
-            'engine_upgrade': 'Engine Upgrade Card',
-            'cargo_expansion': 'Cargo Expansion Card',
-            'navigation_computer': 'Navigation Computer Card',
-            'communication_array': 'Communication Array Card'
-        };
-        
-        return cardTypeNames[cardType] || this.capitalizeWords(cardType.replace(/_/g, ' ')) + ' Card';
-    }
-
-    /**
-     * Capitalize words in a string
-     * @param {string} str - String to capitalize
-     * @returns {string} - Capitalized string
-     */
-    capitalizeWords(str) {
-        return str.split(' ').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        ).join(' ');
-    }
-
-    /**
-     * Show error message
-     */
-    showErrorMessage(message) {
-        this.contentArea.innerHTML = `
-            <div style="
-                text-align: center;
-                color: #ff4444;
-                font-size: 14px;
-                padding: 20px;
-            ">
-                Error: ${message}
-            </div>
-        `;
-    }
-    
-    /**
-     * Process mission data from API for UI display
-     */
-    processMissionForUI(mission) {
-        // Preserve expanded state if it exists, otherwise default to false
-        const wasExpanded = this.expandedStates.get(mission.id) || false;
-        
-        // Check if we already have this mission in our local array with completion status
-        const existingMission = this.activeMissions.find(m => m.id === mission.id);
-        const preservedStatus = existingMission?.status;
-        const preservedRewardsFlag = existingMission?.hasRewardsSection;
-        
-        const clientName = mission.client || mission.issuer || 'Unknown Client';
-        
-        const processedMission = {
-            id: mission.id,
-            title: mission.title,
-            client: clientName,
-            location: mission.location,
-            timeRemaining: this.calculateTimeRemaining(mission),
-            expanded: wasExpanded, // Preserve user's expand/collapse preference
-            status: preservedStatus || mission.status, // Preserve completion status
-            hasRewardsSection: preservedRewardsFlag, // Preserve rewards flag
-            objectives: mission.objectives?.map(obj => ({
-                id: obj.id,
-                description: obj.description,
-                status: obj.state?.toUpperCase() || 'PENDING',
-                progress: obj.progress || null,
-                isOptional: obj.optional || false
-            })) || []
-        };
-        
-        // Copy other preserved fields if they exist
-        if (existingMission) {
-            if (existingMission.completedAt) processedMission.completedAt = existingMission.completedAt;
-            if (existingMission.rewards) processedMission.rewards = existingMission.rewards;
-            if (existingMission.completionData) processedMission.completionData = existingMission.completionData;
-        }
-        
-        return processedMission;
-    }
-    
-    /**
-     * Calculate time remaining for mission
-     */
-    calculateTimeRemaining(mission) {
-        if (!mission.time_limit) return null;
-        
-        const now = new Date();
-        const deadline = new Date(mission.time_limit);
-        const remaining = deadline - now;
-        
-        if (remaining <= 0) return '00:00';
-        
-        const hours = Math.floor(remaining / (1000 * 60 * 60));
-        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-        
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    }
-    
-    /**
-     * Create completion data for mission completion UI
-     */
-    createCompletionData(mission) {
-        const completedObjectives = mission.objectives?.filter(obj => obj.is_achieved === true).length || 0;
-        const totalObjectives = mission.objectives?.filter(obj => !obj.optional).length || 1;
-        const bonusObjectives = mission.objectives?.filter(obj => obj.optional && obj.is_achieved === true).length || 0;
-        const totalBonusObjectives = mission.objectives?.filter(obj => obj.optional).length || 0;
-        
-        return {
-            completionTime: this.calculateCompletionTime(mission),
-            timeLimit: mission.time_limit || null,
-            bonusObjectives: {
-                completed: bonusObjectives,
-                total: totalBonusObjectives
-            },
-            rewards: {
-                credits: mission.rewards?.credits || 1000,
-                cards: mission.rewards?.cards || [],
-                factionStanding: mission.rewards?.faction_standing || {}
-            },
-            statistics: {
-                objectivesCompleted: `${completedObjectives}/${totalObjectives}`,
-                completionRate: `${Math.round((completedObjectives / totalObjectives) * 100)}%`,
-                bonusCompleted: `${bonusObjectives}/${totalBonusObjectives}`
-            }
-        };
-    }
-    
-    /**
-     * Calculate mission completion time
-     */
-    calculateCompletionTime(mission) {
-        if (!mission.accepted_at) return 'Unknown';
-        
-        const startTime = new Date(mission.accepted_at);
-        const endTime = new Date();
-        const duration = endTime - startTime;
-        
-        const hours = Math.floor(duration / (1000 * 60 * 60));
-        const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((duration % (1000 * 60)) / 1000);
-        
-        if (hours > 0) {
-            return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        } else {
-            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-    }
-    
-    /**
-     * Update player data in mission API
-     */
-    updatePlayerData(playerData) {
-        if (this.missionAPI) {
-            this.missionAPI.updatePlayerData(playerData);
-        }
-    }
-    
-    /**
-     * Set player location in mission API
-     */
-    setPlayerLocation(location) {
-        if (this.missionAPI) {
-            this.missionAPI.setPlayerLocation(location);
-        }
-    }
-    
-    /**
-     * Get mock missions for testing
-     */
-    getMockMissions() {
-        return [
-            {
-                id: 'mission_001',
-                title: 'ELIMINATE RAIDER SQUADRON',
-                client: 'Terra Defense Force',
-                location: 'Sol Inner',
-                timeRemaining: '15:42',
-                expanded: true,
-                objectives: [
-                    {
-                        description: 'Locate raider squadron',
-                        status: 'COMPLETED',
-                        isOptional: false
-                    },
-                    {
-                        description: 'Eliminate 5 raider ships',
-                        status: 'ACTIVE',
-                        progress: '3/5',
-                        isOptional: false
-                    },
-                    {
-                        description: 'Return to Terra Station',
-                        status: 'PENDING',
-                        isOptional: false
-                    }
-                ]
-            },
-            {
-                id: 'mission_002',
-                title: 'CARGO DELIVERY RUN',
-                client: 'Free Traders Union',
-                location: 'Ceres → Europa',
-                expanded: false,
-                objectives: [
-                    {
-                        description: 'Pick up cargo from Ceres',
-                        status: 'COMPLETED',
-                        isOptional: false
-                    },
-                    {
-                        description: 'Deliver to Europa Station',
-                        status: 'ACTIVE',
-                        isOptional: false
-                    },
-                    {
-                        description: 'Avoid pirate ambush',
-                        status: 'PENDING',
-                        isOptional: true
-                    }
-                ]
-            }
-        ];
-    }
-    
-    /**
      * Setup event listeners
      */
     setupEventListeners() {
-        // Create bound handlers for missionAPI events (stored for cleanup)
+        // Create bound handlers for missionAPI events
         this._missionAPIHandlers.missionAccepted = (data) => {
             debug('UI', 'MissionStatusHUD: Mission accepted', data.mission);
             this.refreshMissions();
@@ -1378,7 +392,7 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
 
             // Show mission completion UI
             if (this.starfieldManager && this.starfieldManager.showMissionComplete) {
-                this.starfieldManager.showMissionComplete(data.mission.id, this.createCompletionData(data.mission));
+                this.starfieldManager.showMissionComplete(data.mission.id, this.stateManager.createCompletionData(data.mission));
             }
         };
 
@@ -1403,30 +417,63 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
 
         debug('UI', 'MissionStatusHUD: Event listeners ready');
     }
-    
+
     /**
      * Get visibility status
      */
     get visible() {
         return this.isVisible;
     }
-    
+
     /**
-     * Hide the HUD
+     * Update player data in mission API
      */
-    hide() {
-        if (this.isVisible) {
-            this.toggle();
+    updatePlayerData(playerData) {
+        if (this.missionAPI) {
+            this.missionAPI.updatePlayerData(playerData);
         }
     }
-    
+
     /**
-     * Show the HUD
+     * Set player location in mission API
      */
-    show() {
-        if (!this.isVisible) {
-            this.toggle();
+    setPlayerLocation(location) {
+        if (this.missionAPI) {
+            this.missionAPI.setPlayerLocation(location);
         }
+    }
+
+    /**
+     * Get mock missions for testing
+     */
+    getMockMissions() {
+        return [
+            {
+                id: 'mission_001',
+                title: 'ELIMINATE RAIDER SQUADRON',
+                client: 'Terra Defense Force',
+                location: 'Sol Inner',
+                timeRemaining: '15:42',
+                expanded: true,
+                objectives: [
+                    { description: 'Locate raider squadron', status: 'COMPLETED', isOptional: false },
+                    { description: 'Eliminate 5 raider ships', status: 'ACTIVE', progress: '3/5', isOptional: false },
+                    { description: 'Return to Terra Station', status: 'PENDING', isOptional: false }
+                ]
+            },
+            {
+                id: 'mission_002',
+                title: 'CARGO DELIVERY RUN',
+                client: 'Free Traders Union',
+                location: 'Ceres → Europa',
+                expanded: false,
+                objectives: [
+                    { description: 'Pick up cargo from Ceres', status: 'COMPLETED', isOptional: false },
+                    { description: 'Deliver to Europa Station', status: 'ACTIVE', isOptional: false },
+                    { description: 'Avoid pirate ambush', status: 'PENDING', isOptional: true }
+                ]
+            }
+        ];
     }
 
     /**
@@ -1434,21 +481,19 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
      */
     playObjectiveCompletionAudio() {
         try {
-            // Use TargetComputerManager's audio system if available
             if (window.targetComputerManager && window.targetComputerManager.playAudio) {
                 window.targetComputerManager.playAudio('frontend/static/audio/blurb.mp3');
-                debug('MISSIONS', '🔊 Played objective completion audio: blurb.mp3');
+                debug('MISSIONS', 'Played objective completion audio: blurb.mp3');
             } else {
-                // Fallback: HTML5 Audio
                 const audio = new Audio('static/audio/blurb.mp3');
                 audio.volume = 0.7;
                 audio.play().catch(() => {
-                    debug('MISSIONS', '⚠️ Could not play objective completion audio');
+                    debug('MISSIONS', 'Could not play objective completion audio');
                 });
-                debug('MISSIONS', '🔊 Played objective completion audio (fallback): blurb.mp3');
+                debug('MISSIONS', 'Played objective completion audio (fallback): blurb.mp3');
             }
         } catch (error) {
-            debug('MISSIONS', `⚠️ Error playing objective completion audio: ${error.message}`);
+            debug('MISSIONS', `Error playing objective completion audio: ${error.message}`);
         }
     }
 
@@ -1457,26 +502,24 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
      */
     playMissionCompletionAudio() {
         try {
-            // Use TargetComputerManager's audio system if available
             if (window.targetComputerManager && window.targetComputerManager.playAudio) {
                 window.targetComputerManager.playAudio('frontend/static/audio/success.wav');
-                debug('MISSIONS', '🔊 Played mission completion audio: success.wav');
+                debug('MISSIONS', 'Played mission completion audio: success.wav');
             } else {
-                // Fallback: HTML5 Audio
                 const audio = new Audio('static/audio/success.wav');
                 audio.volume = 0.8;
                 audio.play().catch(() => {
-                    debug('MISSIONS', '⚠️ Could not play mission completion audio');
+                    debug('MISSIONS', 'Could not play mission completion audio');
                 });
-                debug('MISSIONS', '🔊 Played mission completion audio (fallback): success.wav');
+                debug('MISSIONS', 'Played mission completion audio (fallback): success.wav');
             }
         } catch (error) {
-            debug('MISSIONS', `⚠️ Error playing mission completion audio: ${error.message}`);
+            debug('MISSIONS', `Error playing mission completion audio: ${error.message}`);
         }
     }
 
     /**
-     * Clean up all resources - call this when destroying the HUD
+     * Clean up all resources
      */
     destroy() {
         // Stop periodic updates
@@ -1540,8 +583,10 @@ debug('UI', 'MissionStatusHUD: Using mock data as fallback');
         this.starfieldManager = null;
         this.missionManager = null;
         this.missionAPI = null;
+        this.renderer = null;
+        this.stateManager = null;
 
-        debug('UI', '🧹 MissionStatusHUD destroyed - all resources cleaned up');
+        debug('UI', 'MissionStatusHUD destroyed - all resources cleaned up');
     }
 
     /**
